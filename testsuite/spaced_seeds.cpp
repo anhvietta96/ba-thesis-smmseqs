@@ -4,7 +4,6 @@
 #include "utilities/cxxopts.hpp"
 #include "utilities/runtime_class.hpp"
 #include "sequences/gttl_multiseq.hpp"
-#include "filter/spaced_seeds.hpp"
 
 static void usage(const cxxopts::Options &options)
 {
