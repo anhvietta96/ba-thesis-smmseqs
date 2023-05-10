@@ -1,0 +1,22 @@
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.a
+
+# Executables
+*.x
+
+# Editor temp files
+*.swp
+
+tags
