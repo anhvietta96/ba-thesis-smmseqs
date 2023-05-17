@@ -1,13 +1,22 @@
 #include <iostream>
 #include "filter/sorted_q_mer.hpp"
 
-int main(){
+int main()
+{
     static constexpr const char nucleotides_upper_lower_ACTG[] = "Aa|Cc|TtUu|Gg";
-    SortedQmer<nucleotides_upper_lower_ACTG,4,2> map;
-    const char** generated_map = *(map.get_map());
+    static constexpr const size_t seq_len = 3;
+    SortedQmer<nucleotides_upper_lower_ACTG,4,seq_len> map;
+    
+    char* generated_map = map.get_map();
     const size_t size = map.get_size();
-    for(size_t i = 0; i < size; i++)
+
+    for(size_t i = 0; i < size*seq_len; i++)
     {
-        std::cout << generated_map[i] << std::endl;
+        if(i % seq_len == 0)
+        {
+            std::cout << '\n';
+        }
+        std::cout << generated_map[i];
     }
+    std::cout << std::endl;
 }

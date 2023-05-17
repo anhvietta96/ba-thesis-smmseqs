@@ -5,8 +5,11 @@ LD=${CXX}
 LDLIBS=-lm -lz -lpthread -lstdc++
 CXXFLAGS=-std=c++17
 
+GTTL?=../../gttl
+GTTLFLAGS=-I ${GTTL}/src
+
 %.o:%.cpp
-	$(CXX) $(CXXFLAGS) ${CFLAGS} ${CPPFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d) $< -c -o $@
+	$(CXX) -o $@ -c $< ${CXXFLAGS} ${CFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d)
 
 %.x:%.o
 	$(CXX) ${LDFLAGS} $< -o $@ ${LDLIBS}

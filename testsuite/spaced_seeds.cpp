@@ -4,6 +4,7 @@
 #include "utilities/cxxopts.hpp"
 #include "utilities/runtime_class.hpp"
 #include "sequences/gttl_multiseq.hpp"
+#include "filter/spaced_seeds.hpp"
 
 static void usage(const cxxopts::Options &options)
 {
@@ -135,7 +136,7 @@ int main(int argc, char *argv[])
   }
 
   GttlMultiseq *multiseq = nullptr;
-  RunTimeClass rt{};
+  
 
   const std::vector<std::string> &inputfiles = options.inputfiles_get();
   try
@@ -156,40 +157,58 @@ int main(int argc, char *argv[])
   {
     multiseq->short_header_cache_create();
   }
-  rt.show("create GttlMultiseq");
+  
 
   auto total_seq_num = multiseq->sequences_number_get();
-  size_t code, seq_len;
+  size_t code = 0;
+  size_t seq_len;
   const char* curr_seq;
   static constexpr const char seed[] = "10101010";
-  static constexpr const size_t seed_len = sizeof(seed);
+  static constexpr const size_t seed_len = sizeof(seed)-1;
 
+  RunTimeClass rt{};
   if (options.protein_option_is_set())
   {
     static constexpr const char amino_acids[]
       = "A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y";
-    GttlSpacedSeed<amino_acids,20,seed,seed_len> spaced_seed;
+    GttlSpacedSeed<amino_acids,20,seed> spaced_seed;
     for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
     {
+      code = 0;
       curr_seq = multiseq->sequence_ptr_get(seqnum);
       seq_len = multiseq->sequence_length_get(seqnum);
-      code = spaced_seed.encode(curr_seq,seq_len);
-      std::cout << curr_seq << '\t' << code << std::endl;
+      if(seq_len >= seed_len)
+      {
+        for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+        {
+            code += spaced_seed.encode(curr_seq+i,seed_len);
+            //std::cout << curr_seq << '\t' << code << std::endl;
+        }
+        std::cout << code << std::endl;
+      }
     }
   }
   else
   {
     static constexpr const char nucleotides_upper_lower_ACTG[] = "Aa|Cc|TtUu|Gg";
-    GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,seed,seed_len> spaced_seed;
+    GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,seed> spaced_seed;
     for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
     {
+      code = 0;
       curr_seq = multiseq->sequence_ptr_get(seqnum);
       seq_len = multiseq->sequence_length_get(seqnum);
-      code = spaced_seed.encode(curr_seq,seq_len);
-      std::cout << curr_seq << '\t' << code << std::endl;
+      if(seq_len >= seed_len)
+      {
+        for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+        {
+            code += spaced_seed.encode(curr_seq+i,seed_len);
+            //std::cout << curr_seq << '\t' << code << std::endl;
+        }
+        std::cout << code << std::endl;
+      }
     }
   }
-  
+  rt.show("Runtime");
   
   for (auto &&inputfile : inputfiles)
   {
@@ -199,7 +218,5 @@ int main(int argc, char *argv[])
   {
     std::cout << "# " << msg << std::endl;
   }
-  
-
   delete multiseq;
 }
