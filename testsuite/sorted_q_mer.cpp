@@ -148,11 +148,11 @@ int main(int argc, char *argv[])
   static constexpr const char nucleotides_upper_lower_ACTG[] = "Aa|Cc|TtUu|Gg";
   static constexpr const char amino_acids[]
       = "A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y";
-  constexpr const SortedQmer<nucleotides_upper_lower_ACTG,4,2> map_nuc_2{};
-  constexpr const SortedQmer<nucleotides_upper_lower_ACTG,4,3> map_nuc_3{};
-  constexpr const SortedQmer<nucleotides_upper_lower_ACTG,4,4> map_nuc_4{};
-  constexpr const SortedQmer<amino_acids,20,2> map_prot_2{};
-  constexpr const SortedQmer<amino_acids,20,3> map_prot_3{};
+  //static constexpr const SortedQmer<nucleotides_upper_lower_ACTG,4,2> map_nuc_2{};
+  static constexpr const SortedQmer<nucleotides_upper_lower_ACTG,4,3> map_nuc_3{};
+  static constexpr const SortedQmer<nucleotides_upper_lower_ACTG,4,4> map_nuc_4{};
+  static constexpr const SortedQmer<amino_acids,20,2> map_prot_2{};
+  static constexpr const SortedQmer<amino_acids,20,3> map_prot_3{};
 
   //static_assert(map.get_seq_num(0)[0] != 0);
 

@@ -1,5 +1,6 @@
 CXX?=g++
-CFLAGS=-ftemplate-depth=2000 -fconstexpr-depth=2000 -Wall -Werror -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops -O3
+CFLAGS=-Wall -Werror -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops -O3
+COMPILATION_RESOURCES=-ftemplate-depth=2000 -fconstexpr-depth=2000
 CPPFLAGS=-I ../src
 LD=${CXX}
 LDLIBS=-lm -lz -lpthread -lstdc++
@@ -12,6 +13,8 @@ TMPFILE=temp.txt
 
 QMER=sorted_q_mer
 SPACED_SEEDS=spaced_seeds
+
+all:${QMER}.x ${SPACED_SEEDS}.x
 
 test: test_sorted_qmer_nuc_3 test_sorted_qmer_prot_2 test_spaced_seeds
 
@@ -34,11 +37,11 @@ test_spaced_seeds:${SPACED_SEEDS}.x
 	@echo "$@ passed."
 
 %.o:%.cpp
-	$(CXX) -o $@ -c $< ${CXXFLAGS} ${CFLAGS} ${CPPFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d)
+	$(CXX) -o $@ -c $< ${CXXFLAGS} ${COMPILE_CONST} ${COMPILATION_RESOURCES} ${CPPFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d)
 
 %.x:%.o
 	$(CXX) ${LDFLAGS} $< -o $@ ${LDLIBS}
 
 .PHONY:clean
 clean:
-	${RM} -r *.[odx] *.x.dSYM/ __pycache__
+	${RM} -r *.[odx] *.x.dSYM/ __pycache__ temp.txt
