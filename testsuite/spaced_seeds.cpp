@@ -11,47 +11,34 @@ static void usage(const cxxopts::Options &options)
   std::cerr << options.help() << std::endl;
 }
 
-class MultiseqOptions
+class SpacedSeedOptions
 {
  private:
   std::vector<std::string> inputfiles{};
   bool help_option = false,
        protein_option = false,
-       zipped_option = false,
-       rankdist_option = false,
-       short_header_option = false;
-  int width_arg = -1;
+       list_seeds = false,
+       show = false;
+  std::string seeds;
 
  public:
-  MultiseqOptions() {};
+  SpacedSeedOptions() {};
 
   void parse(int argc, char **argv)
   {
-    cxxopts::Options options(argv[0],"tests for GttlMultiseq");
+    cxxopts::Options options(argv[0],"tests for sum of spaced seed intcode");
     options.set_width(80);
     options.custom_help(std::string("[options] filename1 [filename2 ...]"));
     options.set_tab_expansion();
     options.add_options()
        ("p,protein", "handle protein sequences",
         cxxopts::value<bool>(protein_option)->default_value("false"))
-       ("z,zipped", "expect two fastq  files with the same "
-                    "number of sequences; show them "
-                    "in zipped order, i.e. the "
-                    "sequences at even indexes (when "
-                    "counting from 0) are from the first "
-                    "file and sequences at odd indexes are "
-                    "from the second file",
-        cxxopts::value<bool>(zipped_option)->default_value("false"))
-       ("r,rankdist", "output distribution of ranks of "
-                      "transformed sequences",
-        cxxopts::value<bool>(rankdist_option)->default_value("false"))
-       ("s,short_header", "show header up to and excluding the first blank",
-        cxxopts::value<bool>(short_header_option)->default_value("false"))
-       ("w,width", "output headers and sequences; "
-                   "width specifies the linewidth of the"
-                   "sequence output; 0 means to output\n"
-                   "a sequence in a single line",
-        cxxopts::value<int>(width_arg)->default_value("-1"))
+       ("l,list_seeds", "output available seed list",
+        cxxopts::value<bool>(list_seeds)->default_value("false"))
+       ("d,seeds", "choose seeds to compute",
+        cxxopts::value<std::string>(seeds)->default_value("0"))
+       ("s,show", "output sum of intcode",
+        cxxopts::value<bool>(show)->default_value("false"))
        ("h,help", "print usage");
     try
     {
@@ -63,19 +50,10 @@ class MultiseqOptions
       } else
       {
         const std::vector<std::string>& unmatched_args = result.unmatched();
-        if (unmatched_args.size() == 0)
-        {
-          throw std::invalid_argument("at least one inputput file is required");
-        }
         for (size_t idx = 0; idx < unmatched_args.size(); idx++)
         {
           inputfiles.push_back(unmatched_args[idx]);
         }
-      }
-      if (zipped_option && inputfiles.size() != 2)
-      {
-        throw std::invalid_argument("option -z/--zipped requires exactly "
-                                    "two files");
       }
     }
     catch (const cxxopts::OptionException &e)
@@ -92,21 +70,17 @@ class MultiseqOptions
   {
     return protein_option;
   }
-  bool zipped_option_is_set(void) const noexcept
+  bool list_seed_option_is_set(void) const noexcept
   {
-    return zipped_option;
+    return list_seeds;
   }
-  bool rankdist_option_is_set(void) const noexcept
+  bool show_option_is_set(void) const noexcept
   {
-    return rankdist_option;
+    return show;
   }
-  bool short_header_option_is_set(void) const noexcept
+  const std::string &seeds_get(void) const noexcept
   {
-    return short_header_option;
-  }
-  int width_option_get(void) const noexcept
-  {
-    return width_arg;
+    return seeds;
   }
   const std::vector<std::string> &inputfiles_get(void) const noexcept
   {
@@ -114,12 +88,13 @@ class MultiseqOptions
   }
 };
 
+constexpr const std::array<std::string_view,1> seed_list = {{ "10101010" }};
 
 int main(int argc, char *argv[])
 {
   /* Different variables used for the optionparser as well as multiseq variable
      multiseq */
-  MultiseqOptions options;
+  SpacedSeedOptions options;
 
   try
   {
@@ -130,15 +105,28 @@ int main(int argc, char *argv[])
     std::cerr << argv[0] << ": " << e.what() << std::endl;
     return EXIT_FAILURE;
   }
+
   if (options.help_option_is_set())
   {
     return EXIT_SUCCESS;
   }
 
   GttlMultiseq *multiseq = nullptr;
-  
 
+  if(options.list_seed_option_is_set())
+  {
+    for(size_t seed_idx = 0; seed_idx < seed_list.size(); seed_idx++)
+    {
+      std::cout << seed_list[seed_idx] << std::endl;
+    }
+  }
+  
   const std::vector<std::string> &inputfiles = options.inputfiles_get();
+  if(inputfiles.size() == 0)
+  {
+    return EXIT_SUCCESS;
+  }
+
   try
   {
     multiseq = new GttlMultiseq(inputfiles,true,UINT8_MAX);
@@ -153,70 +141,82 @@ int main(int argc, char *argv[])
     delete multiseq;
     return EXIT_FAILURE;
   }
-  if (options.short_header_option_is_set())
-  {
-    multiseq->short_header_cache_create();
-  }
-  
 
   auto total_seq_num = multiseq->sequences_number_get();
-  size_t code = 0;
-  size_t seq_len;
-  const char* curr_seq;
   static constexpr const char seed[] = "10101010";
-  static constexpr const size_t seed_len = sizeof(seed)-1;
-
+  /*
+  const std::string &seeds = options.seeds_get();
+  if(seeds.size() > 1)
+  {
+    std::cout << "Multiple seeds not yet supported" << std::endl;
+    return EXIT_SUCCESS;
+  }
+  if(seeds[0] > 57 or seeds[0] < 48)
+  {
+    std::cout << "Invalid seed" << std::endl;
+    return EXIT_SUCCESS;
+  }
+  static constexpr const char* seed = seed_list[seeds[0]-48].data();
+  */
   RunTimeClass rt{};
   if (options.protein_option_is_set())
   {
     static constexpr const char amino_acids[]
       = "A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y";
-    GttlSpacedSeed<amino_acids,20,seed> spaced_seed;
+    constexpr const GttlSpacedSeed<amino_acids,20,seed> spaced_seed;
+    constexpr const size_t seed_len = sizeof(seed)-1;
     for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
     {
-      code = 0;
-      curr_seq = multiseq->sequence_ptr_get(seqnum);
-      seq_len = multiseq->sequence_length_get(seqnum);
+      size_t code = 0;
+      const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
+      const size_t seq_len = multiseq->sequence_length_get(seqnum);
       if(seq_len >= seed_len)
       {
         for(size_t i = 0; i < seq_len - seed_len + 1; i++)
         {
-            code += spaced_seed.encode(curr_seq+i,seed_len);
-            //std::cout << curr_seq << '\t' << code << std::endl;
+          code += spaced_seed.encode(curr_seq+i,seed_len);
         }
-        std::cout << code << std::endl;
+        if(options.show_option_is_set())
+        {
+          std::cout << code << std::endl;
+        }
       }
     }
   }
   else
   {
     static constexpr const char nucleotides_upper_lower_ACTG[] = "Aa|Cc|TtUu|Gg";
-    GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,seed> spaced_seed;
+    constexpr const GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,seed> spaced_seed;
+    constexpr const size_t seed_len = sizeof(seed)-1;
     for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
     {
-      code = 0;
-      curr_seq = multiseq->sequence_ptr_get(seqnum);
-      seq_len = multiseq->sequence_length_get(seqnum);
+      size_t code = 0;
+      const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
+      const size_t seq_len = multiseq->sequence_length_get(seqnum);
       if(seq_len >= seed_len)
       {
         for(size_t i = 0; i < seq_len - seed_len + 1; i++)
         {
-            code += spaced_seed.encode(curr_seq+i,seed_len);
-            //std::cout << curr_seq << '\t' << code << std::endl;
+          code += spaced_seed.encode(curr_seq+i,seed_len);
         }
-        std::cout << code << std::endl;
+        if(options.show_option_is_set())
+        {
+          std::cout << code << std::endl;
+        }
       }
     }
   }
-  rt.show("Runtime");
-  
-  for (auto &&inputfile : inputfiles)
+  if(!options.show_option_is_set())
   {
-    std::cout << "# filename\t" << inputfile << std::endl;
-  }
-  for (auto &msg : multiseq->statistics())
-  {
-    std::cout << "# " << msg << std::endl;
+    rt.show("Encoding runtime");
+    for (auto &&inputfile : inputfiles)
+    {
+      std::cout << "# filename\t" << inputfile << std::endl;
+    }
+    for (auto &msg : multiseq->statistics())
+    {
+      std::cout << "# " << msg << std::endl;
+    }
   }
   delete multiseq;
 }
