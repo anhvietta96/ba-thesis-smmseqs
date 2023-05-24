@@ -1,0 +1,188 @@
+\documentclass[12pt,a4paper]{scrartcl}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\usepackage{times}
+\usepackage{url}
+\usepackage{numprint}
+\usepackage{ngerman}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\newcommand{\Substring}[3]{#1\lbrack #2\ldots#3\rbrack}
+\newcommand{\Subchar}[2]{#1\lbrack #2\rbrack}
+\newcommand{\Scoretablename}[0]{\mathsf{ST}}
+\newcommand{\Scoretable}[1]{\Scoretablename\lbrack #1\rbrack}
+\newcommand{\Reals}{\mathbb{R}}
+\newcommand{\Permname}[1]{\varphi_{#1}}
+\newcommand{\Perm}[2]{\Permname{#1}(#2)}
+\newcommand{\Permnameinverse}[1]{\varphi_{#1}^{-1}}
+\newcommand{\Perminverse}[2]{\Permnameinverse{#1}(#2)}
+\newcommand{\Alpha}[0]{\mathcal{A}}
+
+\title{Effiziente Vorverarbeitung kurzer Sequenzst"ucke f"ur die
+effiziente Filterung beim Vergleich von Proteinsequenzen}
+\author{Stefan Kurtz}
+
+\begin{document}
+\maketitle
+
+Zum Vergleich gro"ser Mengen von Proteinsequenzen werden typischerweise
+Filtertechniken verwendet. Diese Filtertechniken sollen m"oglichst effizient
+solche Paare von Proteinsequenzen ausschlie"sen, f"ur die es kein signifikantes
+lokales Alignment gibt. Alle anderen Sequenzpaare werden dann im Weiteren
+genauer, z.B.\ durch aufw"andige Verfahren der dynamischen Programmierung
+untersucht. Solche Filtertechniken, basierend auf \(q\)-meren
+und \(k\)-Umgebungen werden seit mehr als 20 Jahren
+in Programmen wie z.B.\ Blastp oder MMseqs2 genutzt. Dabei ist
+\(q\) einen L"angenwert und
+\(k\) ein minimaler Score-Wert, den Paare von \(q\)-mere erreichen m"ussen,
+damit sie im Rahmen der Filtertechniken als sogenannte Seeds
+betrachtet werden. Die Filtertechniken kann man durch die Wahl der Parameter
+\(q\) und \(k\) variieren, ebenso wie durch Bedingungen, die verschiedene
+Seeds relativ zueinander erf"ullen m"ussen.
+
+Der Filter von Blastp verwendet im Standardfall die Blosum62-Scorematrix mit
+\(q=3\) und \(k=22\), und verlangt zwei Blast-Hits mit einem
+maximalen Abstand auf der gleichen Diagonale
+\cite{ALT:MAD:SCHAE:ZHA:ZHA:MIL:LIP:1997}. Liegt ein solches Paar von
+Blast-hits vor, erfolgt ein Ungapped Alignment von der Mitte zwischen den
+Blast-hits in beide Richtungen.
+
+Ein alternativer und sehr effizienter Ansatz wird in der MMseqs2-Software
+realisiert
+\cite{STE:SOED:2017}. Hier wird \(q=7\) verwendet und \(k\) so gew"ahlt,
+dass die \(k\)-Umgebung eines einzelnen \(q\)-mers 600--\numprint{60000}
+Elemente umfasst. Es werden Diagonalen bestimmt, in der zwei Blast-hits direkt
+aufeinander folgen. Gibt es in einem Paar von zwei Protein-Sequenzen
+ein solche Diagonale, erfolgt zun"achst ein Erweiterung ohne Gaps und
+falls diese bestimmte Kriterien erf"ullt, wird auch eine Erweiterung mit Gaps
+durchgef"uhrt.
+
+Sei \(\Alpha\) ein geordnetes Alphabet und
+\(\sigma:\Alpha\times\Alpha\to\Reals\)  eine Score-Funktion. F"ur
+\(u,v\in\Alpha^{\ast}\) mit \(|u|=|v|\) definieren wir
+\(\sigma(u,v)=\sum_{i=0}^{|u|-1}\sigma(\Subchar{u}{i},\Subchar{v}{i})\).
+
+Um die Umgebung f"ur ein \(7\)-mer effizient berechnen zu k"onnen,
+wird f"ur alle \(q\in\{2,3\}\) und alle \(u\in\Alpha^{q}\) die
+Liste \(\Scoretable{u}=\lbrack (v,\sigma(u,v))\mid v\in\Alpha^{q}\rbrack\)
+berechnet und nach den Scores absteigend sortiert.
+
+Man kann \(\Scoretablename\) als Scorematrix "uber dem Alphabet \(\Alpha^{q}\)
+auffassen.
+%so dass f"ur ein gegebenes \(u\in\Alpha^{q}\) die
+%Scores \(\sigma(u,v)\) und damit
+%assoziierten \(q\)-mere in
+%sortierter Reihenfolge aufgez"ahlt werden k"onnen.
+
+Die Umgebung eines \(7\)-mers \(u\) wird durch die Bildung
+des kartesischen Produktes
+\begin{align}
+\Scoretable{\Substring{u}{0}{2}}\times \Scoretable{\Substring{u}{3}{4}}\times
+\Scoretable{\Substring{u}{5}{6}}\label{ScoreTablesCartesian}
+\end{align}
+aufgez"ahlt. Durch die Sortierung
+der Scores m"ussen nicht alle Elemente von
+(\ref{ScoreTablesCartesion})
+aufgez"ahlt werden.
+Die Aufz"ahlung in einer Komponente kann abgebrochen werden,
+sobald das erste Element auftritt, dessen Score zu klein ist, um den
+Mindestscore zu erreichen.
+
+Diese Idee der Zerlegung von \(u\) ergibt sich aus
+der detaillierten Analyse des Source Codes von MMseqs2. Sie wurde aber bisher
+meines Wissens nach nicht detailliert beschrieben.\footnote{Hier pr"ufen, ob
+es inzwischen die Doktorarbeit von Martin Steinegger (vermutluch an der
+TU M"unchen) gibt. Hierin k"onnte das Verfahren beschrieben sein.}
+
+Sei \(\varphi:\{0,1,\ldots,q-1\}\to \{0,1,\ldots,q-1\}\) eine bijektive
+Abbildung. F"ur eine Sequenz der L"ange \(q\) definieren wir
+\(\varphi(u)=\Subchar{u}{\varphi(0)}\Subchar{u}{\varphi(1)}\ldots\Subchar{u}{\varphi(q-1)}\), d.h.\ \(\varphi\) permutiert die Buchstaben von \(u\).
+
+Hier sind wir an einer speziellen Permutation \(\Permname{u}\) interessiert,
+so dass \(\Subchar{u}{\Perm{u}{i}}\leq\Subchar{u}{\Perm{u}{i+1}}\)
+f"ur alle \(i\), \(0\leq i\leq q-2\), wobei \(\leq\) die Ordnung der Zeichen
+des Alphabets \(\Alpha\) ist. \(\Permname{u}\) ist also eine Permutation, die
+die Zeichen von \(u\) in sortierter Reihenfolge liefert. Wir sprechen hier
+von sortierten \(q\)-meren.
+Sei \(\Permnameinverse{u}\) die Umkehrabbildung von
+\(\Permname{u}\). Damit gilt \(\Perminverse{u}{\Perm{u}{i}}=i\) f"ur alle \(i\), \(0\leq i\leq q-1\) und es
+folgt \(\Perminverse{u}{\Perm{u}{u}}=u\).
+
+Die Grundlage dieses Projektes ist die Eigenschaft
+\begin{align}
+\sigma(u,v)=\sigma(\Perm{u}{u},\Perm{u}{v})
+\end{align}
+f"ur alle \(v\in\Alpha^{q}\).
+D.h.\ die Anwendung von \(\Permname{u}\) auf \(u\) und auf \(v\)
+permutiert die Zeichen in der gleichen Weise, sowohl in \(u\) als auch
+in \(v\). Dadurch bleibt der paarweise Score in den permutierten
+Sequenzen bzgl.\ \(\sigma\) unver"andert.
+
+Die Idee ist nun, \(\Scoretablename[\Perm{u}{u}]\) einmal zu
+berechnen und abzuspeichern. F"ur alle \(u'\in\Alpha^{q}\) mit
+\(\Perm{u}{u}=\Perm{u'}{u'}\) ergibt sich dann
+\begin{align}
+\Scoretable{u'}=\lbrack(\Perminverse{u'}{v},s)\mid (v,s)\in
+                          \Scoretable{\Perm{u}{u}}\rbrack.\label{Scoretableuprime}
+\end{align}
+
+Der Vorteil dieses Ansatzes besteht darin, dass die Anzahl der sortierten
+\(q\)-mere viel kleiner ist, als die
+Anzahl der \(q\)-mere.\footnote{Sortierte \(q\)-mere
+entsprechen Multisets. Hierzu bitte die Folien aus PfN1 zum
+Thema Multisets ansehen.}
+Damit sollte sich der Zeit- und
+Speicherplatzaufwand f"ur die Vorverarbeitung erheblich reduzieren lassen. Der
+zus"atzliche Aufwand besteht in der Anwendung der Umkehrabbildung
+\(\Permnameinverse{u}\) auf \(v\), siehe Gleichung
+(\ref{Scoretableuprime}). Falls sich dieser Aufwand als
+zu gro"s herausgestellt, w"are hier ggf.\ eine effiziente Berechnung mit
+Hilfe von SIMD-Instruktionen denkbar.
+
+Die Aufgabe dieses B.Sc.\ Projektes besteht darin, die hier beschriebenen
+Ideen effizient in objekt-orientierter Form
+in C++ zu implementieren und auszuwerten. Dabei sollen soweit wie m"oglich
+bereits existierende Sourcen aus \url{github.com:stefan-kurtz/gttl.git}
+wiederverwendet werden. Die Implementierung k"onnte aus den folgenden
+Komponenten bestehen:
+
+\begin{itemize}
+\item Klassen zur Verwaltung von Spaced Seeds\footnote{Tats"achlich werden in
+MMseqs2 nicht \(q\)-mere betrachtet, sondern Strings einer bestimmten
+L"ange \(s\), in denen \(q<s\) Positionen f"ur die Bewertung relevant sind.
+Dabei wird \(s\) Span genannt und \(q\) das Gewicht des Spaced Seeds.
+Damit werden \(s-q\) Positionen von \(s\) nicht bei der Bewertung
+ber"ucksichtigt.}
+\item
+Klassen zur Codierung von sortierten \(q\)-meren durch Integercodes
+\item
+Klassen zur Darstellung von Scorematrizen, die indiziert sind durch
+Integercodes sortierter \(q\)-mere \(u\) und die es erlauben, die
+\(q\)-mere \(v\) zusammen mit dem Score \(\sigma(u,v)\) in sortierter
+Reihenfolge aufzuz"ahlen.
+\item
+Klassen zur Verwaltung von Permutationen, die \(q\)-mere in sortierte
+\(q\)-mere transformieren (und umgekehrt).
+\item
+Klassen zu Aufz"ahlen von \(q\)-meren f"ur \(q\in \{4,5,6,7\}\) durch
+Bildung kartesischer Produkte, analog zu (\ref{ScoreTablesCartesian}).
+\end{itemize}
+
+Die Implementierung soll generisch sein und durch Wahl entsprechender
+Template-Parameter z.B.\ f"ur den Wert von \(q\) und die Score-Funktion,
+gro"ses Optimierungspotential f"ur den
+Compiler bieten. Dabei sollen die relevanten Daten kompakt dargestellt
+werden. So sollen nur \(\lceil\log_{2}(r-1)\rceil\) Bits verwendet werden,
+um sortierte \(q\)-mere zu codieren, falls ihre Anzahl \(r\) ist. Ebenso
+erscheint es bei den nach Scores sortierten Listen von Paaren mit einem
+\(q\)-gram und einem Score sinnvoll, die aufeinanderfolgenden
+Scores durch Differenzen zu codieren. Hier k"onnte man ggf.\ un"are
+Codes verwenden.
+
+Ein wichtiger Aspekt der Arbeit besteht in der systematischen Auswertung
+der Implementierung hinsichtlich Speicherplatz und Laufzeit f"ur den
+relevanten Parameterraum.
+
+\bibliography{biotools,proteins}
+\bibliographystyle{plain}
+\end{document}
