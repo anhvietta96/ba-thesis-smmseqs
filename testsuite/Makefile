@@ -1,6 +1,6 @@
 CXX?=g++
-CFLAGS=-Wstack-exhausted -Wall -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops -O3
-COMPILATION_RESOURCES=-ftemplate-depth=2000 -fconstexpr-depth=2000
+CFLAGS=-Wall -Werror -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops -O3
+COMPILATION_RESOURCES=-ftemplate-depth=10000 -fconstexpr-depth=10000
 CPPFLAGS=-I ../src
 LD=${CXX}
 LDLIBS=-lm -lz -lpthread -lstdc++
@@ -10,34 +10,49 @@ GTTL?=../../gttl
 GTTLFLAGS=-I ${GTTL}/src
 
 TMPFILE=temp.txt
+REFDIR=../testdata/ref
 
-QMER=sorted_q_mer
+SQGRAM=sorted_qgram
+UQGRAM=unsorted_qgram
 SPACED_SEEDS=spaced_seeds
+SMATRIX=score_matrix
 
-all:${QMER}.x ${SPACED_SEEDS}.x
+all:${QGRAM}.x ${SPACED_SEEDS}.x ${SMATRIX}.x ${UQGRAM}.x
 
-test: test_sorted_qmer_nuc_3 test_sorted_qmer_prot_2 test_spaced_seeds
+test: test_sorted_qgram test_unsorted_qgram test_score_matrix test_spaced_seeds 
 
-test_sorted_qmer_nuc_3:${QMER}.x
-	@./${QMER}.x -q 3 -s >${TMPFILE}
-	@diff ./ref/sorted_qmer_nuc_3.txt ${TMPFILE}
+test_sorted_qgram:${SQGRAM}.x
+	@./${SQGRAM}.x -q 3 -s >${TMPFILE}
+	@diff ${REFDIR}/sorted_qgram_nuc_3.txt ${TMPFILE}
+	@./${SQGRAM}.x -p -q 2 -s >${TMPFILE}
+	@diff ${REFDIR}/sorted_qgram_prot_2.txt ${TMPFILE}
 	@${RM} ${TMPFILE}
 	@echo "$@ passed."
 
-test_sorted_qmer_prot_2:${QMER}.x
-	@./${QMER}.x -p -q 2 -s >${TMPFILE}
-	@diff ./ref/sorted_qmer_prot_2.txt ${TMPFILE}
+test_unsorted_qgram:${UQGRAM}.x
+	@./${UQGRAM}.x -q 3 -s >${TMPFILE}
+	@diff ${REFDIR}/unsorted_qgram_nuc_3.txt ${TMPFILE}
+	@./${UQGRAM}.x -p -q 2 -s >${TMPFILE}
+	@diff ${REFDIR}/unsorted_qgram_prot_2.txt ${TMPFILE}
+	@${RM} ${TMPFILE}
+	@echo "$@ passed."
+
+test_score_matrix:${SMATRIX}.x
+	@./${SMATRIX}.x -m 0 -q 2 >${TMPFILE}
+	@diff ${REFDIR}/smatrix.tsv ${TMPFILE}
 	@${RM} ${TMPFILE}
 	@echo "$@ passed."
 
 test_spaced_seeds:${SPACED_SEEDS}.x
-	@./${SPACED_SEEDS}.x -p -s ../testdata/uniprot_sprot.fasta >${TMPFILE}
-	@diff ./ref/test_uniprot_sprot.txt ${TMPFILE}
+	@./${SPACED_SEEDS}.x -p -d 0 -s ../testdata/sw175.fna >${TMPFILE}
+	@diff ${REFDIR}/test_ss_sw175.txt ${TMPFILE}
+	@./${SPACED_SEEDS}.x -p -d 1 -s ../testdata/QUERY.fasta >${TMPFILE}
+	@diff ${REFDIR}/test_ss_QUERY.txt ${TMPFILE}
 	@${RM} ${TMPFILE}
 	@echo "$@ passed."
 
 %.o:%.cpp
-	$(CXX) -o $@ -c $< ${CXXFLAGS} ${COMPILE_CONST} ${COMPILATION_RESOURCES} ${CFLAGS} ${CPPFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d)
+	$(CXX) -o $@ -c $< ${CXXFLAGS} ${COMPILE_CONST} ${COMPILATION_RESOURCES} ${CPPFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d)
 
 %.x:%.o
 	$(CXX) ${LDFLAGS} $< -o $@ ${LDLIBS}

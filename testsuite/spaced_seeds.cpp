@@ -6,6 +6,15 @@
 #include "sequences/gttl_multiseq.hpp"
 #include "filter/spaced_seeds.hpp"
 
+
+/*TODO
+finish spaced seed test (seed choice) ?
+pull x
+score matrix x
+check err
+1D map sorted qmer x
+*/
+
 static void usage(const cxxopts::Options &options)
 {
   std::cerr << options.help() << std::endl;
@@ -88,7 +97,18 @@ class SpacedSeedOptions
   }
 };
 
-constexpr const std::array<std::string_view,1> seed_list = {{ "10101010" }};
+static constexpr const size_t gt_spaced_seed_spec_tab[] = {
+  29UL /* 0, 4, 5 11101, MMseq2_proteins_0 */,
+  59UL /* 1, 5, 6 111011, MMseq2_proteins_1 */,
+  107UL /* 2, 5, 7 1101011, MMseq2_proteins_2 */,
+  3205UL /* 3, 5, 12 110010000101, MMseq2_proteins_3 */,
+  237UL /* 4, 6, 8 11101101, MMseq2_proteins_4 */,
+  851UL /* 5, 6, 10 1101010011, MMseq2_proteins_5 */,
+  981UL /* 6, 7, 10 1111010101, MMseq2_proteins_6 */,
+  1715UL /* 7, 7, 11 11010110011, MMseq2_proteins_7 */
+};
+
+constexpr const size_t seed_table_size = sizeof(gt_spaced_seed_spec_tab);
 
 int main(int argc, char *argv[])
 {
@@ -115,12 +135,12 @@ int main(int argc, char *argv[])
 
   if(options.list_seed_option_is_set())
   {
-    for(size_t seed_idx = 0; seed_idx < seed_list.size(); seed_idx++)
+    for(size_t seed_idx = 0; seed_idx < seed_table_size; seed_idx++)
     {
-      std::cout << seed_list[seed_idx] << std::endl;
+      std::cout << gt_spaced_seed_spec_tab[seed_idx] << std::endl;
     }
   }
-  
+
   const std::vector<std::string> &inputfiles = options.inputfiles_get();
   if(inputfiles.size() == 0)
   {
@@ -142,68 +162,183 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
+  if (multiseq == nullptr)
+  {
+    std::cerr << argv[0] << "cannot open file" << std::endl;
+    return EXIT_FAILURE;
+    /* check_err.py checked */
+  }
+
   auto total_seq_num = multiseq->sequences_number_get();
-  static constexpr const char seed[] = "10101010";
-  /*
+  
+  //static constexpr const char seed[] = "10101010";
+  
   const std::string &seeds = options.seeds_get();
   if(seeds.size() > 1)
   {
-    std::cout << "Multiple seeds not yet supported" << std::endl;
+    std::cout << "Multiple seeds not supported" << std::endl;
     return EXIT_SUCCESS;
   }
-  if(seeds[0] > 57 or seeds[0] < 48)
+  if(seeds[0] >= '0' + seed_table_size or seeds[0] < '0')
   {
     std::cout << "Invalid seed" << std::endl;
     return EXIT_SUCCESS;
   }
-  static constexpr const char* seed = seed_list[seeds[0]-48].data();
-  */
+  const uint8_t seed_idx = seeds[0] - '0';
+  const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
+
   RunTimeClass rt{};
   if (options.protein_option_is_set())
   {
     static constexpr const char amino_acids[]
       = "A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y";
-    constexpr const GttlSpacedSeed<amino_acids,20,seed> spaced_seed;
-    constexpr const size_t seed_len = sizeof(seed)-1;
-    for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
+    constexpr const GttlSpacedSeed<amino_acids,20,gt_spaced_seed_spec_tab[0]> spaced_seed_p0;
+    constexpr const GttlSpacedSeed<amino_acids,20,gt_spaced_seed_spec_tab[1]> spaced_seed_p1;
+    constexpr const GttlSpacedSeed<amino_acids,20,gt_spaced_seed_spec_tab[2]> spaced_seed_p2;
+    
+    switch(seed_idx)
     {
-      size_t code = 0;
-      const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
-      const size_t seq_len = multiseq->sequence_length_get(seqnum);
-      if(seq_len >= seed_len)
-      {
-        for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+      case 0:
+        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
         {
-          code += spaced_seed.encode(curr_seq+i,seed_len);
+          size_t code = 0;
+          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
+          const size_t seq_len = multiseq->sequence_length_get(seqnum);
+          const size_t seed_len = spaced_seed_p0.span_get();
+          if(seq_len >= seed_len)
+          {
+            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+            {
+              code += spaced_seed_p0.encode(curr_seq+i,seed_len);
+            }
+            if(options.show_option_is_set())
+            {
+              std::cout << code << std::endl;
+            }
+          }
         }
-        if(options.show_option_is_set())
+        break;
+      case 1:
+        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
         {
-          std::cout << code << std::endl;
+          size_t code = 0;
+          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
+          const size_t seq_len = multiseq->sequence_length_get(seqnum);
+          const size_t seed_len = spaced_seed_p1.span_get();
+          if(seq_len >= seed_len)
+          {
+            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+            {
+              code += spaced_seed_p1.encode(curr_seq+i,seed_len);
+            }
+            if(options.show_option_is_set())
+            {
+              std::cout << code << std::endl;
+            }
+          }
         }
-      }
+        break;
+      case 2:
+        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
+        {
+          size_t code = 0;
+          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
+          const size_t seq_len = multiseq->sequence_length_get(seqnum);
+          const size_t seed_len = spaced_seed_p2.span_get();
+          if(seq_len >= seed_len)
+          {
+            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+            {
+              code += spaced_seed_p2.encode(curr_seq+i,seed_len);
+            }
+            if(options.show_option_is_set())
+            {
+              std::cout << code << std::endl;
+            }
+          }
+        }
+        break;
+      default:
+        std::cerr << "Unaccounted seed" << std::endl;
+        return EXIT_FAILURE;
     }
   }
   else
   {
-    static constexpr const char nucleotides_upper_lower_ACTG[] = "Aa|Cc|TtUu|Gg";
-    constexpr const GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,seed> spaced_seed;
-    constexpr const size_t seed_len = sizeof(seed)-1;
-    for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
+    static constexpr const char nucleotides_upper_lower_ACTG[]
+     = "Aa|Cc|TtUu|Gg";
+    constexpr const GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,gt_spaced_seed_spec_tab[0]>
+     spaced_seed_n0;
+    constexpr const GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,gt_spaced_seed_spec_tab[1]>
+     spaced_seed_n1;
+    constexpr const GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,gt_spaced_seed_spec_tab[2]>
+     spaced_seed_n2;
+    
+    switch(seed_idx)
     {
-      size_t code = 0;
-      const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
-      const size_t seq_len = multiseq->sequence_length_get(seqnum);
-      if(seq_len >= seed_len)
-      {
-        for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+      case 0:
+        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
         {
-          code += spaced_seed.encode(curr_seq+i,seed_len);
+          size_t code = 0;
+          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
+          const size_t seq_len = multiseq->sequence_length_get(seqnum);
+          const size_t seed_len = spaced_seed_n0.span_get();
+          if(seq_len >= seed_len)
+          {
+            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+            {
+              code += spaced_seed_n0.encode(curr_seq+i,seed_len);
+            }
+            if(options.show_option_is_set())
+            {
+              std::cout << code << std::endl;
+            }
+          }
         }
-        if(options.show_option_is_set())
+        break;
+      case 1:
+        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
         {
-          std::cout << code << std::endl;
+          size_t code = 0;
+          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
+          const size_t seq_len = multiseq->sequence_length_get(seqnum);
+          const size_t seed_len = spaced_seed_n1.span_get();
+          if(seq_len >= seed_len)
+          {
+            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+            {
+              code += spaced_seed_n1.encode(curr_seq+i,seed_len);
+            }
+            if(options.show_option_is_set())
+            {
+              std::cout << code << std::endl;
+            }
+          }
         }
-      }
+        break;
+      case 2:
+        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
+        {
+          size_t code = 0;
+          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
+          const size_t seq_len = multiseq->sequence_length_get(seqnum);
+          const size_t seed_len = spaced_seed_n2.span_get();
+          if(seq_len >= seed_len)
+          {
+            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+            {
+              code += spaced_seed_n2.encode(curr_seq+i,seed_len);
+            }
+            if(options.show_option_is_set())
+            {
+              std::cout << code << std::endl;
+            }
+          }
+        }
+        break;
+      default:
+        std::cerr << "Unaccounted seed" << std::endl;
+        return EXIT_FAILURE;
     }
   }
   if(!options.show_option_is_set())

@@ -54,12 +54,15 @@ static constexpr void constexpr_reverse(std::array<std::array<char,qgram_length>
 }
 
 template<const size_t qgram_length, const size_t alphabet_size,const size_t ms_size>
-constexpr void multiset_rec(size_t m, size_t k, std::array<std::array<char,qgram_length>,ms_size> * map_ptr, size_t* index_ptr, std::array<char,qgram_length> * mslist_ptr)
+constexpr void multiset_rec(size_t m, size_t k, std::array<char,qgram_length*ms_size>* map_ptr, size_t* index_ptr, std::array<char,qgram_length> * mslist_ptr)
 {
   if(m == 0)
   {
     //std::initializer_list
-    (*map_ptr)[*index_ptr] = *mslist_ptr;
+    constexpr_for<0,(size_t) qgram_length,1>([&] (auto char_idx)
+    {
+      (*map_ptr)[(*index_ptr)*qgram_length+char_idx] = (*mslist_ptr)[char_idx];
+    });
     (*index_ptr)++;
   }
   else if(k > 0)
@@ -76,35 +79,37 @@ constexpr void multiset_rec(size_t m, size_t k, std::array<std::array<char,qgram
 }
 
 template<const size_t qgram_length, const size_t alphabet_size,const size_t ms_size>
-constexpr void enum_multiset_rec(std::array<std::array<char,qgram_length>,ms_size> * map_ptr)
+constexpr void enum_multiset_rec(std::array<char,qgram_length*ms_size> * map_ptr)
 {
   size_t index = 0;
-  std::array<char,qgram_length> mslist = { { 0 } };
-  multiset_rec<qgram_length,alphabet_size>(qgram_length,alphabet_size,map_ptr,&index,&mslist);
+  std::array<char,qgram_length> mslist = {{ 0 }};
+  multiset_rec<qgram_length,alphabet_size,ms_size>(qgram_length,alphabet_size,map_ptr,&index,&mslist);
 }
 
 template<const char* char_spec,uint8_t undefined_rank,const size_t qgram_length,const size_t ms_size>
-constexpr const std::array<std::array<char,qgram_length>,ms_size> create_map()
+constexpr const std::array<char,qgram_length*ms_size> create_map()
 {
-  constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
+  std::array<char,qgram_length*ms_size> map = {{ 0 }};
+  enum_multiset_rec<qgram_length,undefined_rank,ms_size>(&map);
   
-  std::array<std::array<char,qgram_length>,ms_size> map = {{ {{ 0 }} }};
-  enum_multiset_rec<qgram_length,alpha.size(),ms_size>(&map);
-  constexpr_for<0,ms_size,1>([&] (auto qgram_idx)
+  /*constexpr_for<0,ms_size,1>([&] (auto qgram_idx)
   {
     constexpr_for<0,qgram_length,1>([&] (auto cc)
     {
       map[qgram_idx][cc] = alpha.rank_to_char(map[qgram_idx][cc]);
     });
-  });
+  });*/
   //constexpr_reverse(map);
   //std::ranges::reverse(std::begin(map),std::end(map));
 
   constexpr_for<0,(size_t) ms_size/2,1>([&] (auto qgram_idx)
   {
-    std::array<char,qgram_length> temp_qgram = map[qgram_idx];
-    map[qgram_idx] = map[ms_size-qgram_idx-1];
-    map[ms_size-qgram_idx-1] = temp_qgram;
+    constexpr_for<0,qgram_length,1>([&] (auto char_idx)
+    {
+      const char tmp_cc = map[qgram_idx*qgram_length+char_idx];
+      map[qgram_idx*qgram_length+char_idx] = map[(ms_size-qgram_idx-1)*qgram_length+char_idx];
+      map[(ms_size-qgram_idx-1)*qgram_length+char_idx] = tmp_cc;
+    });
   });
 
   return map;
@@ -115,8 +120,9 @@ class SortedQmer
 {
   private:
   static constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
-  static constexpr const size_t ms_size = get_multiset_num(qgram_length,alpha.size());
-  static constexpr const std::array<std::array<char,qgram_length>,ms_size> map = create_map<char_spec,undefined_rank,qgram_length,ms_size>();
+  static constexpr const size_t ms_size = get_multiset_num(qgram_length,undefined_rank);
+  static constexpr const std::array<char,qgram_length*ms_size> map
+   = create_map<char_spec,undefined_rank,qgram_length,ms_size>();
 
   public:
   constexpr SortedQmer(){};
@@ -126,7 +132,7 @@ class SortedQmer
     return map;
   }
 
-  size_t get_size() const
+  constexpr size_t size_get() const
   {
     return ms_size;
   }
@@ -136,17 +142,39 @@ class SortedQmer
     return map[i];
   }
 
-  bool sort(const char* qgram_ptr,char* sorted_qgram, size_t* permutation)
+  constexpr std::array<char,qgram_length> qgram_get(size_t qgram_idx) const
   {
-    for(size_t idx = 0; idx < qgram_length; idx++)
+    std::array<char,qgram_length> qgram = {{ 0 }};
+    for(size_t i = 0; i < qgram_length; i++)
+    {
+      qgram[i] = map[qgram_idx*qgram_length+i];
+    }
+    return qgram;
+  }
+
+  std::array<char,qgram_length> extern_qgram_get(size_t qgram_idx) const
+  {
+    std::array<char,qgram_length> qgram = {{ 0 }};
+    for(size_t i = 0; i < qgram_length; i++)
+    {
+      qgram[i] = alpha.rank_to_char(map[qgram_idx*qgram_length+i]);
+    }
+    return qgram;
+  }
+
+  bool sort(const char* qgram_ptr,char* sorted_qgram, 
+  size_t* permutation, size_t sort_length) const
+  {
+    for(size_t idx = 0; idx < sort_length; idx++)
     {
       sorted_qgram[idx] = qgram_ptr[idx];
       permutation[idx] = idx;
     }
     bool swapped = false;
-    for(size_t pm = 0; pm < qgram_length; pm++)
+    for(size_t pm = 0; pm < sort_length; pm++)
     {
-      for(size_t pl = pm; pl > 0 and alpha.char_to_rank(sorted_qgram[pl-1]) > alpha.char_to_rank(sorted_qgram[pl]); pl--)
+      for(size_t pl = pm; pl > 0 and alpha.char_to_rank(sorted_qgram[pl-1]) 
+      > alpha.char_to_rank(sorted_qgram[pl]); pl--)
       {
         const uint8_t tmp_cc = sorted_qgram[pl-1];
         sorted_qgram[pl-1] = sorted_qgram[pl];
@@ -161,8 +189,8 @@ class SortedQmer
     }
     return swapped;
   }  
-
-  size_t encode(const char* qgram)
+/*
+  size_t encode(const char* qgram) const
   {
     size_t start=0,end=ms_size-1;
     while(start!=end)
@@ -184,7 +212,7 @@ class SortedQmer
     }
     return start;
   }
-/*
+
   size_t sort_then_encode(const char* qgram)
   {
     return 0;
