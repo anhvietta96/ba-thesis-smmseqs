@@ -17,7 +17,7 @@ UQGRAM=unsorted_qgram
 SPACED_SEEDS=spaced_seeds
 SMATRIX=score_matrix
 
-all:${QGRAM}.x ${SPACED_SEEDS}.x ${SMATRIX}.x ${UQGRAM}.x
+all:${SQGRAM}.x ${SPACED_SEEDS}.x ${SMATRIX}.x ${UQGRAM}.x
 
 test: test_sorted_qgram test_unsorted_qgram test_score_matrix test_spaced_seeds 
 

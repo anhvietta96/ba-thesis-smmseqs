@@ -60,7 +60,7 @@ class UnsortedQmer {
       tmp_qgram[qgram_length-1] += 1;
       if(qgram_idx != map_size-1 and tmp_qgram[qgram_length-1] == undefined_rank)
       {
-        for(size_t i = qgram_length-1; i >= 0; i--)
+        for(int16_t i = qgram_length-1; i >= 0; i--)
         {
           if(static_cast<uint8_t>(tmp_qgram[i]) < undefined_rank-1)
           {
