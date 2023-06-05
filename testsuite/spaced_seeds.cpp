@@ -5,6 +5,7 @@
 #include "utilities/runtime_class.hpp"
 #include "sequences/gttl_multiseq.hpp"
 #include "filter/spaced_seeds.hpp"
+#include "utilities/constexpr_for.hpp"
 
 
 /*TODO
@@ -109,12 +110,11 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   1715UL /* 7, 7, 11 11010110011, MMseq2_proteins_7 */
 };
 
-constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab);
+constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab)/sizeof(size_t);
 
 template<const char* char_spec, const size_t undefined_rank,const uint8_t seed_idx>
-void process(GttlMultiseq* multiseq, const bool show)
+constexpr void process(GttlMultiseq* multiseq, const bool show)
 {
-  if(seed_idx < seed_table_size) return;
   constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
   constexpr const GttlSpacedSeed<char_spec,undefined_rank,seed> spaced_seeds{};
   
@@ -206,12 +206,24 @@ int main(int argc, char *argv[])
 
   const bool show = options.show_option_is_set();
 
-  static constexpr const char nucleotides_upper_lower_ACTG[]
-     = "Aa|Cc|TtUu|Gg";
-  static constexpr const char amino_acids[]
-      = "A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y";
-
   RunTimeClass rt{};
+  constexpr_for<0,seed_table_size,1>([&] (auto compile_time_idx)
+  {
+    if(seed_idx==compile_time_idx and options.protein_option_is_set())
+    {
+      static constexpr const char amino_acids[]
+      = "A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y";
+      process<amino_acids,20,compile_time_idx>(multiseq,show);
+    }
+    else if(seed_idx==compile_time_idx)
+    {
+      static constexpr const char nucleotides_upper_lower_ACTG[]
+      = "Aa|Cc|TtUu|Gg";
+      process<nucleotides_upper_lower_ACTG,4,compile_time_idx>(multiseq,show);
+    }
+  });
+
+  /*
   if (options.protein_option_is_set())
   {
     switch(seed_idx)
@@ -245,7 +257,7 @@ int main(int argc, char *argv[])
       default:
       std::cerr << "Unaccounted seed" << std::endl;
     }
-  }
+  }*/
 
   if(!options.show_option_is_set())
   {
