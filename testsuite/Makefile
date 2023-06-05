@@ -1,5 +1,5 @@
 CXX?=g++
-CFLAGS=-Wall -Werror -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops -O3
+CFLAGS=-O3 -Wall -Werror -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops -O3
 COMPILATION_RESOURCES=-ftemplate-depth=10000 -fconstexpr-depth=10000
 CPPFLAGS=-I ../src
 LD=${CXX}
@@ -10,7 +10,7 @@ GTTL?=../../gttl
 GTTLFLAGS=-I ${GTTL}/src
 
 TMPFILE=temp.txt
-REFDIR=../testdata/ref
+REFDIR?=../testdata/ref
 
 SQGRAM=sorted_qgram
 UQGRAM=unsorted_qgram
@@ -44,7 +44,8 @@ test_score_matrix:${SMATRIX}.x
 	@echo "$@ passed."
 
 test_spaced_seeds:${SPACED_SEEDS}.x
-	@./${SPACED_SEEDS}.x -p -d 0 -s ../testdata/sw175.fna >${TMPFILE}
+	@./check_err.py ./${SPACED_SEEDS}.x
+	@./${SPACED_SEEDS}.x -p -d 0 -s ${GTTL}/testdata/sw175.fna >${TMPFILE}
 	@diff ${REFDIR}/test_ss_sw175.txt ${TMPFILE}
 	@./${SPACED_SEEDS}.x -p -d 1 -s ../testdata/QUERY.fasta >${TMPFILE}
 	@diff ${REFDIR}/test_ss_QUERY.txt ${TMPFILE}
@@ -52,7 +53,7 @@ test_spaced_seeds:${SPACED_SEEDS}.x
 	@echo "$@ passed."
 
 %.o:%.cpp
-	$(CXX) -o $@ -c $< ${CXXFLAGS} ${COMPILE_CONST} ${COMPILATION_RESOURCES} ${CPPFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d)
+	$(CXX) -o $@ -c $< ${CXXFLAGS} ${COMPILE_CONST} ${COMPILATION_RESOURCES} ${CFLAGS} ${CPPFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d)
 
 %.x:%.o
 	$(CXX) ${LDFLAGS} $< -o $@ ${LDLIBS}

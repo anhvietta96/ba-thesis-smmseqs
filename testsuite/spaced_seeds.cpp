@@ -8,10 +8,10 @@
 
 
 /*TODO
-finish spaced seed test (seed choice) ?
+finish spaced seed test (seed choice) ? template x
 pull x
-score matrix x
-check err
+score matrix x environment
+check err ? new compile x
 1D map sorted qmer x
 */
 
@@ -97,6 +97,7 @@ class SpacedSeedOptions
   }
 };
 
+
 static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   29UL /* 0, 4, 5 11101, MMseq2_proteins_0 */,
   59UL /* 1, 5, 6 111011, MMseq2_proteins_1 */,
@@ -108,7 +109,35 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   1715UL /* 7, 7, 11 11010110011, MMseq2_proteins_7 */
 };
 
-constexpr const size_t seed_table_size = sizeof(gt_spaced_seed_spec_tab);
+constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab);
+
+template<const char* char_spec, const size_t undefined_rank,const uint8_t seed_idx>
+void process(GttlMultiseq* multiseq, const bool show)
+{
+  if(seed_idx < seed_table_size) return;
+  constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
+  constexpr const GttlSpacedSeed<char_spec,undefined_rank,seed> spaced_seeds{};
+  
+  const auto total_seq_num = multiseq->sequences_number_get();
+  for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
+  {
+    size_t code = 0;
+    const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
+    const size_t seq_len = multiseq->sequence_length_get(seqnum);
+    const size_t seed_len = spaced_seeds.span_get();
+    if(seq_len >= seed_len)
+    {
+      for(size_t i = 0; i < seq_len - seed_len + 1; i++)
+      {
+        code += spaced_seeds.encode(curr_seq+i);
+      }
+      if(show)
+      {
+      std::cout << code << std::endl;
+      }
+    }
+  }
+}
 
 int main(int argc, char *argv[])
 {
@@ -161,17 +190,6 @@ int main(int argc, char *argv[])
     delete multiseq;
     return EXIT_FAILURE;
   }
-
-  if (multiseq == nullptr)
-  {
-    std::cerr << argv[0] << "cannot open file" << std::endl;
-    return EXIT_FAILURE;
-    /* check_err.py checked */
-  }
-
-  auto total_seq_num = multiseq->sequences_number_get();
-  
-  //static constexpr const char seed[] = "10101010";
   
   const std::string &seeds = options.seeds_get();
   if(seeds.size() > 1)
@@ -179,171 +197,59 @@ int main(int argc, char *argv[])
     std::cout << "Multiple seeds not supported" << std::endl;
     return EXIT_SUCCESS;
   }
-  if(seeds[0] >= '0' + seed_table_size or seeds[0] < '0')
+  if(seeds[0] >= static_cast<uint8_t>('0' + seed_table_size) or seeds[0] < static_cast<uint8_t>('0'))
   {
     std::cout << "Invalid seed" << std::endl;
     return EXIT_SUCCESS;
   }
   const uint8_t seed_idx = seeds[0] - '0';
-  const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
+
+  const bool show = options.show_option_is_set();
+
+  static constexpr const char nucleotides_upper_lower_ACTG[]
+     = "Aa|Cc|TtUu|Gg";
+  static constexpr const char amino_acids[]
+      = "A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y";
 
   RunTimeClass rt{};
   if (options.protein_option_is_set())
   {
-    static constexpr const char amino_acids[]
-      = "A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y";
-    constexpr const GttlSpacedSeed<amino_acids,20,gt_spaced_seed_spec_tab[0]> spaced_seed_p0;
-    constexpr const GttlSpacedSeed<amino_acids,20,gt_spaced_seed_spec_tab[1]> spaced_seed_p1;
-    constexpr const GttlSpacedSeed<amino_acids,20,gt_spaced_seed_spec_tab[2]> spaced_seed_p2;
-    
     switch(seed_idx)
     {
       case 0:
-        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
-        {
-          size_t code = 0;
-          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
-          const size_t seq_len = multiseq->sequence_length_get(seqnum);
-          const size_t seed_len = spaced_seed_p0.span_get();
-          if(seq_len >= seed_len)
-          {
-            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
-            {
-              code += spaced_seed_p0.encode(curr_seq+i,seed_len);
-            }
-            if(options.show_option_is_set())
-            {
-              std::cout << code << std::endl;
-            }
-          }
-        }
-        break;
+      process<amino_acids,20,0>(multiseq,show);
+      break;
       case 1:
-        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
-        {
-          size_t code = 0;
-          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
-          const size_t seq_len = multiseq->sequence_length_get(seqnum);
-          const size_t seed_len = spaced_seed_p1.span_get();
-          if(seq_len >= seed_len)
-          {
-            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
-            {
-              code += spaced_seed_p1.encode(curr_seq+i,seed_len);
-            }
-            if(options.show_option_is_set())
-            {
-              std::cout << code << std::endl;
-            }
-          }
-        }
-        break;
+      process<amino_acids,20,1>(multiseq,show);
+      break;
       case 2:
-        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
-        {
-          size_t code = 0;
-          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
-          const size_t seq_len = multiseq->sequence_length_get(seqnum);
-          const size_t seed_len = spaced_seed_p2.span_get();
-          if(seq_len >= seed_len)
-          {
-            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
-            {
-              code += spaced_seed_p2.encode(curr_seq+i,seed_len);
-            }
-            if(options.show_option_is_set())
-            {
-              std::cout << code << std::endl;
-            }
-          }
-        }
-        break;
+      process<amino_acids,20,2>(multiseq,show);
+      break;
       default:
-        std::cerr << "Unaccounted seed" << std::endl;
-        return EXIT_FAILURE;
+      std::cerr << "Unaccounted seed" << std::endl;
     }
   }
   else
   {
-    static constexpr const char nucleotides_upper_lower_ACTG[]
-     = "Aa|Cc|TtUu|Gg";
-    constexpr const GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,gt_spaced_seed_spec_tab[0]>
-     spaced_seed_n0;
-    constexpr const GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,gt_spaced_seed_spec_tab[1]>
-     spaced_seed_n1;
-    constexpr const GttlSpacedSeed<nucleotides_upper_lower_ACTG,4,gt_spaced_seed_spec_tab[2]>
-     spaced_seed_n2;
-    
     switch(seed_idx)
     {
       case 0:
-        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
-        {
-          size_t code = 0;
-          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
-          const size_t seq_len = multiseq->sequence_length_get(seqnum);
-          const size_t seed_len = spaced_seed_n0.span_get();
-          if(seq_len >= seed_len)
-          {
-            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
-            {
-              code += spaced_seed_n0.encode(curr_seq+i,seed_len);
-            }
-            if(options.show_option_is_set())
-            {
-              std::cout << code << std::endl;
-            }
-          }
-        }
-        break;
+      process<nucleotides_upper_lower_ACTG,4,0>(multiseq,show);
+      break;
       case 1:
-        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
-        {
-          size_t code = 0;
-          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
-          const size_t seq_len = multiseq->sequence_length_get(seqnum);
-          const size_t seed_len = spaced_seed_n1.span_get();
-          if(seq_len >= seed_len)
-          {
-            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
-            {
-              code += spaced_seed_n1.encode(curr_seq+i,seed_len);
-            }
-            if(options.show_option_is_set())
-            {
-              std::cout << code << std::endl;
-            }
-          }
-        }
-        break;
+      process<nucleotides_upper_lower_ACTG,4,1>(multiseq,show);
+      break;
       case 2:
-        for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
-        {
-          size_t code = 0;
-          const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
-          const size_t seq_len = multiseq->sequence_length_get(seqnum);
-          const size_t seed_len = spaced_seed_n2.span_get();
-          if(seq_len >= seed_len)
-          {
-            for(size_t i = 0; i < seq_len - seed_len + 1; i++)
-            {
-              code += spaced_seed_n2.encode(curr_seq+i,seed_len);
-            }
-            if(options.show_option_is_set())
-            {
-              std::cout << code << std::endl;
-            }
-          }
-        }
-        break;
+      process<nucleotides_upper_lower_ACTG,4,2>(multiseq,show);
+      break;
       default:
-        std::cerr << "Unaccounted seed" << std::endl;
-        return EXIT_FAILURE;
+      std::cerr << "Unaccounted seed" << std::endl;
     }
   }
+
   if(!options.show_option_is_set())
   {
-    rt.show("Encoding runtime");
+    rt.show("Encoding of spaced seeds");
     for (auto &&inputfile : inputfiles)
     {
       std::cout << "# filename\t" << inputfile << std::endl;

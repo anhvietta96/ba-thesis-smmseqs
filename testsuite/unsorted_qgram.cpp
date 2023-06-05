@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
       const size_t map_size = map_prot_1.size_get();
       for(size_t i = 0; i < map_size; i++)
       {
-        const std::array<char,1> qgram = map_prot_1.extern_qgram_get(i);
+        const std::array<uint8_t,1> qgram = map_prot_1.extern_qgram_get(i);
         if(options.display_option_is_set())
         {
           const std::string output_qgram(std::begin(qgram),std::end(qgram));
@@ -132,27 +132,27 @@ int main(int argc, char *argv[])
       const size_t map_size = map_prot_2.size_get();
       for(size_t i = 0; i < map_size; i++)
       {
-        const std::array<char,2> qgram = map_prot_2.extern_qgram_get(i);
+        const std::array<uint8_t,2> qgram = map_prot_2.extern_qgram_get(i);
         if(options.display_option_is_set())
         {
           const std::string output_qgram(std::begin(qgram),std::end(qgram));
           std::cout << output_qgram << std::endl;
         }
       }
-    }/*
+    }
     else if(options.get_qgram_length() == "3")
     {
       const size_t map_size = map_prot_3.size_get();
       for(size_t i = 0; i < map_size; i++)
       {
-        const std::array<char,3> qgram = map_prot_3.extern_qgram_get(i);
+        const std::array<uint8_t,3> qgram = map_prot_3.extern_qgram_get(i);
         if(options.display_option_is_set())
         {
           const std::string output_qgram(std::begin(qgram),std::end(qgram));
           std::cout << output_qgram << std::endl;
         }
       }
-    }*/
+    }
     else
     {
       std::cout << "Unaccounted qgram length" << std::endl;
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
       const size_t map_size = map_nuc_3.size_get();
       for(size_t i = 0; i < map_size; i++)
       {
-        const std::array<char,3> qgram = map_nuc_3.extern_qgram_get(i);
+        const std::array<uint8_t,3> qgram = map_nuc_3.extern_qgram_get(i);
         if(options.display_option_is_set())
         {
           const std::string output_qgram(std::begin(qgram),std::end(qgram));
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
       const size_t map_size = map_nuc_4.size_get();
       for(size_t i = 0; i < map_size; i++)
       {
-        const std::array<char,4> qgram = map_nuc_4.extern_qgram_get(i);
+        const std::array<uint8_t,4> qgram = map_nuc_4.extern_qgram_get(i);
         if(options.display_option_is_set())
         {
           const std::string output_qgram(std::begin(qgram),std::end(qgram));
