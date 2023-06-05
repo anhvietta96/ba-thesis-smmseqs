@@ -3,7 +3,7 @@
 #include "utilities/constexpr_for.hpp"
 #include <iostream>
 
-constexpr const size_t power(const size_t base, const size_t exponent)
+constexpr size_t power(const size_t base, const size_t exponent)
 {
   return (exponent != 1) ? (base*power(base,exponent-1)) : base;
 }
@@ -43,15 +43,42 @@ template<const char* char_spec, const size_t undefined_rank, const size_t qgram_
 class UnsortedQmer {
   private:
   static constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
-  static constexpr const size_t size = power(undefined_rank,qgram_length);
-  static constexpr const std::array<char,qgram_length * size> map = map_create<undefined_rank,qgram_length,size>();
+  static constexpr const size_t map_size = power(undefined_rank,qgram_length);
+  std::array<uint8_t,qgram_length * map_size> map = {{ 0 }};
 
   public:
-  constexpr UnsortedQmer(){};
+  constexpr UnsortedQmer()
+  {
+    uint8_t tmp_qgram[qgram_length] = {{ 0 }};
+    for(size_t qgram_idx = 0; qgram_idx < map_size; qgram_idx++)
+    {
+      for(size_t char_idx = 0; char_idx < qgram_length; char_idx++)
+      {
+        map[qgram_idx*qgram_length+char_idx] = tmp_qgram[char_idx];
+      }
+
+      tmp_qgram[qgram_length-1] += 1;
+      if(qgram_idx != map_size-1 and tmp_qgram[qgram_length-1] == undefined_rank)
+      {
+        for(size_t i = qgram_length-1; i >= 0; i--)
+        {
+          if(static_cast<uint8_t>(tmp_qgram[i]) < undefined_rank-1)
+          {
+            tmp_qgram[i]++;
+            break;
+          }
+          else
+          {
+            tmp_qgram[i]=0;
+          }
+        }
+      }
+    }
+  };
 
   constexpr size_t size_get() const
   {
-    return size;
+    return map_size;
   }
 /*
   void qgram_get(size_t qgram_idx,char* qgram_ptr) const
@@ -62,9 +89,9 @@ class UnsortedQmer {
     }
   }*/
 
-  constexpr std::array<char,qgram_length> qgram_get(size_t qgram_idx) const
+  constexpr std::array<uint8_t,qgram_length> qgram_get(size_t qgram_idx) const
   {
-    std::array<char,qgram_length> qgram = {{ 0 }};
+    std::array<uint8_t,qgram_length> qgram = {{ 0 }};
     for(size_t i = 0; i < qgram_length; i++)
     {
       qgram[i] = map[qgram_idx*qgram_length+i];
@@ -72,9 +99,9 @@ class UnsortedQmer {
     return qgram;
   }
 
-  std::array<char,qgram_length> extern_qgram_get(size_t qgram_idx) const
+  std::array<uint8_t,qgram_length> extern_qgram_get(size_t qgram_idx) const
   {
-    std::array<char,qgram_length> qgram = {{ 0 }};
+    std::array<uint8_t,qgram_length> qgram = {{ 0 }};
     for(size_t i = 0; i < qgram_length; i++)
     {
       qgram[i] = alpha.rank_to_char(map[qgram_idx*qgram_length+i]);
@@ -95,10 +122,10 @@ constexpr const std::array<int16_t,sorted_size*unsorted_size> score_mat_create(
   
   constexpr_for<0,sorted_size,1>([&] (auto sorted_idx)
   {
-    constexpr const std::array<char,qgram_length> sorted_qgram = SortedQgram.qgram_get(sorted_idx);
+    constexpr const std::array<uint8_t,qgram_length> sorted_qgram = SortedQgram.qgram_get(sorted_idx);
     constexpr_for<0,unsorted_size,1>([&] (auto unsorted_idx)
     {
-      constexpr const std::array<char,qgram_length> unsorted_qgram = UnsortedQgram.qgram_get(unsorted_idx);
+      constexpr const std::array<uint8_t,qgram_length> unsorted_qgram = UnsortedQgram.qgram_get(unsorted_idx);
       constexpr_for<0,qgram_length,1>([&] (auto char_idx)
       {
         if(sorted_qgram[char_idx] < undefined_rank and unsorted_qgram[char_idx] < undefined_rank)
@@ -116,7 +143,7 @@ template<class ScoreClass,const size_t qgram_length>
 class QgramScoreMatrix {
   private:
   static constexpr const ScoreClass sc{};
-  static constexpr const size_t undefined_rank = (size_t) sc.num_of_chars;
+  static constexpr const size_t undefined_rank = static_cast<size_t>(sc.num_of_chars);
   
   static constexpr const SortedQmer<sc.characters,undefined_rank,qgram_length> SortedQgram{};
   static constexpr const size_t sorted_size = SortedQgram.size_get();
@@ -125,19 +152,15 @@ class QgramScoreMatrix {
 
   std::array<int16_t,sorted_size*unsorted_size> matrix = {{ 0 }};
 
-  /*
-  static constexpr const size_t matrix[sorted_size * unsorted_size] = {{ 0 }};
-  */
-
   public:
   constexpr QgramScoreMatrix()
   {
     constexpr_for<0,sorted_size,1>([&] (auto sorted_idx)
     {
-      constexpr const std::array<char,qgram_length> sorted_qgram = SortedQgram.qgram_get(sorted_idx);
+      const std::array<uint8_t,qgram_length> sorted_qgram = SortedQgram.qgram_get(sorted_idx);
       constexpr_for<0,unsorted_size,1>([&] (auto unsorted_idx)
       {
-        constexpr const std::array<char,qgram_length> unsorted_qgram = UnsortedQgram.qgram_get(unsorted_idx);
+        const std::array<uint8_t,qgram_length> unsorted_qgram = UnsortedQgram.qgram_get(unsorted_idx);
         constexpr_for<0,qgram_length,1>([&] (auto char_idx)
         {
           if(sorted_qgram[char_idx] < undefined_rank and unsorted_qgram[char_idx] < undefined_rank)

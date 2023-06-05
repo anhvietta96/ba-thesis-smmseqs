@@ -79,15 +79,8 @@ class GttlSpacedSeed
   public:
   constexpr GttlSpacedSeed(){};
 
-  size_t encode(const char* seq_ptr, const size_t seq_len) const
+  size_t encode(const char* seq_ptr) const
   {
-    //assert(seq_len == span);
-    /*
-    if(seq_len != span)
-    {
-      std::cout << seq_len << "      " << span << std::endl;
-    }
-    */
     size_t code = 0;
     constexpr const size_t alphabet_size = alpha.size();
     constexpr_for<0,span,1>([&] (auto idx)
