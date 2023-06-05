@@ -222,43 +222,7 @@ int main(int argc, char *argv[])
       process<nucleotides_upper_lower_ACTG,4,compile_time_idx>(multiseq,show);
     }
   });
-
-  /*
-  if (options.protein_option_is_set())
-  {
-    switch(seed_idx)
-    {
-      case 0:
-      process<amino_acids,20,0>(multiseq,show);
-      break;
-      case 1:
-      process<amino_acids,20,1>(multiseq,show);
-      break;
-      case 2:
-      process<amino_acids,20,2>(multiseq,show);
-      break;
-      default:
-      std::cerr << "Unaccounted seed" << std::endl;
-    }
-  }
-  else
-  {
-    switch(seed_idx)
-    {
-      case 0:
-      process<nucleotides_upper_lower_ACTG,4,0>(multiseq,show);
-      break;
-      case 1:
-      process<nucleotides_upper_lower_ACTG,4,1>(multiseq,show);
-      break;
-      case 2:
-      process<nucleotides_upper_lower_ACTG,4,2>(multiseq,show);
-      break;
-      default:
-      std::cerr << "Unaccounted seed" << std::endl;
-    }
-  }*/
-
+  
   if(!options.show_option_is_set())
   {
     rt.show("Encoding of spaced seeds");
