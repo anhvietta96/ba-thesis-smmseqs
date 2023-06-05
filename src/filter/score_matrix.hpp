@@ -22,7 +22,7 @@ constexpr std::array<char,qgram_length * map_size> map_create()
       tmp_qgram[qgram_length-1] += 1; 
       if(qgram_idx != map_size-1 and tmp_qgram[qgram_length-1] == undefined_rank)
       {
-        for(size_t i = qgram_length-1; i >= 0; i--)
+        for(int16_t i = qgram_length-1; i >= 0; i--)
         {
           if(tmp_qgram[i] < undefined_rank-1)
           {
