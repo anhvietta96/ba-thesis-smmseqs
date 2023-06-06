@@ -43,11 +43,11 @@ class SortedQmerOptions
       } /*else
       {
         const std::vector<std::string>& unmatched_args = result.unmatched();
-        if (unmatched_args.size() == 0)
+        if (unmatched_args.size_get() == 0)
         {
           throw std::invalid_argument("at least one inputput file is required");
         }
-        for (size_t idx = 0; idx < unmatched_args.size(); idx++)
+        for (size_t idx = 0; idx < unmatched_args.size_get(); idx++)
         {
           inputfiles.push_back(unmatched_args[idx]);
         }

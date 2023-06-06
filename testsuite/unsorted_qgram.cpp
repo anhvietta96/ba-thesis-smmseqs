@@ -1,6 +1,6 @@
 #include <iostream>
 #include "utilities/cxxopts.hpp"
-#include "filter/score_matrix.hpp"
+#include "filter/unsorted_qgram.hpp"
 
 static void usage(const cxxopts::Options &options)
 {
