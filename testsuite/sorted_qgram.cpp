@@ -1,6 +1,6 @@
 #include <iostream>
 #include "utilities/cxxopts.hpp"
-#include "filter/sorted_q_mer.hpp"
+#include "filter/sorted_qgram.hpp"
 
 static void usage(const cxxopts::Options &options)
 {

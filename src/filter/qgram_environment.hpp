@@ -1,5 +1,5 @@
 #include "filter/unsorted_qgram.hpp"
-#include "filter/sorted_q_mer.hpp"
+#include "filter/sorted_qgram.hpp"
 
 #include <vector>
 

@@ -3,7 +3,7 @@
 #include "alignment/unit_score_nuc.hpp"
 #include "sequences/alphabet.hpp"
 #include <iostream>
-
+/*
 static void usage(const cxxopts::Options &options)
 {
   std::cerr << options.help() << std::endl;
@@ -39,18 +39,7 @@ class EnvOptions
       {
         help_option = true;
         usage(options);
-      } /*else
-      {
-        const std::vector<std::string>& unmatched_args = result.unmatched();
-        if (unmatched_args.size() == 0)
-        {
-          throw std::invalid_argument("at least one inputput file is required");
-        }
-        for (size_t idx = 0; idx < unmatched_args.size(); idx++)
-        {
-          inputfiles.push_back(unmatched_args[idx]);
-        }
-      }*/
+      }
     }
     catch (const cxxopts::OptionException &e)
     {
@@ -70,13 +59,9 @@ class EnvOptions
   {
     return qgram_length;
   }
-  /*const std::vector<std::string> &inputfiles_get(void) const noexcept
-  {
-    return inputfiles;
-  }*/
 };
-
-int main(int argc, char argv[])
+*/
+int main(/*int argc, char argv[]*/)
 {
   constexpr const Blosum62 b62{};
   constexpr const auto char_spec = b62.characters;
@@ -90,10 +75,10 @@ int main(int argc, char argv[])
   const QgramEnvironment<Blosum62,qgram_length,threshold> env{};
   const size_t sorted_size = env.sorted_size_get();
   for(size_t sorted_idx = 0; sorted_idx < sorted_size; sorted_idx++)
-  {
+  {/*
     const auto refqgram = sorted_q.extern_qgram_get(sorted_idx);
     const std::string output_refqgram(std::begin(refqgram),std::end(refqgram));
-    std::cout << output_refqgram << ":\t";
+    std::cout << output_refqgram << ":\t";*/
     for(size_t i = 0; i < env.size_get(sorted_idx); i++)
     {
       int8_t score = env.env_get(sorted_idx,i).first;
