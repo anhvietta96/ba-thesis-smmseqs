@@ -1,10 +1,14 @@
 CXX?=g++
-CFLAGS=-O3 -Wall -Werror -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops -O3
+CFLAGS=-O3 -Wall -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops -O3
 COMPILATION_RESOURCES=-ftemplate-depth=10000 -fconstexpr-depth=10000
 CPPFLAGS=-I ../src
 LD=${CXX}
 LDLIBS=-lm -lz -lpthread -lstdc++
 CXXFLAGS=-std=c++17
+
+ifeq (,$(findstring g++,$(CXX)))
+  CFLAGS+=-Werror
+endif
 
 GTTL?=../../gttl
 GTTLFLAGS=-I ${GTTL}/src
