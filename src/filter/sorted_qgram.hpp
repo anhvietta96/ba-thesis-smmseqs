@@ -115,18 +115,25 @@ constexpr const std::array<uint8_t,qgram_length*ms_size> create_map()
   return map;
 }
 
-template<const char* char_spec,uint8_t undefined_rank,const size_t qgram_length>
+constexpr size_t power_1(const size_t base, const size_t exponent)
+{
+  return (exponent != 1) ? (base*power_1(base,exponent-1)) : base;
+}
+
+template<const char* char_spec,const size_t undefined_rank,const uint8_t qgram_length>
 class SortedQmer
 {
   private:
   static constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
-  static constexpr const size_t ms_size = get_multiset_num(qgram_length,undefined_rank);
+  static constexpr const uint16_t ms_size = get_multiset_num(qgram_length,undefined_rank);
   std::array<uint8_t,qgram_length*ms_size> map = {{ 0 }};
+  std::array<uint16_t,power_1(undefined_rank,qgram_length)> unsorted_to_sorted_map{};
   
   public:
   constexpr SortedQmer()
   {
     enum_multiset_rec<qgram_length,undefined_rank,ms_size>(&map);
+    //Reverse map
     constexpr_for<0,(size_t) ms_size/2,1>([&] (auto qgram_idx)
     {
       constexpr_for<0,qgram_length,1>([&] (auto char_idx)
@@ -136,13 +143,38 @@ class SortedQmer
         map[(ms_size-qgram_idx-1)*qgram_length+char_idx] = tmp_cc;
       });
     });
-  };
-  
-  std::array<std::array<uint8_t,qgram_length>,ms_size> get_map() const
-  {
-    return map;
-  }
+    //create mapping from unsorted to sorted
+    /*
+    constexpr_for<0,power_1(undefined_rank,qgram_length),1>([&] (auto qgram_idx){
+      unsorted_to_sorted_map[qgram_idx] = __UINT16_MAX__;
+    });
 
+    for(size_t qgram_idx = 0; qgram_idx < power_1(undefined_rank,qgram_length); qgram_idx++)
+    {
+      unsorted_to_sorted_map[qgram_idx] = __UINT16_MAX__;
+    }*/
+
+    constexpr const auto alphasize = alpha.size();
+    size_t code = 0;
+    constexpr_for<0,(size_t) ms_size,1>([&] (auto qgram_idx){
+      constexpr_for<0,qgram_length,1>([&] (auto char_idx){
+        code *= alphasize;
+        code += map[qgram_idx*qgram_length+char_idx];
+      });
+      unsorted_to_sorted_map[code] = qgram_idx;
+      code = 0;
+    });
+  };
+
+  constexpr uint16_t sorted_code_get(uint16_t unsorted_code) const
+  {
+    if(unsorted_code != 0 and unsorted_to_sorted_map[unsorted_code] == 0)
+    {
+      return UINT16_MAX;
+    }
+    return unsorted_to_sorted_map[unsorted_code];
+  }
+  
   constexpr size_t size_get() const
   {
     return ms_size;
@@ -150,7 +182,7 @@ class SortedQmer
 
   constexpr std::array<uint8_t,qgram_length> qgram_get(size_t qgram_idx) const
   {
-    std::array<uint8_t,qgram_length> qgram = {{ 0 }};
+    std::array<uint8_t,qgram_length> qgram{};
     for(size_t i = 0; i < qgram_length; i++)
     {
       qgram[i] = map[qgram_idx*qgram_length+i];
@@ -158,18 +190,19 @@ class SortedQmer
     return qgram;
   }
 
-  constexpr std::array<char,qgram_length> extern_qgram_get(size_t qgram_idx) const
+  std::array<uint8_t,qgram_length> extern_qgram_get(size_t qgram_idx) const
   {
-    std::array<char,qgram_length> qgram = {{ 0 }};
+    std::array<uint8_t,qgram_length> qgram{};
     for(size_t i = 0; i < qgram_length; i++)
     {
+      //std::cout << (int) map[qgram_idx*qgram_length+i] << std::endl;
       qgram[i] = alpha.rank_to_char(map[qgram_idx*qgram_length+i]);
     }
     return qgram;
   }
 
-  bool sort(const char* qgram_ptr,char* sorted_qgram, 
-  size_t* permutation, size_t sort_length) const
+  bool sort(const uint8_t* qgram_ptr,uint8_t* sorted_qgram, 
+  uint8_t* permutation, size_t sort_length) const
   {
     for(size_t idx = 0; idx < sort_length; idx++)
     {
@@ -179,8 +212,9 @@ class SortedQmer
     bool swapped = false;
     for(size_t pm = 0; pm < sort_length; pm++)
     {
-      for(size_t pl = pm; pl > 0 and alpha.char_to_rank(sorted_qgram[pl-1]) 
-      > alpha.char_to_rank(sorted_qgram[pl]); pl--)
+      //for(size_t pl = pm; pl > 0 and alpha.char_to_rank(sorted_qgram[pl-1]) 
+      //> alpha.char_to_rank(sorted_qgram[pl]); pl--)
+      for(size_t pl = pm; pl > 0 and sorted_qgram[pl-1] > sorted_qgram[pl]; pl--)
       {
         const uint8_t tmp_cc = sorted_qgram[pl-1];
         sorted_qgram[pl-1] = sorted_qgram[pl];
@@ -194,31 +228,9 @@ class SortedQmer
       }
     }
     return swapped;
-  }  
-/*
-  size_t encode(const char* qgram) const
-  {
-    size_t start=0,end=ms_size-1;
-    while(start!=end)
-    {
-      const size_t mid = (start+end)/2;
-      const char comp = compare_qgram(map[mid],qgram,alpha);
-      if(comp < 0)
-      {
-        end = mid;
-      }
-      else if(comp > 0)
-      {
-        start = mid;
-      }
-      else
-      {
-        return mid;
-      }
-    }
-    return start;
   }
 
+/*
   size_t sort_then_encode(const char* qgram)
   {
     return 0;
