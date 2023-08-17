@@ -112,95 +112,22 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
   }
 
-  if (options.protein_option_is_set())
-  {
-    if(options.get_qgram_length() == "1")
-    {
-      const size_t map_size = map_prot_1.size_get();
-      for(size_t i = 0; i < map_size; i++)
-      {
-        const auto qgram = map_prot_1.extern_qgram_get(i);
-        if(options.display_option_is_set())
-        {
-          const std::string output_qgram(std::begin(qgram),std::end(qgram));
-          std::cout << output_qgram << std::endl;
+  const uint8_t qgram_length = options.get_qgram_length()[0]-48;
+
+  constexpr_for<1,4,1>([&] (auto qgram_length_constexpr){
+    if(qgram_length == qgram_length_constexpr){
+      if(options.protein_option_is_set()) {
+        constexpr const SortedQmer<amino_acids,20,qgram_length_constexpr> map{};
+        for(size_t i = 0; i < map.size_get(); i++) {
+          const auto qgram = map.extern_qgram_get(i);
+          if(options.display_option_is_set())
+          {
+            const std::string output_qgram(std::begin(qgram),std::end(qgram));
+            std::cout << output_qgram << std::endl;
+          }
         }
       }
     }
-    else if(options.get_qgram_length() == "2")
-    {
-      const size_t map_size = map_prot_2.size_get();
-      for(size_t i = 0; i < map_size; i++)
-      {
-        const auto qgram = map_prot_2.extern_qgram_get(i);
-        if(options.display_option_is_set())
-        {
-          const std::string output_qgram(std::begin(qgram),std::end(qgram));
-          std::cout << output_qgram <<  std::endl;
-        }
-      }
-      for(size_t i = 0; i < 20*20 ; i++)
-      {
-        std::cout << (int) map_prot_2.sorted_code_get(i) << std::endl;
-      }
-    }
-    else if(options.get_qgram_length() == "3")
-    {
-      const size_t map_size = map_prot_3.size_get();
-      for(size_t i = 0; i < map_size; i++)
-      {
-        const auto qgram = map_prot_3.extern_qgram_get(i);
-        if(options.display_option_is_set())
-        {
-          const std::string output_qgram(std::begin(qgram),std::end(qgram));
-          std::cout << output_qgram << std::endl;
-        }
-      }
-      for(size_t i = 0; i < 20*20*20 ; i++)
-      {
-        std::cout << (int)i << '\t' << (int) map_prot_3.sorted_code_get(i) << std::endl;
-      }
-    }
-    else
-    {
-      std::cout << "Unaccounted qgram length" << std::endl;
-    }
-    return EXIT_SUCCESS;
-  }
-  /*
-  else
-  {
-    if(options.get_qgram_length() == "3")
-    {
-      const size_t map_size = map_nuc_3.size_get();
-      for(size_t i = 0; i < map_size; i++)
-      {
-        const auto qgram = map_nuc_3.extern_qgram_get(i);
-        if(options.display_option_is_set())
-        {
-          const std::string output_qgram(std::begin(qgram),std::end(qgram));
-          std::cout << output_qgram << std::endl;
-        }
-      }
-    }
-    else if(options.get_qgram_length() == "4")
-    {
-      const size_t map_size = map_nuc_4.size_get();
-      for(size_t i = 0; i < map_size; i++)
-      {
-        const auto qgram = map_nuc_4.extern_qgram_get(i);
-        if(options.display_option_is_set())
-        {
-          const std::string output_qgram(std::begin(qgram),std::end(qgram));
-          std::cout << output_qgram << std::endl;
-        }
-      }
-    }
-    else
-    {
-      std::cout << "Unaccounted qgram length" << std::endl;
-      return EXIT_FAILURE;
-    }
-  }*/
+  });
   return EXIT_SUCCESS;
 }

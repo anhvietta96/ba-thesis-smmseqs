@@ -7,18 +7,10 @@
 #include "utilities/constexpr_for.hpp"
 
 #include "filter/spaced_seeds.hpp"
-#include "filter/env_constructor.hpp"
+#include "filter/composite_env.hpp"
 #include "alignment/blosum62.hpp"
 
-#define SEEDWEIGHT4
-
-#ifdef SEEDWEIGHT4
-constexpr const int8_t threshold_c = 22;
-#endif
-
-#ifdef SEEDWEIGHT6
-constexpr const int8_t threshold_c = 35;
-#endif
+#define ALLSEED
 
 static void usage(const cxxopts::Options &options)
 {
@@ -30,7 +22,7 @@ class SpacedSeedOptions
  private:
   std::vector<std::string> inputfiles{};
   bool help_option = false,
-       with_simd = true,
+       with_simd = false,
        list_seeds = false,
        show = false;
   std::string seeds = "0", threshold = "20";
@@ -50,7 +42,7 @@ class SpacedSeedOptions
        ("d,seeds", "choose seeds to compute",
         cxxopts::value<std::string>(seeds)->default_value("0"))
        ("w,with_simd", "compute with SIMD",
-        cxxopts::value<bool>(with_simd)->default_value("true"))
+        cxxopts::value<bool>(with_simd)->default_value("false"))
        ("t,threshold", "set threshold",
         cxxopts::value<std::string>(threshold)->default_value("20")) 
        ("s,show", "output sum of intcode",
@@ -108,6 +100,14 @@ class SpacedSeedOptions
   }
 };
 
+#ifdef SEEDWEIGHT5
+static constexpr const size_t gt_spaced_seed_spec_tab[] = {
+  59UL /* 1, 5, 6 111011, MMseq2_proteins_1 */,
+  107UL /* 2, 5, 7 1101011, MMseq2_proteins_2 */,
+  3205UL /* 3, 5, 12 110010000101, MMseq2_proteins_3 */,
+};
+#endif
+
 
 #ifdef SEEDWEIGHT4
 static constexpr const size_t gt_spaced_seed_spec_tab[] = {
@@ -136,7 +136,7 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
 
 constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab)/sizeof(size_t);
 
-template<const char* char_spec, const size_t undefined_rank,const uint8_t seed_idx,const int8_t threshold>
+template<const char* char_spec, const size_t undefined_rank,const uint8_t seed_idx>
 void process(GttlMultiseq* multiseq, const bool show, const bool with_simd)
 {
   constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
@@ -152,44 +152,14 @@ void process(GttlMultiseq* multiseq, const bool show, const bool with_simd)
     constexpr const size_t weight = spaced_seeds.weight_get();
     if(seq_len >= seed_len)
     {
-#ifdef SEEDWEIGHT6
-      Env6Constructor_3<Blosum62,threshold> env6_constructor{};
-      for(size_t i = 0; i < seq_len - seed_len + 1; i++)
-      {
-        const EncodeInfo<weight> encoding = spaced_seeds.encode(curr_seq+i);
-        const auto sorted = encoding.sorted;
-        const auto code = encoding.code;
-        const std::array<uint8_t,weight> permutation = encoding.permutation;
-
-        env6_constructor.env_construct(code,permutation,sorted,i,with_simd);
-      }
-      if(show)
-      {
-        for(size_t i = 0; i < env6_constructor.size(); i++)
-        {
-          const auto elem = env6_constructor.elem_get(i);
-          const auto score = elem.score;
-          const auto position = elem.position;
-          const auto qgram = elem.qgram;
-
-          std::cout << (int) position << '\t' << (int) score << '\t';
-          for(uint8_t idx = 0; idx < 6; idx++)
-          {
-            std::cout << alpha.rank_to_char(qgram[idx]);
-          }
-          std::cout << std::endl;
-        }
-      }
-#endif
-#ifdef SEEDWEIGHT4
-      Env4Constructor_3<Blosum62,threshold> env4_constructor{};
+      CompositeEnvironment<Blosum62,weight> env4_constructor{};
       for(size_t i = 0; i < seq_len - seed_len + 1; i++)
       {
         const EncodeInfo<weight> encoding = spaced_seeds.encode(curr_seq+i);
         const auto sorted = encoding.sorted;
         const auto code = encoding.code;
         const auto permutation = encoding.permutation;
-        env4_constructor.env_construct(code,permutation,sorted,i,with_simd);
+        env4_constructor.process_seed(code,permutation,sorted,i,with_simd);
       }
       if(show)
       {
@@ -201,23 +171,13 @@ void process(GttlMultiseq* multiseq, const bool show, const bool with_simd)
           const auto qgram = elem.qgram;
 
           std::cout << (int) position << '\t' << (int) score << '\t';
-          for(uint8_t idx = 0; idx < 4; idx++)
+          for(uint8_t idx = 0; idx < weight; idx++)
           {
             std::cout << alpha.rank_to_char(qgram[idx]);
           }
           std::cout << std::endl;
         }
       }
-#endif
-      /*
-      if(weight == 4)
-      {
-        
-      }
-      else if(weight == 6)
-      {
-        
-      }*/
     }
   }
 }
@@ -296,16 +256,13 @@ int main(int argc, char *argv[])
   RunTimeClass rt{};
   constexpr_for<0,seed_table_size,1>([&] (auto seed_idx_constexpr)
   {
-    constexpr_for<threshold_c,threshold_c+1,1>([&] (auto threshold_constexpr)
+    if(seed_idx_constexpr == seed_idx)
     {
-      if(seed_idx_constexpr == seed_idx and threshold_c == threshold_constexpr)
-      {
-        static constexpr const Blosum62 sc{};
-        static constexpr const auto char_spec = sc.character_spec;
-        static constexpr const auto undefined_rank = sc.num_of_chars;
-        process<char_spec,undefined_rank,seed_idx_constexpr,threshold_constexpr>(multiseq,show,with_simd);
-      }
-    });
+      static constexpr const Blosum62 sc{};
+      static constexpr const auto char_spec = sc.character_spec;
+      static constexpr const auto undefined_rank = sc.num_of_chars;
+      process<char_spec,undefined_rank,seed_idx_constexpr>(multiseq,show,with_simd);
+    }
   });
   
   if(!options.show_option_is_set())

@@ -129,7 +129,7 @@ class SpacedSeed2SortedCode
   constexpr SpacedSeed2SortedCode(){};
 
   bool sort(const uint8_t* qgram_ptr,uint8_t* sorted_qgram, 
-  uint8_t* permutation, size_t sort_length) const
+            uint8_t* permutation, size_t sort_length) const
   {
     for(size_t idx = 0; idx < sort_length; idx++)
     {

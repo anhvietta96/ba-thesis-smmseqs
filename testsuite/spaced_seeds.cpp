@@ -116,7 +116,7 @@ template<const char* char_spec, const size_t undefined_rank,const uint8_t seed_i
 constexpr void process(GttlMultiseq* multiseq, const bool show)
 {
   constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
-  constexpr const GttlSpacedSeed<char_spec,undefined_rank,seed> spaced_seeds{};
+  constexpr const SpacedSeed2SortedCode<char_spec,undefined_rank,seed> spaced_seeds{};
   
   const auto total_seq_num = multiseq->sequences_number_get();
   for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
@@ -129,11 +129,12 @@ constexpr void process(GttlMultiseq* multiseq, const bool show)
     {
       for(size_t i = 0; i < seq_len - seed_len + 1; i++)
       {
-        code += spaced_seeds.encode(curr_seq+i);
+        const auto encode_inf = spaced_seeds.encode(curr_seq+i);
+        code += encode_inf.code;
       }
       if(show)
       {
-      std::cout << code << std::endl;
+        std::cout << code << std::endl;
       }
     }
   }

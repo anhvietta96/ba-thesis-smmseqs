@@ -1,7 +1,7 @@
 #include "sequences/alphabet.hpp"
 #include "utilities/constexpr_for.hpp"
 
-constexpr size_t power(const size_t base, const size_t exponent)
+constexpr size_t power(const size_t base, const uint8_t exponent)
 {
   return (exponent != 1) ? (base*power(base,exponent-1)) : base;
 }
