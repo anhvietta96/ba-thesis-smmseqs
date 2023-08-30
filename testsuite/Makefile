@@ -1,10 +1,11 @@
 CXX?=g++
 CFLAGS=-O3 -Wall -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops
-COMPILATION_RESOURCES=-ftemplate-depth=10000 -fconstexpr-depth=10000 -march=native -fconstexpr-ops-limit=999999999 -Wl,--stack,1000000000
+COMPILATION_RESOURCES=-ftemplate-depth=1000000 -fconstexpr-depth=1000000 -march=native
 CPPFLAGS=-I ../src
 LD=${CXX}
 LDLIBS=-lm -lz -lpthread -lstdc++
 CXXFLAGS=-std=c++17
+GPROF=-pg
 
 ifeq (,$(findstring g++,$(CXX)))
   CFLAGS+=-Werror
@@ -71,7 +72,7 @@ test_iterate: ${ITER}.x
 	@echo "$@ passed."
 
 %.o:%.cpp
-	$(CXX) -o $@ -c $< ${CXXFLAGS} ${COMPILE_CONST} ${COMPILATION_RESOURCES} ${CFLAGS} ${CPPFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d)
+	$(CXX) ${GPROF} -o $@ ${GPROF} -c $< ${CXXFLAGS} ${COMPILE_CONST} ${COMPILATION_RESOURCES} ${CFLAGS} ${CPPFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d) ${GPROF}
 
 %.x:%.o
 	$(CXX) ${LDFLAGS} $< -o $@ ${LDLIBS}

@@ -1,0 +1,85 @@
+\documentclass[11pt,a4paper]{scrartcl}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+\newcounter{mycommentcounter}
+\newcommand{\Genericcomment}[2]{%
+\par%
+\noindent%
+\fbox{%
+\begin{minipage}{0.95\textwidth}
+\textsl{#1: \#\refstepcounter{mycommentcounter}%
+\arabic{mycommentcounter}: #2}%
+\end{minipage}%
+}%
+\par%
+}
+
+\newcommand{\AVTcomment}[1]{
+\Genericcomment{AVT}{#1}
+}
+
+\newcommand{\SKcomment}[1]{
+\Genericcomment{SK}{#1}
+}
+
+\newcommand{\HashValue}[0]{\mathsf{HashValue}}
+\newcommand{\Mask}[0]{\mathsf{Mask}}
+\newcommand{\XOR}[0]{\mathtt{XOR}}
+\newcommand{\AND}[0]{\mathtt{AND}}
+\newcommand{\rol}[0]{\mathtt{rol}}
+\newcommand{\ror}[0]{\mathtt{ror}}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{pdfpages}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{palatino}
+\usepackage{numprint}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\title{Efficient Preprocessing of Short Sequence Segments for Efficient Filtering in Comparing Protein Sequences}
+\author{Anh Viet Ta (6747004)}
+
+\begin{document}
+
+
+\section{Introduction}
+\section{MMseqs2}
+\subsection{Introduction}
+\subsection{Fast q-gram prefiltering stage}
+\subsection{Ungapped alignment stage}
+\subsection{Smith-Waterman alignment}
+\section{Theory}
+\subsection{Algorithm description}
+\subsection{Sorted and unsorted q-grams}
+\section{Implementation \& Structure}
+\subsection{Input}
+\subsection{Structure}
+\subsubsection{Relevant classes and dataflow}
+\subsubsection{Datatypes}
+\subsection{Approximating threshold}
+\subsection{Sorted q-grams}
+\subsubsection{Enumerating}
+\subsubsection{Encoding sequence in linear time}
+\subsection{Extracting and sorting q-gram from spaced seeds}
+\subsection{Constructing sub-q-gram environments}
+\subsection{Iterating over sequence}
+\subsection{SIMD}
+\subsection{Output}
+\newpage
+\section{Benchmark \& Performance}
+\subsection{Time performance}
+\subsubsection{Compile time performance}
+\subsubsection{Execute time performance analysis with gprof}
+\subsection{Spatial Performance with valgrind massif}
+\section{Future improvements}
+\subsection{Full compile-time calculation of environments}
+
+
+\section{Conclusion}
+\section{Reference}
+
+\end{document}

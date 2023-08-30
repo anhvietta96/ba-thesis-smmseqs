@@ -1,3 +1,5 @@
+#ifndef QGRAM_ENVIRONMENT_HPP
+#define QGRAM_ENVIRONMENT_HPP
 #include "filter/unsorted_qgram.hpp"
 #include "filter/sorted_qgram.hpp"
 
@@ -182,7 +184,7 @@ struct EnvMatrix {
   static constexpr const SortedQmer<char_spec,undefined_rank,qgram_length> sorted_q{};
   //static constexpr const UnsortedQmer<char_spec,undefined_rank,qgram_length> unsorted_q{};
   static constexpr const uint16_t sorted_size = sorted_q.size_get();
-  static constexpr const uint16_t unsorted_size = power_1(undefined_rank,qgram_length);
+  static constexpr const uint16_t unsorted_size = power(undefined_rank,qgram_length);
 
   std::array<int8_t,unsorted_size*sorted_size> matrix{};
   std::array<uint16_t,sorted_size> size_arr{};
@@ -332,3 +334,4 @@ class QgramEnvironment2 {
     return sorted_env;
   }
 };*/
+#endif

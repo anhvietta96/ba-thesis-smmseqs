@@ -1,23 +1,14 @@
+#ifndef SORTED_QGRAM_HPP
+#define SORTED_QGRAM_HPP
+
 #include "sequences/alphabet.hpp"
 #include "utilities/constexpr_for.hpp"
+#include "filter/utils.hpp"
 #include <algorithm>
 #include <array>
 #include <iterator>
 #include <cassert>
 #include <iostream>
-
-constexpr size_t binom(size_t a,size_t b)
-{
-  if (b == 0 or a == b)
-  {
-    return size_t(1);
-  }
-  if (2*b > a and a != b)
-  {
-    return binom(a,a-b);
-  }
-  return binom(a-1,b-1) + binom(a-1,b);
-}
 
 constexpr size_t get_multiset_num(const size_t qgram_length, const size_t alphabet_size)
 {
@@ -86,11 +77,6 @@ constexpr const std::array<uint8_t,qgram_length*ms_size> create_map()
   return map;
 }
 
-constexpr size_t power_1(const size_t& base, const size_t& exponent)
-{
-  return (exponent != 1) ? (base*power_1(base,exponent-1)) : base;
-}
-
 template<const char* char_spec,const size_t undefined_rank,const uint8_t qgram_length>
 class SortedQmer
 {
@@ -98,7 +84,6 @@ class SortedQmer
   static constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
   static constexpr const uint16_t ms_size = get_multiset_num(qgram_length,undefined_rank);
   std::array<uint8_t,qgram_length*ms_size> map = {{ 0 }};
-  std::array<uint16_t,power_1(undefined_rank,qgram_length)> unsorted_to_sorted_map{};
   
   public:
   constexpr SortedQmer()
@@ -123,7 +108,7 @@ class SortedQmer
         map[(ms_size-qgram_idx-1)*qgram_length+char_idx] = tmp_cc;
       }
     }
-    
+    /*
     constexpr const auto alphasize = alpha.size();
     size_t code = 0;
     constexpr_for<0,(size_t) ms_size,1>([&] (auto qgram_idx){
@@ -133,9 +118,9 @@ class SortedQmer
       });
       unsorted_to_sorted_map[code] = qgram_idx;
       code = 0;
-    });
+    });*/
   };
-
+/*
   constexpr uint16_t sorted_code_get(const uint16_t unsorted_code) const
   {
     if(unsorted_code != 0 and unsorted_to_sorted_map[unsorted_code] == 0)
@@ -145,7 +130,7 @@ class SortedQmer
     }
     return unsorted_to_sorted_map[unsorted_code];
   }
-  
+  */
   constexpr size_t size_get() const
   {
     return ms_size;
@@ -161,6 +146,12 @@ class SortedQmer
     return qgram;
   }
 
+  constexpr void get_qgram(const uint16_t qgram_idx, std::array<uint8_t,qgram_length>& qgram) const {
+    for(uint8_t i = 0; i < qgram_length; i++){
+      qgram[i] = map[qgram_idx*qgram_length+i];
+    }
+  }
+
   std::array<uint8_t,qgram_length> extern_qgram_get(const size_t qgram_idx) const
   {
     std::array<uint8_t,qgram_length> qgram{};
@@ -171,3 +162,5 @@ class SortedQmer
     return qgram;
   }
 };
+
+#endif

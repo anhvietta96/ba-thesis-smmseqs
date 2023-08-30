@@ -1,7 +1,13 @@
+#ifndef SPACED_SEED_HPP
+#define SPACED_SEED_HPP
 #include "sequences/alphabet.hpp"
 #include "utilities/constexpr_for.hpp"
+#include "filter/multiset_code.hpp"
+#include "filter/distribution.hpp"
+
 #include <cassert>
 #include <iostream>
+
 /*
 constexpr size_t get_span(const char *seed, size_t index)
 {
@@ -99,49 +105,92 @@ constexpr size_t get_weight(const std::bitset<16> seed_bitset)
   return weight;
 }
 
-template<const uint8_t qgram_length>
+template<const uint8_t qgram_length, const uint8_t num_of_primary_env>
 struct EncodeInfo {
-  size_t code;
+  std::array<uint8_t,qgram_length> permutation;
   bool sorted;
-  std::array<uint8_t,qgram_length> permutation{};
+  std::array<uint16_t,num_of_primary_env> codes;
 
-  EncodeInfo(const size_t _code, const bool _sorted, const uint8_t* _permutation)
-  {
-    code = _code;
-    sorted = _sorted;
-    for(uint8_t i = 0; i < qgram_length; i++)
-    {
-      permutation[i] = _permutation[i];
-    }
-  };
+  EncodeInfo(std::array<uint8_t,qgram_length> _permutation,const bool& _sorted,
+              std::array<uint16_t,num_of_primary_env> _codes): 
+              permutation(_permutation),sorted(_sorted),codes(_codes){};
 };
 
-template<const char* char_spec,uint8_t undefined_rank,const size_t seed>
-class SpacedSeed2SortedCode
-{
+template<const uint8_t num_of_primary_env,const uint8_t weight>
+constexpr std::array<uint8_t,num_of_primary_env> create_subqgram_length_arr(){
+  std::array<uint8_t,num_of_primary_env> qgram_length_arr{};
+  for(uint8_t i = 0; i < num_of_primary_env; i++){
+    qgram_length_arr[i] = 3;
+  }
+
+  constexpr const uint8_t overcount = (num_of_primary_env * 3) - weight;
+  for(uint8_t i = 0; i < overcount; i++){
+    qgram_length_arr[i]--;
+  }
+
+  return qgram_length_arr;
+}
+
+template<const uint8_t num_of_primary_env,const uint8_t weight>
+constexpr std::array<int8_t,num_of_primary_env> create_env_threshold_arr(const std::array<uint8_t,num_of_primary_env>& qgram_length_arr,const int8_t& threshold,const int8_t& highest_score){
+  std::array<int8_t,num_of_primary_env> env_threshold_arr{};
+  for(uint8_t i = 0; i < num_of_primary_env; i++){
+    env_threshold_arr[i] = threshold - (weight - qgram_length_arr[i]) * highest_score;
+  }
+  return env_threshold_arr;
+}
+
+template<class ScoreClass,const size_t seed, const uint8_t max_subqgram_length>
+class SpacedSeedEncoder {
   private:
+  static constexpr const ScoreClass sc{};
+  static constexpr const auto char_spec = sc.character_spec;
+  static constexpr const auto undefined_rank = sc.num_of_chars;
   static constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
   static constexpr const std::bitset<16> seed_bitset{seed};
   static constexpr const size_t span = get_span(seed_bitset);
   static constexpr const size_t weight = get_weight<span>(seed_bitset);
+  
+  static constexpr const uint8_t num_of_primary_env = weight % max_subqgram_length ? (weight / max_subqgram_length + 1) : 
+                                                      weight / max_subqgram_length;
+  static constexpr const MultisetEncoder<char_spec,undefined_rank,max_subqgram_length> multiset_encoder{};
+  
+  //Threshold
+  static constexpr const Distribution<ScoreClass,weight-1> dis{};
+  static constexpr const int8_t threshold = dis.threshold_get(weight-1);
+
+  //Init in constexpr constructor
+  std::array<uint8_t,num_of_primary_env> subqgram_length_arr{};
+  std::array<int8_t,num_of_primary_env> env_threshold_arr{};
 
   public:
-  constexpr SpacedSeed2SortedCode(){};
+  constexpr SpacedSeedEncoder(){
+    constexpr const uint8_t overcount = (num_of_primary_env * max_subqgram_length) - weight;
+    for(uint8_t i = 0; i < num_of_primary_env; i++){
+      subqgram_length_arr[i] = 3;
+    }
+    for(uint8_t i = 0; i < overcount; i++){
+      subqgram_length_arr[num_of_primary_env-1-i]--;
+    }
+
+    for(uint8_t i = 0; i < num_of_primary_env; i++){
+      env_threshold_arr[i] = threshold - (weight - subqgram_length_arr[i]) * sc.highest_score;
+    }
+  };
 
   bool sort(const uint8_t* qgram_ptr,uint8_t* sorted_qgram, 
-            uint8_t* permutation, size_t sort_length) const
+            std::array<uint8_t,weight>& permutation) const
   {
-    for(size_t idx = 0; idx < sort_length; idx++)
+    for(size_t idx = 0; idx < weight; idx++)
     {
       sorted_qgram[idx] = qgram_ptr[idx];
       permutation[idx] = idx;
     }
     bool swapped = false;
-    for(size_t pm = 0; pm < sort_length; pm++)
+    for(size_t pm = 0; pm < weight; pm++)
     {
       for(size_t pl = pm; pl > 0 and alpha.char_to_rank(sorted_qgram[pl-1]) 
       > alpha.char_to_rank(sorted_qgram[pl]); pl--)
-      //for(size_t pl = pm; pl > 0 and sorted_qgram[pl-1] > sorted_qgram[pl]; pl--)
       {
         const uint8_t tmp_cc = sorted_qgram[pl-1];
         sorted_qgram[pl-1] = sorted_qgram[pl];
@@ -157,43 +206,61 @@ class SpacedSeed2SortedCode
     return !swapped;
   }
 
-  EncodeInfo<weight> encode(const char* seq_ptr) const
-  {
-    size_t code = 0;
-    constexpr const auto alphabet_size = alpha.size();
+  EncodeInfo<weight,num_of_primary_env> encode(const char* seq) const {
+    std::array<uint8_t,weight> permutation{};
+    std::array<uint16_t,num_of_primary_env> sorted_qgram_codes{};
     
-    uint8_t ref_qgram[weight];
+    uint16_t code = 0;
+    uint8_t extracted_qgram[weight];
     uint8_t sorted_qgram[weight];
-    uint8_t permutation[weight];
-    uint8_t i = 0;
+    uint8_t qgram_idx = 0;
     
     constexpr_for<0,span,1>([&] (auto idx)
     {
       if constexpr(seed_bitset[span-1-idx] == 1)
       {
-        ref_qgram[i] = static_cast<uint8_t>(seq_ptr[idx]);
-        i++;
+        extracted_qgram[qgram_idx] = static_cast<uint8_t>(seq[idx]);
+        qgram_idx++;
       }
     });
 
-    const bool sorted = sort(ref_qgram,sorted_qgram,permutation,weight);
+    bool sorted = sort(extracted_qgram,sorted_qgram,permutation);
 
-    constexpr_for<0,weight,1>([&] (auto idx)
-    {
-      code *= alphabet_size;
-      code += alpha.char_to_rank(sorted_qgram[idx]);
-    });
+    qgram_idx = 0;
+    for(uint8_t i = 0; i < num_of_primary_env; i++){
+      code = 0;
+      for(uint8_t j = 0; j < subqgram_length_arr[i]; j++){
+        code += multiset_encoder.relative_encode(subqgram_length_arr[i],j,alpha.char_to_rank(sorted_qgram[qgram_idx]));
+        qgram_idx++;
+      }
+      sorted_qgram_codes[i] = code;
+    }
 
-    return EncodeInfo<weight>(code,sorted,permutation);
+    return EncodeInfo<weight,num_of_primary_env>(permutation,sorted,sorted_qgram_codes);
   }
 
-  constexpr size_t span_get() const
-  {
+  constexpr std::array<uint8_t,num_of_primary_env> subqgram_length_arr_get() const {
+    return subqgram_length_arr;
+  }
+
+  constexpr std::array<int8_t,num_of_primary_env> env_threshold_arr_get() const {
+    return env_threshold_arr;
+  }
+
+  constexpr uint8_t num_of_primary_env_get() const {
+    return num_of_primary_env;
+  }
+
+  constexpr int8_t threshold_get() const {
+    return threshold;
+  }
+
+  constexpr size_t span_get() const {
     return span;
   }
 
-  constexpr size_t weight_get() const
-  {
+  constexpr size_t weight_get() const {
     return weight;
   }
 };
+#endif

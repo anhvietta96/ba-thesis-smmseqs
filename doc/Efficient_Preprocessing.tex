@@ -1,0 +1,104 @@
+\documentclass[11pt,a4paper]{scrartcl}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+\newcounter{mycommentcounter}
+\newcommand{\Genericcomment}[2]{%
+\par%
+\noindent%
+\fbox{%
+\begin{minipage}{0.95\textwidth}
+\textsl{#1: \#\refstepcounter{mycommentcounter}%
+\arabic{mycommentcounter}: #2}%
+\end{minipage}%
+}%
+\par%
+}
+
+\newcommand{\AVTcomment}[1]{
+\Genericcomment{AVT}{#1}
+}
+
+\newcommand{\SKcomment}[1]{
+\Genericcomment{SK}{#1}
+}
+
+\newcommand{\HashValue}[0]{\mathsf{HashValue}}
+\newcommand{\Mask}[0]{\mathsf{Mask}}
+\newcommand{\XOR}[0]{\mathtt{XOR}}
+\newcommand{\AND}[0]{\mathtt{AND}}
+\newcommand{\rol}[0]{\mathtt{rol}}
+\newcommand{\ror}[0]{\mathtt{ror}}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{pdfpages}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{palatino}
+\usepackage{numprint}
+\usepackage{svg}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\title{Efficient Preprocessing of Short Sequence Segments for Efficient Filtering in Comparing Protein Sequences}
+\author{Anh Viet Ta (6747004)}
+
+\begin{document}
+\begin{titlepage}
+\maketitle
+\pagenumbering{gobble}% Remove page numbers (and reset to 1)
+\thispagestyle{empty}
+
+\textbf{Abstract:} 
+\end{titlepage}
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\section{Introduction}
+\section{MMseqs2}
+\subsection{Introduction}
+\subsection{Fast q-gram prefiltering stage}
+\subsection{Ungapped alignment stage}
+\subsection{Smith-Waterman alignment stage}
+\section{Theory}
+\subsection{Algorithm description}
+\input{Theory_Algodescription}
+\subsection{Sorted and unsorted q-grams}
+\section{Implementation \& Design}
+\subsection{Input}
+\input{Implementation_Input}
+\subsection{Structure}
+\subsubsection{Relevant classes and dataflow}
+\input{Implementation_structure_classes}
+\subsubsection{Datatypes}
+\input{Implementation_structure_datatypes}
+\subsection{Approximating threshold}
+\input{Implementation_threshold}
+\subsection{Sorted q-grams}
+\input{Implementation_sortedqgram}
+\subsubsection{Enumerating}
+\subsubsection{Encoding sequence in linear time}
+\subsection{Extracting and sorting q-gram from spaced seeds}
+\input{Implementation_extracting}
+\subsection{Constructing sub-q-gram environments}
+\input{Implementation_constructing}
+\subsection{Iterating over sequence}
+\input{Implementation_iterating}
+\subsection{SIMD}
+\input{Implementation_SIMD}
+\subsection{Output}
+\input{Implementation_output}
+\section{Benchmark \& Performance}
+\subsection{Time performance}
+\subsubsection{Compile time performance}
+\subsubsection{Execute time performance analysis with gprof}
+\subsubsection{Dependence of execute time on acceptance rate}
+\subsection{Spatial Performance with valgrind massif}
+\section{Retrospection \& Future improvements}
+\subsection{Scalability}
+\subsection{Full compile-time calculation of environments}
+\section{Conclusion}
+\section{Reference}
+
+\end{document}

@@ -1,0 +1,37 @@
+\subsubsection{Enumerating}
+Multisets can be enumerated recursively:
+\begin{algorithm}[t]
+\caption{Enumerating multisets}
+\label{code:ntHash}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}&sequence $s$ of length $n$\\
+               &size of alphabet $|\mathcal{A}|$\\
+               &function \(\mathsf{process}\) processing hash values
+\end{tabular}
+\begin{algorithmic}
+\For{\(i\) \textbf{from} 1 to $|\mathcal{A}|$} \Comment{Generate random
+integers for each character}
+\State \(f(A[i]) \gets \mathsf{RandomInteger}()\)
+\EndFor
+\For{\(i\) \textbf{from} 1 to $|\mathcal{A}|$} \Comment{Generate lookup
+table to remove character}
+\State \(f_r(A[i]) \gets \rol(f(A[i]),k-1)\)
+\EndFor
+\State \(\HashValue \gets 0\)
+\For{\(i\) \textbf{from} 1 to $k$} \Comment{Compute first hash value}
+\State \(\HashValue = \rol(\HashValue,1)\)
+\State \(\HashValue = \XOR(\HashValue,f(s[i]))\)
+\EndFor
+\State \(\mathsf{process}(\HashValue)\)
+\For{\(j\) \textbf{from} 1 to $n-k$} \Comment{Compute other hash values}
+\State \(\HashValue = \XOR(\HashValue,\rol(f(s[j]),k-1))\)
+\State \(\HashValue = \rol(\HashValue,1)\)
+\State \(\HashValue = \XOR(\HashValue,f(s[j+k])\)
+\State \(\mathsf{process}(\HashValue)\)
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+
+
+\subsubsection{Encoding sequence in linear time}

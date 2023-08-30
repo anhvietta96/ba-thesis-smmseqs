@@ -1,10 +1,8 @@
+#ifndef UNSORTED_QGRAM_HPP
+#define UNSORTED_QGRAM_HPP
 #include "sequences/alphabet.hpp"
 #include "utilities/constexpr_for.hpp"
-
-constexpr size_t power(const size_t base, const uint8_t exponent)
-{
-  return (exponent != 1) ? (base*power(base,exponent-1)) : base;
-}
+#include "filter/utils.hpp"
 
 template<const size_t undefined_rank, const size_t qgram_length, const size_t map_size>
 constexpr std::array<char,qgram_length * map_size> map_create()
@@ -41,13 +39,13 @@ template<const char* char_spec, const size_t undefined_rank, const size_t qgram_
 class UnsortedQmer {
   private:
   static constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
-  static constexpr const size_t map_size = power(undefined_rank,qgram_length);
+  static constexpr const size_t map_size = constexpr_pow(undefined_rank,qgram_length);
   std::array<uint8_t,qgram_length * map_size> map = {{ 0 }};
 
   public:
   constexpr UnsortedQmer()
   {
-    uint8_t tmp_qgram[qgram_length] = {{ 0 }};
+    uint8_t tmp_qgram[qgram_length]{};
     for(size_t qgram_idx = 0; qgram_idx < map_size; qgram_idx++)
     {
       for(size_t char_idx = 0; char_idx < qgram_length; char_idx++)
@@ -87,9 +85,9 @@ class UnsortedQmer {
     }
   }*/
 
-  constexpr std::array<uint8_t,qgram_length> qgram_get(size_t qgram_idx) const
+  std::array<uint8_t,qgram_length> qgram_get(size_t qgram_idx) const
   {
-    std::array<uint8_t,qgram_length> qgram = {{ 0 }};
+    std::array<uint8_t,qgram_length> qgram{};
     for(size_t i = 0; i < qgram_length; i++)
     {
       qgram[i] = map[qgram_idx*qgram_length+i];
@@ -97,9 +95,17 @@ class UnsortedQmer {
     return qgram;
   }
 
+  constexpr void get_qgram(size_t qgram_idx,std::array<uint8_t,qgram_length>& qgram) const
+  {
+    for(size_t i = 0; i < qgram_length; i++)
+    {
+      qgram[i] = map[qgram_idx*qgram_length+i];
+    }
+  }
+
   std::array<uint8_t,qgram_length> extern_qgram_get(size_t qgram_idx) const
   {
-    std::array<uint8_t,qgram_length> qgram = {{ 0 }};
+    std::array<uint8_t,qgram_length> qgram{};
     for(size_t i = 0; i < qgram_length; i++)
     {
       qgram[i] = alpha.rank_to_char(map[qgram_idx*qgram_length+i]);
@@ -107,3 +113,4 @@ class UnsortedQmer {
     return qgram;
   }
 };
+#endif

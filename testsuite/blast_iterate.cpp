@@ -6,11 +6,14 @@
 #include "sequences/gttl_multiseq.hpp"
 #include "utilities/constexpr_for.hpp"
 
-#include "filter/spaced_seeds.hpp"
 #include "filter/composite_env.hpp"
 #include "alignment/blosum62.hpp"
 
-#define ALLSEED
+#ifndef MAX_SUBQGRAM_LENGTH
+#define MAX_SUBQGRAM_LENGTH 3
+#endif
+
+#define TESTSEED
 
 static void usage(const cxxopts::Options &options)
 {
@@ -129,43 +132,46 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   3205UL /* 3, 5, 12 110010000101, MMseq2_proteins_3 */,
   237UL /* 4, 6, 8 11101101, MMseq2_proteins_4 */,
   851UL /* 5, 6, 10 1101010011, MMseq2_proteins_5 */,
+  127UL,
   981UL /* 6, 7, 10 1111010101, MMseq2_proteins_6 */,
   1715UL /* 7, 7, 11 11010110011, MMseq2_proteins_7 */
 };
 #endif
 
+#ifdef TESTSEED
+static constexpr const size_t gt_spaced_seed_spec_tab[] = {
+  15UL,
+  127UL,
+};
+#endif
 constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab)/sizeof(size_t);
 
 template<const char* char_spec, const size_t undefined_rank,const uint8_t seed_idx>
 void process(GttlMultiseq* multiseq, const bool show, const bool with_simd)
 {
   constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
-  constexpr const SpacedSeed2SortedCode<char_spec,undefined_rank,seed> spaced_seeds{};
   constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
+  static CompositeEnvironment<Blosum62,seed> env_constructor{};
+  constexpr const size_t seed_len = env_constructor.span_get();
+  constexpr const size_t weight = env_constructor.weight_get();
 
   const auto total_seq_num = multiseq->sequences_number_get();
   for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
   {
+    //std::cout << (int) seqnum << '\t' << (int) total_seq_num << std::endl;
     const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
     const size_t seq_len = multiseq->sequence_length_get(seqnum);
-    constexpr const size_t seed_len = spaced_seeds.span_get();
-    constexpr const size_t weight = spaced_seeds.weight_get();
     if(seq_len >= seed_len)
     {
-      CompositeEnvironment<Blosum62,weight> env4_constructor{};
       for(size_t i = 0; i < seq_len - seed_len + 1; i++)
       {
-        const EncodeInfo<weight> encoding = spaced_seeds.encode(curr_seq+i);
-        const auto sorted = encoding.sorted;
-        const auto code = encoding.code;
-        const auto permutation = encoding.permutation;
-        env4_constructor.process_seed(code,permutation,sorted,i,with_simd);
+        env_constructor.process_seed(curr_seq+i,i+1,with_simd);
       }
       if(show)
       {
-        for(size_t i = 0; i < env4_constructor.size(); i++)
+        for(size_t i = 0; i < env_constructor.size(); i++)
         {
-          const auto elem = env4_constructor.elem_get(i);
+          const auto elem = env_constructor.elem_get(i);
           const auto score = elem.score;
           const auto position = elem.position;
           const auto qgram = elem.qgram;
@@ -179,6 +185,7 @@ void process(GttlMultiseq* multiseq, const bool show, const bool with_simd)
         }
       }
     }
+    env_constructor.reset();
   }
 }
 
@@ -267,7 +274,7 @@ int main(int argc, char *argv[])
   
   if(!options.show_option_is_set())
   {
-    rt.show("Encoding of spaced seeds");
+    rt.show("Generated environment");
     for (auto &&inputfile : inputfiles)
     {
       std::cout << "# filename\t" << inputfile << std::endl;

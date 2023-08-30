@@ -1,0 +1,7 @@
+The key to the shuffle using SIMD is the instruction \_\_mm\_shuffle\_epi8, which is available on platforms supporting SSSE3 instruction sets. The instruction takes in two 128-bit (equivalent to 16-byte) vectors, first vector holds the data, and the second the information on how the data get shuffled. A schematic can be seen below:
+
+When the program is opted to process the q-grams with SIMD, the unshuffled q-grams are first packed as-is. After every valid elements are in the result vector, the function shuffle\_with\_simd is called, which looks up every to-be-shuffled element, starting from the end of vector. The q-grams, which individually takes up $q$ bytes each, are then packed as much as possible on a 128-bit (equivalent to 16-byte) vector called $buf$ according to the following expression:
+
+$$\text{num\_per\_vector} = \frac{16}{q}$$
+
+Along with vector $buf$, another vector is created, which holds information on permutation. After the two vectors are set up, the instruction \_\_mm\_shuffle\_epi8 is called and the shuffled q-grams then get extracted and replace the unshuffled in the result vector.
