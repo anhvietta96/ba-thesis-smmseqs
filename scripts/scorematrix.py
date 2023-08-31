@@ -93,6 +93,8 @@ class Scorematrix:
     num_of_chars = len(characters)
     smallest_score = min([self.scorematrix[a][b] for a in characters
                                                  for b in characters])
+    highest_score = max([self.scorematrix[a][b] for a in characters
+                                                 for b in characters])
     score_lines = list()
     for a in characters:
       line = list()
@@ -120,10 +122,12 @@ class Scorematrix:
     header_line = '{}/* {} */'.format(' ' * 6,'  '.join(list(characters)))
     smallest = ('static constexpr const int8_t smallest_score = {};'
                 .format(smallest_score))
+    highest = ('static constexpr const int8_t highest_score = {};'
+                .format(highest_score))
     return gen_comment + ifdef + define + include + decl + characters_decl \
                        + num_of_chars_decl + character_spec + matrix_decl \
                        + header_line + (','.join(score_lines)) \
-                       + '};' + smallest + '}; #endif'
+                       + '};' + smallest + highest + '}; #endif'
   def getscore(self,a,b):
     if a in self.scorematrix and b in self.scorematrix[a]:
       return self.scorematrix[a][b]
