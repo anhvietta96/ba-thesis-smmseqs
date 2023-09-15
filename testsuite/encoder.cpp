@@ -8,7 +8,7 @@ int main(){
   constexpr const auto char_spec = sc.character_spec;
 
   constexpr_for<2,4,1>([&] (auto qgram_length){
-    const MultisetEncoder<char_spec,undefined_rank,qgram_length> encoder{};
+    constexpr const MultisetEncoder<char_spec,undefined_rank,qgram_length> encoder{};
     constexpr const SortedQmer<char_spec,undefined_rank,qgram_length> sorted_q{};
 
     for(uint16_t sorted_idx = 0; sorted_idx < sorted_q.size_get(); sorted_idx++){

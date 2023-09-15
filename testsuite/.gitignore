@@ -2,3 +2,9 @@ blosum_2mer.cpp
 blosum_2mer.txt
 blosum_3mer.txt
 env2.cpp
+gprof*
+gmon.out
+*.gcda
+*.gcno
+callgrind*
+test*

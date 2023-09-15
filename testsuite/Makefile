@@ -5,11 +5,16 @@ CPPFLAGS=-I ../src
 LD=${CXX}
 LDLIBS=-lm -lz -lpthread -lstdc++
 CXXFLAGS=-std=c++17
-GPROF=-pg
+OPENMP=-fopenmp
 
 ifeq (,$(findstring g++,$(CXX)))
   CFLAGS+=-Werror
 	COMPILATION_RESOURCES+=-fconstexpr-ops-limit=999999999
+endif
+
+ifdef prof
+	CFLAGS+=-pg -g -fprofile-arcs -ftest-coverage
+	LDLIBS+=-pg -g -fprofile-arcs -ftest-coverage
 endif
 
 #ifeq (,$(findstring clang++,$(CXX)))
@@ -30,7 +35,7 @@ ITER=blast_iterate
 
 all:${SQGRAM}.x ${ITER}.x ${SMATRIX}.x ${UQGRAM}.x
 
-test: test_unsorted_qgram test_score_matrix test_iterate 
+test: test_unsorted_qgram test_score_matrix test_sorted_qgram test_spaced_seeds test_iterate 
 
 test_sorted_qgram:${SQGRAM}.x
 	@./${SQGRAM}.x -q 3 -s >${TMPFILE}
@@ -54,28 +59,28 @@ test_score_matrix:${SMATRIX}.x
 	@${RM} ${TMPFILE}
 	@echo "$@ passed."
 
-#test_spaced_seeds:${SPACED_SEEDS}.x
-#	@./check_err.py ./${SPACED_SEEDS}.x
-#	@./${SPACED_SEEDS}.x -p -d 0 -s ${GTTL}/testdata/sw175.fna >${TMPFILE}
-#	@diff ${REFDIR}/test_ss_sw175.txt ${TMPFILE}
-#	@./${SPACED_SEEDS}.x -p -d 1 -s ../testdata/QUERY.fasta >${TMPFILE}
-#	@diff ${REFDIR}/test_ss_QUERY.txt ${TMPFILE}
-#	@${RM} ${TMPFILE}
-#	@echo "$@ passed."
+test_spaced_seeds:${SPACED_SEEDS}.x
+	@./check_err.py ./${SPACED_SEEDS}.x
+	@./${SPACED_SEEDS}.x -p -d 0 -s ${GTTL}/testdata/sw175.fna >${TMPFILE}
+	@diff ${REFDIR}/spaced_seeds_sw175.txt ${TMPFILE}
+	@./${SPACED_SEEDS}.x -p -d 7 -s ${GTTL}/testdata/sw175.fna >${TMPFILE}
+	@diff ${REFDIR}/spaced_seeds_sw175_7.txt ${TMPFILE}
+	@${RM} ${TMPFILE}
+	@echo "$@ passed."
 
 test_iterate: ${ITER}.x
 	@./check_err.py ./${ITER}.x
 	@./${ITER}.x -s ${GTTL}/testdata/sw175.fna >${TMPFILE}
-	@diff ${REFDIR}/test_iterate_sw175.txt ${TMPFILE}
-	@./${ITER}.x -w -s ${GTTL}/testdata/sw175.fna >${TMPFILE}
-	@diff ${REFDIR}/test_iterate_sw175.txt ${TMPFILE}
+	@diff ${REFDIR}/blast_iterate_sw175_ALL_0.txt ${TMPFILE}
+	@./${ITER}.x -d 7 -s ${GTTL}/testdata/sw175.fna >${TMPFILE}
+	@diff ${REFDIR}/blast_iterate_sw175_ALL_7.txt ${TMPFILE}
 	@echo "$@ passed."
 
 %.o:%.cpp
-	$(CXX) ${GPROF} -o $@ ${GPROF} -c $< ${CXXFLAGS} ${COMPILE_CONST} ${COMPILATION_RESOURCES} ${CFLAGS} ${CPPFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d) ${GPROF}
+	$(CXX) -o $@ -c $< ${OPENMP} ${CXXFLAGS} ${COMPILE_CONST} ${COMPILATION_RESOURCES} ${CFLAGS} ${CPPFLAGS} ${GTTLFLAGS} -MT $@ -MMD -MP -MF $(@:.o=.d)
 
 %.x:%.o
-	$(CXX) ${LDFLAGS} $< -o $@ ${LDLIBS}
+	$(CXX) ${LDFLAGS} $< -o $@ ${LDLIBS} ${OPENMP}
 
 .PHONY:clean
 clean:

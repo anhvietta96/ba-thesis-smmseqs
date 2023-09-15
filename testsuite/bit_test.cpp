@@ -1,3 +1,4 @@
+#include "filter/composite_env.hpp"
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>
@@ -5,15 +6,10 @@
 #include "utilities/runtime_class.hpp"
 #include "sequences/gttl_multiseq.hpp"
 #include "utilities/constexpr_for.hpp"
-#include "sequences/literate_multiseq.hpp"
-#include "filter/composite_env.hpp"
 #include "alignment/blosum62.hpp"
+#include "utilities/bytes_unit.hpp"
 
-#ifndef MAX_SUBQGRAM_LENGTH
-#define MAX_SUBQGRAM_LENGTH 3
-#endif
-#undef __SSSE3__
-#define ALLSEED
+#define TESTSEED
 
 static void usage(const cxxopts::Options &options)
 {
@@ -102,27 +98,6 @@ class SpacedSeedOptions{
   }
 };
 
-#ifdef SEEDWEIGHT5
-static constexpr const size_t gt_spaced_seed_spec_tab[] = {
-  59UL /* 1, 5, 6 111011, MMseq2_proteins_1 */,
-  107UL /* 2, 5, 7 1101011, MMseq2_proteins_2 */,
-  3205UL /* 3, 5, 12 110010000101, MMseq2_proteins_3 */,
-};
-#endif
-
-
-#ifdef SEEDWEIGHT4
-static constexpr const size_t gt_spaced_seed_spec_tab[] = {
-  29UL /* 0, 4, 5 11101, MMseq2_proteins_0 */,
-};
-#endif
-
-#ifdef SEEDWEIGHT6
-static constexpr const size_t gt_spaced_seed_spec_tab[] = {
-  237UL /* 4, 6, 8 11101101, MMseq2_proteins_4 */,
-};
-#endif
-
 #ifdef ALLSEED
 static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   29UL /* 0, 4, 5 11101, MMseq2_proteins_0 */,
@@ -140,7 +115,6 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
 #ifdef TESTSEED
 static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   15UL,
-  127UL,
 };
 #endif
 constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab)/sizeof(size_t);
@@ -156,7 +130,9 @@ void process(GttlMultiseq* multiseq, const bool show, const bool with_simd)
   env_constructor.background_correction_set(target_distribution);
   constexpr const size_t seed_len = env_constructor.span_get();
   constexpr const size_t weight = env_constructor.weight_get();
-
+  constexpr const size_t num_chars = env_constructor.num_chars();
+  constexpr const uint8_t total_bytes = 9;
+  constexpr const std::array<uint64_t,3> mask = {{ INT32_MAX, (static_cast<uint64_t>(INT8_MAX) + 1)/2-1, (static_cast<uint64_t>(INT32_MAX)+1)*2-1}};
   const auto total_seq_num = multiseq->sequences_number_get();
   for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
   {
@@ -167,30 +143,33 @@ void process(GttlMultiseq* multiseq, const bool show, const bool with_simd)
     {
       for(size_t i = 0; i < seq_len - seed_len + 1; i++)
       {
-        //std::cout << (int) seqnum << '\t' << (int) i << std::endl;
-        env_constructor.process_seed(curr_seq+i,seq_len,i+1,with_simd);
+        env_constructor.process_seed(curr_seq+i,i,with_simd);
       }
       if(show)
       {
+        GttlBitPacker<total_bytes,3> *hashed_qgram_packer = new GttlBitPacker<total_bytes,3>
+                                           ({31,7,33});
         for(size_t i = 0; i < env_constructor.size(); i++)
         {
           const auto elem = env_constructor.elem_get(i);
-          const auto score = elem.score;
-          const auto position = elem.position;
-          const auto qgram = elem.qgram;
+          const auto num_elem = elem.to_num_type(num_chars);
+          const auto position = num_elem.position & mask[0];
+          const auto score = num_elem.score & mask[1];
+          const auto code = num_elem.code & mask[2];
 
-          std::cout << (int) position << '\t' << (int) score << '\t';
-          for(uint8_t idx = 0; idx < weight; idx++)
-          {
-            std::cout << alpha.rank_to_char(qgram[idx]);
-          }
-          std::cout << std::endl;
+          std::cout << (int) position << '\t' << (int) score << '\t' << (int) code << std::endl;
+          BytesUnit<total_bytes,3> bu(*hashed_qgram_packer,{static_cast<uint64_t>(position),static_cast<uint64_t>(score),static_cast<uint64_t>(code)});
+          assert(position == bu.template decode_at<0>(*hashed_qgram_packer));
+          assert(score == bu.template decode_at<1>(*hashed_qgram_packer));
+          assert(code == bu.template decode_at<2>(*hashed_qgram_packer));
         }
+        delete hashed_qgram_packer;
       }
     }
     env_constructor.reset();
   }
 }
+
 
 int main(int argc, char *argv[])
 {

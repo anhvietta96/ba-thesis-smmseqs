@@ -85,7 +85,7 @@ class UnsortedQmer {
     }
   }*/
 
-  std::array<uint8_t,qgram_length> qgram_get(size_t qgram_idx) const
+  constexpr std::array<uint8_t,qgram_length> qgram_get(size_t qgram_idx) const
   {
     std::array<uint8_t,qgram_length> qgram{};
     for(size_t i = 0; i < qgram_length; i++)

@@ -4,9 +4,10 @@
 #include<cassert>
 #include "filter/utils.hpp"
 
-#ifndef ACC_RATE
-#define ACC_RATE 0.001
+#ifndef THRESHOLD_FACTOR
+#define THRESHOLD_FACTOR 4
 #endif
+
 
 template<class ScoreClass,const uint8_t max_num_of_convolution>
 class Distribution {
@@ -31,8 +32,8 @@ class Distribution {
       psum += convoluted_distribution[i];
       psum_arr[i] = psum;
     }
-
-    const size_t cutoff = static_cast<size_t>(psum_arr[0] * ACC_RATE);
+    //const size_t cutoff = constexpr_pow(undefined_rank,(curr_iteration+1))
+    const size_t cutoff = static_cast<size_t>(psum_arr[0] * THRESHOLD_FACTOR / 1000000);
     
     for(i = num_possible_values_max-1; i < num_possible_values_max; i--){
       if(psum_arr[i] > cutoff) break;
@@ -146,7 +147,7 @@ class Distribution_2{
       std::cout << (int)convoluted_distribution[i] << std::endl;
     }
 
-    const size_t cutoff = static_cast<size_t>(power_2(undefined_rank,2*num_distributions) * ACC_RATE);
+    const size_t cutoff = static_cast<size_t>(constexpr_pow(undefined_rank,2*num_distributions) * THRESHOLD_FACTOR / 1000000);
 
     for(; rel_score < num_vals_max; rel_score--){
       total += convoluted_distribution[rel_score];

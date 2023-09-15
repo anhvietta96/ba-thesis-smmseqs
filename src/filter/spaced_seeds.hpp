@@ -239,11 +239,11 @@ class SpacedSeedEncoder {
     return EncodeInfo<weight,num_of_primary_env>(permutation,sorted,sorted_qgram_codes);
   }
 
-  constexpr std::array<uint8_t,num_of_primary_env> subqgram_length_arr_get() const {
+  constexpr const std::array<uint8_t,num_of_primary_env>& subqgram_length_arr_get() const {
     return subqgram_length_arr;
   }
 
-  constexpr std::array<int8_t,num_of_primary_env> env_threshold_arr_get() const {
+  constexpr const std::array<int8_t,num_of_primary_env>& env_threshold_arr_get() const {
     return env_threshold_arr;
   }
 
@@ -261,6 +261,10 @@ class SpacedSeedEncoder {
 
   constexpr size_t weight_get() const {
     return weight;
+  }
+
+  constexpr const std::bitset<16>& seed_bitset_get() const {
+    return seed_bitset;
   }
 };
 #endif

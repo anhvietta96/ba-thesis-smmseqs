@@ -6,7 +6,7 @@
 #include "sequences/gttl_multiseq.hpp"
 #include "filter/spaced_seeds.hpp"
 #include "utilities/constexpr_for.hpp"
-
+#include "alignment/blosum62.hpp"
 
 /*TODO
 finish spaced seed test (seed choice) ? template x
@@ -15,6 +15,10 @@ score matrix x environment
 check err ? new compile x
 1D map sorted qmer x
 */
+
+#ifndef MAX_SUBQGRAM_LENGTH
+#define MAX_SUBQGRAM_LENGTH 3
+#endif
 
 static void usage(const cxxopts::Options &options)
 {
@@ -116,7 +120,8 @@ template<const char* char_spec, const size_t undefined_rank,const uint8_t seed_i
 constexpr void process(GttlMultiseq* multiseq, const bool show)
 {
   constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
-  constexpr const SpacedSeed2SortedCode<char_spec,undefined_rank,seed> spaced_seeds{};
+  constexpr const SpacedSeedEncoder<Blosum62,seed,MAX_SUBQGRAM_LENGTH> spaced_seeds{};
+  constexpr const auto num_primary_env = spaced_seeds.num_of_primary_env_get();
   
   const auto total_seq_num = multiseq->sequences_number_get();
   for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
@@ -130,11 +135,13 @@ constexpr void process(GttlMultiseq* multiseq, const bool show)
       for(size_t i = 0; i < seq_len - seed_len + 1; i++)
       {
         const auto encode_inf = spaced_seeds.encode(curr_seq+i);
-        code += encode_inf.code;
+        for(size_t env_idx = 0; env_idx < num_primary_env; env_idx++){
+          code += encode_inf.codes[env_idx];
+        }
       }
       if(show)
       {
-        std::cout << code << std::endl;
+        std::cout << (int) code << std::endl;
       }
     }
   }

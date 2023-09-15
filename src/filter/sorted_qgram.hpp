@@ -1,6 +1,6 @@
 #ifndef SORTED_QGRAM_HPP
 #define SORTED_QGRAM_HPP
-
+#include <bitset>
 #include "sequences/alphabet.hpp"
 #include "utilities/constexpr_for.hpp"
 #include "filter/utils.hpp"

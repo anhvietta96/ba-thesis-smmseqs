@@ -3,17 +3,16 @@
 #include <stdexcept>
 #include "utilities/cxxopts.hpp"
 #include "utilities/runtime_class.hpp"
-#include "sequences/gttl_multiseq.hpp"
 #include "utilities/constexpr_for.hpp"
-#include "sequences/literate_multiseq.hpp"
-#include "filter/composite_env.hpp"
 #include "alignment/blosum62.hpp"
+#include "filter/MMseqs2It.hpp"
 
 #ifndef MAX_SUBQGRAM_LENGTH
 #define MAX_SUBQGRAM_LENGTH 3
 #endif
-#undef __SSSE3__
-#define ALLSEED
+
+//#undef __SSSE3__
+#define TESTSEED
 
 static void usage(const cxxopts::Options &options)
 {
@@ -34,9 +33,9 @@ class SpacedSeedOptions{
 
   void parse(int argc, char **argv)
   {
-    cxxopts::Options options(argv[0],"tests for sum of spaced seed intcode");
+    cxxopts::Options options(argv[0],"run MMseqs2 on a query & a target database");
     options.set_width(80);
-    options.custom_help(std::string("[options] filename1 [filename2 ...]"));
+    options.custom_help(std::string("[options] query_db target_db"));
     options.set_tab_expansion();
     options.add_options()
        ("l,list_seeds", "output available seed list",
@@ -60,6 +59,9 @@ class SpacedSeedOptions{
       } else
       {
         const std::vector<std::string>& unmatched_args = result.unmatched();
+        if(unmatched_args.size() != 2){
+          throw cxxopts::OptionException("Exactly 2 dbs are needed.");
+        }
         for (size_t idx = 0; idx < unmatched_args.size(); idx++)
         {
           inputfiles.push_back(unmatched_args[idx]);
@@ -140,55 +142,26 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
 #ifdef TESTSEED
 static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   15UL,
-  127UL,
 };
 #endif
 constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab)/sizeof(size_t);
 
 template<const char* char_spec, const size_t undefined_rank,const uint8_t seed_idx>
-void process(GttlMultiseq* multiseq, const bool show, const bool with_simd)
+void process(GttlMultiseq* query,GttlMultiseq* target,const bool show, const bool with_simd)
 {
   constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
-  constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
-  const LiterateMultiseq<char_spec,undefined_rank> literate_multiseq{*multiseq};
-  const auto target_distribution = literate_multiseq.rank_dist_get();
-  CompositeEnvironment<Blosum62,seed> env_constructor{};
-  env_constructor.background_correction_set(target_distribution);
-  constexpr const size_t seed_len = env_constructor.span_get();
-  constexpr const size_t weight = env_constructor.weight_get();
-
-  const auto total_seq_num = multiseq->sequences_number_get();
-  for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
-  {
-    //std::cout << (int) seqnum << '\t' << (int) total_seq_num << std::endl;
-    const char* curr_seq = multiseq->sequence_ptr_get(seqnum);
-    const size_t seq_len = multiseq->sequence_length_get(seqnum);
-    if(seq_len >= seed_len)
-    {
-      for(size_t i = 0; i < seq_len - seed_len + 1; i++)
-      {
-        //std::cout << (int) seqnum << '\t' << (int) i << std::endl;
-        env_constructor.process_seed(curr_seq+i,seq_len,i+1,with_simd);
-      }
-      if(show)
-      {
-        for(size_t i = 0; i < env_constructor.size(); i++)
-        {
-          const auto elem = env_constructor.elem_get(i);
-          const auto score = elem.score;
-          const auto position = elem.position;
-          const auto qgram = elem.qgram;
-
-          std::cout << (int) position << '\t' << (int) score << '\t';
-          for(uint8_t idx = 0; idx < weight; idx++)
-          {
-            std::cout << alpha.rank_to_char(qgram[idx]);
-          }
-          std::cout << std::endl;
-        }
-      }
+  MMseqs2<Blosum62,InvIntHashFunc,seed> mmseqs2{query,target,with_simd};
+  
+  if(show){
+    std::cout << "#query_seq_num" << '\t' << "query_seq_pos" << '\t' << 
+      "target_seq_num" << '\t' << "target_seq_pos" << '\t' << 
+      "score" << '\t' << "code" << '\t' << std::endl;
+    for(size_t i = 0; i < mmseqs2.size(); i++){
+      const auto hit = mmseqs2.hit_get(i);
+      std::cout << (int) hit.query_seq_num << '\t' << (int) hit.query_seq_pos << '\t' << 
+      (int) hit.target_seq_num << '\t' << (int) hit.target_seq_pos << '\t' << 
+      (int) hit.score << '\t' << (int) hit.code << '\t' << std::endl;
     }
-    env_constructor.reset();
   }
 }
 
@@ -213,8 +186,6 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
   }
 
-  GttlMultiseq *multiseq = nullptr;
-
   if(options.list_seed_option_is_set())
   {
     for(size_t seed_idx = 0; seed_idx < seed_table_size; seed_idx++)
@@ -222,6 +193,8 @@ int main(int argc, char *argv[])
       std::cout << gt_spaced_seed_spec_tab[seed_idx] << std::endl;
     }
   }
+
+  GttlMultiseq *query = nullptr, *target = nullptr;
 
   const std::vector<std::string> &inputfiles = options.inputfiles_get();
   if(inputfiles.size() == 0)
@@ -231,7 +204,9 @@ int main(int argc, char *argv[])
 
   try
   {
-    multiseq = new GttlMultiseq(inputfiles,true,UINT8_MAX);
+    query = new GttlMultiseq(inputfiles[0],true,UINT8_MAX);
+    
+    target = new GttlMultiseq(inputfiles[1],true,UINT8_MAX);
   }
   catch (std::string &msg)
   {
@@ -240,10 +215,11 @@ int main(int argc, char *argv[])
       std::cerr << argv[0] << ": file \"" << inputfile << "\""
                 << msg << std::endl;
     }
-    delete multiseq;
+    delete query;
+    delete target;
     return EXIT_FAILURE;
   }
-  
+
   const std::string &seeds = options.seeds_get();
   if(seeds.size() > 1)
   {
@@ -271,7 +247,7 @@ int main(int argc, char *argv[])
       static constexpr const Blosum62 sc{};
       static constexpr const auto char_spec = sc.character_spec;
       static constexpr const auto undefined_rank = sc.num_of_chars;
-      process<char_spec,undefined_rank,seed_idx_constexpr>(multiseq,show,with_simd);
+      process<char_spec,undefined_rank,seed_idx_constexpr>(query,target,show,with_simd);
     }
   });
   
@@ -282,10 +258,17 @@ int main(int argc, char *argv[])
     {
       std::cout << "# filename\t" << inputfile << std::endl;
     }
-    for (auto &msg : multiseq->statistics())
+    std::cout << "Query db statistics" << std::endl;
+    for (auto &msg : query->statistics())
+    {
+      std::cout << "# " << msg << std::endl;
+    }
+    std::cout << "Target db statistics" << std::endl;
+    for (auto &msg : target->statistics())
     {
       std::cout << "# " << msg << std::endl;
     }
   }
-  delete multiseq;
+  delete query;
+  delete target;
 }

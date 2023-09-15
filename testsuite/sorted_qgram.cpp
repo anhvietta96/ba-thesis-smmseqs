@@ -113,8 +113,8 @@ int main(int argc, char *argv[])
   }
 
   const uint8_t qgram_length = options.get_qgram_length()[0]-48;
-
-  constexpr_for<1,4,1>([&] (auto qgram_length_constexpr){
+#define MAX_LENGTH 3
+  constexpr_for<1,MAX_LENGTH+1,1>([&] (auto qgram_length_constexpr){
     if(qgram_length == qgram_length_constexpr){
       if(options.protein_option_is_set()) {
         constexpr const SortedQmer<amino_acids,20,qgram_length_constexpr> map{};
@@ -126,8 +126,23 @@ int main(int argc, char *argv[])
             std::cout << output_qgram << std::endl;
           }
         }
+      } else {
+        constexpr const SortedQmer<nucleotides_upper_lower_ACTG,4,qgram_length_constexpr> map{};
+        for(size_t i = 0; i < map.size_get(); i++) {
+          const auto qgram = map.extern_qgram_get(i);
+          if(options.display_option_is_set())
+          {
+            const std::string output_qgram(std::begin(qgram),std::end(qgram));
+            std::cout << output_qgram << std::endl;
+          }
+        }
       }
     }
   });
+
+  if(qgram_length > MAX_LENGTH){
+    std::cerr << argv[0] << ": only accounts for 1 <= q <= 3" << std::endl;
+    return EXIT_FAILURE;
+  }
   return EXIT_SUCCESS;
 }

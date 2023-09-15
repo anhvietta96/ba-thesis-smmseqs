@@ -180,7 +180,7 @@ def multiset_weights(alphasize,multiset_size):
       suffixcode = 0
       for pos in range(0,m-1):
         suffixcode += weights_table[pos][multiset[m-1-pos]]
-      # print("{} {} {}".format(multiset,suffixcode,idx))
+      print("{} {} {}".format(multiset,suffixcode,idx))
       assert suffixcode <= idx
       difference = idx - suffixcode
       if weights[multiset[0]] is None:

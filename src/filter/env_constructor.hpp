@@ -905,8 +905,8 @@ class Env4Constructor_3 {
   Env4Constructor_3(){};
 
   //using ReducedEnvElemType = std::pair<int8_t,std::array<uint8_t,4>>;
-  void env_construct(const size_t unsorted_qgram_code,const std::array<uint8_t,4> permutation, const bool sorted,
-    const size_t position, const bool with_simd)
+  void env_construct(const size_t unsorted_qgram_code,const std::array<uint8_t,4> &permutation, const bool sorted,
+                      const size_t position, const bool with_simd)
   {
     constexpr const auto char_spec = sc.character_spec;
     constexpr const auto undefined_rank = sc.num_of_chars;
@@ -953,7 +953,6 @@ class Env4Constructor_3 {
       }
     }*/
     
-
     const int8_t min_score_qgram_1_in_env = qgram_env_1[qgram_env_1.size()-1].score;
     const int8_t min_score_qgram_2_in_env = qgram_env_2[qgram_env_2.size()-1].score;
     
@@ -1355,6 +1354,322 @@ class Env6Constructor_3 {
   }
 
   LocalEnvElem<6> elem_get(const size_t idx) const
+  {
+    return constructed_env[idx];
+  }
+};
+
+template<class ScoreClass,const int8_t threshold>
+class Env5Constructor {
+  static constexpr const ScoreClass sc{};
+  static constexpr const int8_t q_threshold_1 = threshold - 3*sc.highest_score;
+  static constexpr const int8_t q_threshold_2 = threshold - 2*sc.highest_score;
+  
+  const QgramEnvironment<ScoreClass,2,q_threshold_1> env_2{};
+  const QgramEnvironment<ScoreClass,3,q_threshold_2> env_3{};
+
+  std::vector<LocalEnvElem<5>> constructed_env{};
+  
+  using ScorePosition = std::pair<uint16_t,uint16_t>;
+  std::vector<ScorePosition> create_threshold(std::vector<ScoreQgramcodePair> qgram_env) const
+  {
+    int8_t curr_score = qgram_env[0].score;
+    uint16_t start = 0;
+    std::vector<ScorePosition> threshold_arr{};
+    
+    for(uint16_t idx = 1; idx < qgram_env.size(); idx++)
+    {
+      const auto elem = qgram_env[idx];
+      if(elem.score < curr_score)
+      {
+        threshold_arr.push_back(std::make_pair(start,idx-1));
+        for(uint16_t j = 0; j < static_cast<uint16_t>(curr_score - elem.score -1); j++)
+        {
+          threshold_arr.push_back(std::make_pair(__UINT16_MAX__,__UINT16_MAX__));  
+        }
+        start = idx;
+        curr_score = elem.score;
+      }
+    }
+    threshold_arr.push_back(std::make_pair(start,qgram_env.size()-1));
+
+    return threshold_arr;
+  }
+
+  using EnvElemType = std::tuple<int8_t,ScorePosition,ScorePosition>;
+  void insert_sort(std::vector<EnvElemType> temp_env, EnvElemType elem)
+  {
+    if(temp_env.size() == 0)
+    {
+      temp_env.push_back(elem);
+    }
+    else
+    {
+      auto it = temp_env.begin();
+      while(std::get<0>(*it) >= std::get<0>(elem))
+      {
+        it++;
+      }
+      temp_env.insert(it,elem);
+    }
+  }
+
+  std::array<uint8_t,5> process_qgram(std::array<uint8_t,2> u_qgram_1,std::array<uint8_t,3> u_qgram_2,
+  const std::array<uint8_t,5> permutation, const bool orig_qgram_sorted) const
+  {
+    if(orig_qgram_sorted)
+    {
+      return std::array<uint8_t,5>{ u_qgram_1[0], u_qgram_1[1],u_qgram_2[0],u_qgram_2[1],u_qgram_2[2]};
+    }
+    else
+    {
+      const uint8_t ref_qgram[5] = { u_qgram_1[0], u_qgram_1[1],u_qgram_2[0],u_qgram_2[1],u_qgram_2[2]};
+      std::array<uint8_t,5> transformed_qgram{};
+      for(uint8_t idx = 0; idx < 5; idx++)
+      {
+        transformed_qgram[permutation[idx]] = ref_qgram[idx];
+      }
+      return transformed_qgram;
+    }
+  }
+
+  void process_qgram_with_simd(const std::array<uint8_t,5> permutation, const bool orig_qgram_sorted,
+  const size_t position)
+  {
+    if(orig_qgram_sorted) return;
+    size_t i = constructed_env.size()-1;
+    
+    while(i < constructed_env.size())
+    {
+      if(constructed_env[i].position != position) break;
+      i--;
+    }
+
+    const size_t num_of_qgrams = constructed_env.size()-1-i;
+    if(num_of_qgrams == 0) return;
+    const size_t num_of_simd_operations = (num_of_qgrams) ? ((num_of_qgrams-1) / 3 + 1) : 0;
+    size_t qgram_pos = i+1;
+    size_t curr_qgram = 0;
+    //std::cout << (int)position << '\t'<<(int) i << '\t' << (int) num_of_qgrams << '\t' << (int) num_of_simd_operations << '\t' << (int) qgram_pos << std::endl;
+    
+    //invert permutation
+    std::array<uint8_t,5> inv_permutation{};
+    for(uint8_t k = 0; k < 5; k++)
+    {
+      inv_permutation[permutation[k]] = k;
+    }
+
+    //create __m128i for transformation
+    uint8_t transformation[16] = {
+      static_cast<uint8_t>(inv_permutation[0]+0),static_cast<uint8_t>(inv_permutation[1]+0),static_cast<uint8_t>(inv_permutation[2]+0),static_cast<uint8_t>(inv_permutation[3]+0),
+      static_cast<uint8_t>(inv_permutation[4]+0),static_cast<uint8_t>(inv_permutation[0]+5),static_cast<uint8_t>(inv_permutation[1]+5),static_cast<uint8_t>(inv_permutation[2]+5),
+      static_cast<uint8_t>(inv_permutation[3]+5),static_cast<uint8_t>(inv_permutation[4]+5),static_cast<uint8_t>(inv_permutation[0]+10),static_cast<uint8_t>(inv_permutation[1]+10),
+      static_cast<uint8_t>(inv_permutation[2]+10),static_cast<uint8_t>(inv_permutation[3]+10),static_cast<uint8_t>(inv_permutation[4]+10),0x80
+    };/*
+    std::cout << "Permutation\t";
+    for(uint8_t j = 0; j < 16; j++)
+    {
+      std::cout << (int)transformation[j] << '\t';
+    }
+    std::cout << std::endl;*/
+
+    __m128i *transform_m128i = (__m128i *) transformation;
+    __m128i loaded_transformation = _mm_load_si128(transform_m128i);
+    
+    for (size_t simd_op_no = 0; simd_op_no < num_of_simd_operations; simd_op_no++)
+    {
+      uint8_t buf[16]{};
+      uint8_t filled_qgram = 0;
+      while(curr_qgram < num_of_qgrams and filled_qgram < 3)
+      {
+        //fill buffer
+        auto qgram = constructed_env[qgram_pos].qgram;
+        for(uint8_t char_idx = 0; char_idx < 5; char_idx++)
+        {
+          buf[filled_qgram*5+char_idx] = qgram[char_idx];
+        }
+        //std::cout << (int)qgram_pos << std::endl;
+        filled_qgram++;
+        curr_qgram++;
+        qgram_pos++;
+      }/*
+      std::cout << "Buffer\t";
+      for(uint8_t j = 0; j < 16; j++)
+      {
+        std::cout << (int)buf[j] << '\t';
+      }
+      std::cout << std::endl;*/
+
+      __m128i *vector = (__m128i *) buf;
+      __m128i loaded_vector = _mm_load_si128(vector);
+
+      //apply on buffer
+      __m128i loaded_result = _mm_shuffle_epi8(loaded_vector,loaded_transformation);
+      _mm_store_si128(vector,loaded_result);
+
+      uint8_t* result = (uint8_t*) vector;
+      //std::cout << (int) filled_qgram << std::endl;
+      //save back in env
+      for(uint8_t saved_qgram = filled_qgram; saved_qgram > 0; saved_qgram--)
+      {
+        uint8_t curr_saved_qgram = qgram_pos - saved_qgram;
+        //std::cout << '2' << '\t' << (int) curr_saved_qgram << std::endl;
+        assert(curr_saved_qgram < constructed_env.size() and curr_saved_qgram >= 0);
+
+        uint8_t extracted_from_result[5]{};
+        for(uint8_t j = 0; j < 5; j++)
+        {
+          extracted_from_result[j] = result[(filled_qgram-saved_qgram)*5+j];
+        }
+        
+        constructed_env[curr_saved_qgram].set_qgram(extracted_from_result);
+      }/*
+      std::cout << "Result\t";
+      for(uint8_t j = 0; j < 16; j++)
+      {
+        std::cout << (int)result[j] << '\t';
+      }
+      std::cout << std::endl;*/
+    }
+  }
+
+  public:
+  Env5Constructor(){};
+
+  void env_construct(const size_t unsorted_qgram_code,const std::array<uint8_t,5> permutation, const bool sorted,
+    const size_t position, const bool with_simd)
+  {
+    constexpr const auto char_spec = sc.character_spec;
+    constexpr const auto undefined_rank = sc.num_of_chars;
+    constexpr ScoreStats<ScoreClass> stats{};
+
+    constexpr const SortedQmer<char_spec,undefined_rank,2> sorted_q_2{};
+    constexpr const UnsortedQmer<char_spec,undefined_rank,2> unsorted_q_2{};
+    constexpr const SortedQmer<char_spec,undefined_rank,3> sorted_q_3{};
+    constexpr const UnsortedQmer<char_spec,undefined_rank,3> unsorted_q_3{};
+
+    const uint16_t unsorted_qgram_1_code = static_cast<uint16_t>(unsorted_qgram_code / (undefined_rank*undefined_rank*undefined_rank));
+    const uint16_t unsorted_qgram_2_code = static_cast<uint16_t>(unsorted_qgram_code % (undefined_rank*undefined_rank*undefined_rank));
+
+    const uint16_t qgram_1_code = sorted_q_2.sorted_code_get(unsorted_qgram_1_code);
+    const uint16_t qgram_2_code = sorted_q_3.sorted_code_get(unsorted_qgram_2_code);
+
+    //std::cout << "1" << '\t' << (int) unsorted_qgram_1_code << '\t' << (int) unsorted_qgram_2_code << std::endl;
+    //std::cout << "1" << '\t' << (int) qgram_1_code << '\t' << (int) qgram_2_code << std::endl;
+/*
+    for(size_t i = 0; i < undefined_rank*undefined_rank; i++)
+    {
+      std::cout << (int) i << '\t' << (int) sorted_q.sorted_code_get(i) << std::endl;
+    }
+*/
+    const auto qgram_1 = sorted_q_2.qgram_get(qgram_1_code);
+    const auto qgram_2 = sorted_q_3.qgram_get(qgram_2_code);
+
+    const int8_t max_score_qgram_1 = stats.template max_score_of_qgram<2>(qgram_1);
+    //constexpr const int8_t min_score_qgram_1 = stats.template min_score_of_qgram<2>(qgram_1);
+    const int8_t max_score_qgram_2 = stats.template max_score_of_qgram<3>(qgram_2);
+    //constexpr const int8_t min_score_qgram_2 = stats.template min_score_of_qgram<2>(qgram_2);
+
+    const auto qgram_env_1 = env_2.qgram_env(qgram_1_code);
+    const auto qgram_env_2 = env_3.qgram_env(qgram_2_code);
+
+    const int8_t min_score_qgram_1_in_env = qgram_env_1[qgram_env_1.size()-1].score;
+    const int8_t min_score_qgram_2_in_env = qgram_env_2[qgram_env_2.size()-1].score;
+    
+    const auto threshold_arr_1 = create_threshold(qgram_env_1);
+    const auto threshold_arr_2 = create_threshold(qgram_env_2);
+    //std::cout << "2" << '\t' << (int) qgram_1_code << '\t' << (int) qgram_2_code << std::endl;
+    
+    std::vector<std::tuple<int8_t,ScorePosition,ScorePosition>> temp_env{};
+
+    for(int8_t score_1 = max_score_qgram_1; score_1 >= min_score_qgram_1_in_env; score_1--)
+    {
+      const uint16_t pos_1 = static_cast<uint16_t>(max_score_qgram_1 - score_1);
+      if(threshold_arr_1[pos_1].first == __UINT16_MAX__) continue;
+      for(int8_t score_2 = max_score_qgram_2; score_2 >= threshold - score_1; score_2--)
+      {
+        if(score_2 < min_score_qgram_2_in_env) continue;
+        const uint16_t pos_2 = static_cast<uint16_t>(max_score_qgram_2 - score_2);
+        if(threshold_arr_2[pos_2].first == __UINT16_MAX__) continue;
+        
+        const auto elem = std::tuple<int8_t,ScorePosition,ScorePosition>(score_1+score_2,
+          threshold_arr_1[pos_1],threshold_arr_2[pos_2]);
+        if(temp_env.size() == 0)
+        {
+          temp_env.push_back(elem);
+        }
+        else
+        {
+          //insertion sort
+          uint16_t idx = 0;
+          while(idx < temp_env.size())
+          {
+            if(std::get<0>(temp_env[idx]) < score_1+score_2)
+            {
+              break;
+            }
+            idx++;
+          }
+          if(idx == temp_env.size())
+          {
+            temp_env.push_back(elem);
+          }
+          else
+          {
+            temp_env.insert(temp_env.begin()+idx,elem);
+          }
+        }
+      }
+    }
+    
+    //std::cout << "3" << '\t' << (int) qgram_1_code << '\t' << (int) qgram_2_code << std::endl;
+    for(auto const& elem : temp_env)
+    {
+      const auto score = std::get<0>(elem);
+      const auto start_1 = std::get<1>(elem).first;
+      const auto end_1 = std::get<1>(elem).second;
+      const auto start_2 = std::get<2>(elem).first;
+      const auto end_2 = std::get<2>(elem).second;
+      for(uint16_t pos_1 = start_1; pos_1 <= end_1; pos_1++)
+      {
+        for(uint16_t pos_2 = start_2; pos_2 <= end_2; pos_2++)
+        {
+          const auto u_qgram_1 = unsorted_q_2.qgram_get(qgram_env_1[pos_1].code);
+          const auto u_qgram_2 = unsorted_q_3.qgram_get(qgram_env_2[pos_2].code);
+          //constructed_env.push_back(std::make_pair(score,process_qgram(u_qgram_1,u_qgram_2,permutation,sorted)));
+          if(!with_simd)
+          {
+            const auto rearranged_qgram = process_qgram(u_qgram_1,u_qgram_2,permutation,sorted);
+            const LocalEnvElem<5> env_elem{position,score,rearranged_qgram};
+            constructed_env.push_back(env_elem);
+          }
+          else
+          {
+            const std::array<uint8_t,5> qgram = {u_qgram_1[0],u_qgram_1[1],u_qgram_2[0],u_qgram_2[1],u_qgram_2[2]};
+            /*for(uint8_t i = 0; i < qgram.size(); i++)
+            {
+              std::cout << (int)qgram[i] << '\t';
+            }
+            std::cout << std::endl;*/
+            const LocalEnvElem<5> env_elem{position,score,qgram};
+            constructed_env.push_back(env_elem);
+          }
+        }
+      }
+    }
+    
+    if(with_simd)
+    {
+      process_qgram_with_simd(permutation,sorted,position);
+    }
+  }
+
+  size_t size() const
+  {
+    return constructed_env.size();
+  }
+
+  LocalEnvElem<5> elem_get(const size_t idx) const
   {
     return constructed_env[idx];
   }
