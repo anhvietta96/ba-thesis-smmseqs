@@ -1,0 +1,5 @@
+Internally the spaced seed is stored and represented as a 64-bit constant integer. The first step to process this spaced seed is a conversion to a bitset. Its span could then be determined as the length of the bitset subtracted by the position of the most significant 1-bit and its weight is then obtained by iterating over its span.
+
+The program also creates a scheme to divide the spaced seed. The position of the heavier primary environments (if any) is placed at the earlier portion of the spaced seed.
+
+In order to prepare for the recursive hashing of the target sequences, the spaced seeds are also divided in $b$ blocks of smaller $q$-grams. The complexity of the recursive hashing of a sequence of length $n$ is $O(nb)$.

@@ -1,1 +1,36 @@
-Instead of constructing the full unsorted-unsorted q-grams, with $q \in \{2,3\}$
+Given a residue alphabet \(\Alpha\) and
+\(\sigma:\Alpha\times\Alpha\to\Reals\)  a score function. For
+\(u,v\in\Alpha^{\ast}\), \(|u|=|v|\) is the score defined as
+
+$$\sigma(u,v)=\sum_{i=0}^{|u|-1}\sigma(\Subchar{u}{i},\Subchar{v}{i})$$
+
+In order to compute the $k$-environment for a \(7\)-gram efficiently, we decompose it to one group of trigram and two groups of digrams, for all of which a primary environment \(\Scoretable{u}=\lbrack (v,\sigma(u,v))\mid v\in\Alpha^{q}\rbrack\) is computed and sorted after the subscores \(\sigma(u,v))\).
+
+The full $k$-environment of the \(7\)-gram can then be iterated as the cartesian product
+\begin{align}
+\Scoretable{\Substring{u}{0}{2}}\times \Scoretable{\Substring{u}{3}{4}}\times
+\Scoretable{\Substring{u}{5}{6}}\label{ScoreTablesCartesian}
+\end{align}
+The iteration over primary environments can then stop, when it's no longer feasible to reach the threshold \(k\).
+
+The key to improve over the method outlined in MMseqs2, is the following:
+
+Given a bijective mapping \(\varphi:\{0,1,\ldots,q-1\}\to \{0,1,\ldots,q-1\}\). For any sequence of length \(q\),  we define a function
+\begin{align}
+\varphi(u)=\Subchar{u}{\varphi(0)}\Subchar{u}{\varphi(1)}\ldots\Subchar{u}{\varphi(q-1)}  
+\end{align}
+in that, \ \(\varphi\) permutate the residue in \(u\).
+
+Given a special permutation \(\Permname{u}\), so that it orders the characters in \(u\): \(\Subchar{u}{\Perm{u}{i}}\leq\Subchar{u}{\Perm{u}{i+1}}\forall i, 0\leq i\leq q-2\). The resulted \(q\)-gram \(u_s\) from the permutation is then sorted \(q\)-gram and could be rearranged using the inverse function:
+\begin{align}
+\Perminverse{u}{\Perm{u}{i}}=i \forall i, 0\leq i\leq q-1 \Rightleftarrow \Perminverse{u}{\Perm{u}{u}}=u
+\end{align}
+
+It can be shown that
+\begin{align}
+\sigma(u,v)=\sigma(\Perm{u}{u},\Perm{u}{v}) \forall v\in\Alpha^{q}
+\end{align}
+which means, the same permutation function applied on both sequences \(u\) and \(v\)
+permutates the characters in the same way and the score between the unpermutated sequences is equal to the score between the permutated. This means that the score matrix ST can be computed only for the sorted \(q\)-grams, and it would hold all scores needed to compute the full $k$-environment.
+
+The advantage of this approach is the smaller number of sorted $q$-grams compared to unsorted, leading to a more efficient memory usage and a more compacted computation of the score matrix ST. Any overhead caused by the rearragement of the sorted $q$-grams, see Equation~\ref{Scoretableuprime}, can be reduced by SIMD instructions.

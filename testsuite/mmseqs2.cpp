@@ -12,7 +12,7 @@
 #endif
 
 //#undef __SSSE3__
-#define TESTSEED
+#define ALLSEED
 
 static void usage(const cxxopts::Options &options)
 {
@@ -25,8 +25,9 @@ class SpacedSeedOptions{
   bool help_option = false,
        with_simd = false,
        list_seeds = false,
-       show = false;
-  std::string seeds = "0", threshold = "20";
+       show = false,
+       short_header_option = false;
+  std::string seeds = "0", sensitivity = "1";
 
  public:
   SpacedSeedOptions() {};
@@ -38,17 +39,19 @@ class SpacedSeedOptions{
     options.custom_help(std::string("[options] query_db target_db"));
     options.set_tab_expansion();
     options.add_options()
-       ("l,list_seeds", "output available seed list",
+        ("r,short_header", "show header up to and excluding the first blank",
+        cxxopts::value<bool>(short_header_option)->default_value("false"))
+        ("l,list_seeds", "output available seed list",
         cxxopts::value<bool>(list_seeds)->default_value("false"))
-       ("d,seeds", "choose seeds to compute",
+        ("d,seeds", "choose seeds to compute",
         cxxopts::value<std::string>(seeds)->default_value("0"))
-       ("w,with_simd", "compute with SIMD",
+        ("w,with_simd", "compute with SIMD",
         cxxopts::value<bool>(with_simd)->default_value("false"))
-       ("t,threshold", "set threshold",
-        cxxopts::value<std::string>(threshold)->default_value("20")) 
-       ("s,show", "output sum of intcode",
+        ("v,sensitivity", "set sensitivity",
+        cxxopts::value<std::string>(sensitivity)->default_value("1")) 
+        ("s,show", "output sum of intcode",
         cxxopts::value<bool>(show)->default_value("false"))
-       ("h,help", "print usage");
+        ("h,help", "print usage");
     try
     {
       auto result = options.parse(argc, argv);
@@ -78,6 +81,10 @@ class SpacedSeedOptions{
   {
     return help_option;
   }
+  bool short_header_option_is_set(void) const noexcept
+  {
+    return short_header_option;
+  }
   bool with_simd_is_set(void) const noexcept
   {
     return with_simd;
@@ -94,9 +101,9 @@ class SpacedSeedOptions{
   {
     return seeds;
   }
-  const std::string &threshold_get(void) const noexcept
+  const std::string &sensitivity_get(void) const noexcept
   {
-    return threshold;
+    return sensitivity;
   }
   const std::vector<std::string> &inputfiles_get(void) const noexcept
   {
@@ -133,7 +140,6 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   3205UL /* 3, 5, 12 110010000101, MMseq2_proteins_3 */,
   237UL /* 4, 6, 8 11101101, MMseq2_proteins_4 */,
   851UL /* 5, 6, 10 1101010011, MMseq2_proteins_5 */,
-  127UL,
   981UL /* 6, 7, 10 1111010101, MMseq2_proteins_6 */,
   1715UL /* 7, 7, 11 11010110011, MMseq2_proteins_7 */
 };
@@ -144,25 +150,15 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   15UL,
 };
 #endif
+
 constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab)/sizeof(size_t);
 
 template<const char* char_spec, const size_t undefined_rank,const uint8_t seed_idx>
-void process(GttlMultiseq* query,GttlMultiseq* target,const bool show, const bool with_simd)
+void process(GttlMultiseq* query,GttlMultiseq* target,const double sensitivity,
+            const bool with_simd,const bool show,const bool short_header)
 {
   constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
-  MMseqs2<Blosum62,InvIntHashFunc,seed> mmseqs2{query,target,with_simd};
-  
-  if(show){
-    std::cout << "#query_seq_num" << '\t' << "query_seq_pos" << '\t' << 
-      "target_seq_num" << '\t' << "target_seq_pos" << '\t' << 
-      "score" << '\t' << "code" << '\t' << std::endl;
-    for(size_t i = 0; i < mmseqs2.size(); i++){
-      const auto hit = mmseqs2.hit_get(i);
-      std::cout << (int) hit.query_seq_num << '\t' << (int) hit.query_seq_pos << '\t' << 
-      (int) hit.target_seq_num << '\t' << (int) hit.target_seq_pos << '\t' << 
-      (int) hit.score << '\t' << (int) hit.code << '\t' << std::endl;
-    }
-  }
+  MMseqs2<Blosum62,InvIntHashFunc,seed> mmseqs2{query,target,sensitivity,with_simd,short_header,show};
 }
 
 int main(int argc, char *argv[])
@@ -205,7 +201,6 @@ int main(int argc, char *argv[])
   try
   {
     query = new GttlMultiseq(inputfiles[0],true,UINT8_MAX);
-    
     target = new GttlMultiseq(inputfiles[1],true,UINT8_MAX);
   }
   catch (std::string &msg)
@@ -218,6 +213,12 @@ int main(int argc, char *argv[])
     delete query;
     delete target;
     return EXIT_FAILURE;
+  }
+
+  if (options.short_header_option_is_set())
+  {
+    query->short_header_cache_create<'|','|'>();
+    target->short_header_cache_create<'|','|'>();
   }
 
   const std::string &seeds = options.seeds_get();
@@ -235,6 +236,8 @@ int main(int argc, char *argv[])
 
   const bool show = options.show_option_is_set();
   const bool with_simd = options.with_simd_is_set();
+  const bool short_header = options.short_header_option_is_set();
+  const double sensitivity = std::stod(options.sensitivity_get());
 
   //const auto threshold_string = options.threshold_get();
   //const int8_t threshold = stoi(threshold_string);
@@ -247,7 +250,7 @@ int main(int argc, char *argv[])
       static constexpr const Blosum62 sc{};
       static constexpr const auto char_spec = sc.character_spec;
       static constexpr const auto undefined_rank = sc.num_of_chars;
-      process<char_spec,undefined_rank,seed_idx_constexpr>(query,target,show,with_simd);
+      process<char_spec,undefined_rank,seed_idx_constexpr>(query,target,sensitivity,with_simd,show,short_header);
     }
   });
   

@@ -1,0 +1,120 @@
+\documentclass[11pt,a4paper]{scrartcl}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+\newcounter{mycommentcounter}
+\newcommand{\Genericcomment}[2]{%
+\par%
+\noindent%
+\fbox{%
+\begin{minipage}{0.95\textwidth}
+\textsl{#1: \#\refstepcounter{mycommentcounter}%
+\arabic{mycommentcounter}: #2}%
+\end{minipage}%
+}%
+\par%
+}
+
+\newcommand{\AVTcomment}[1]{
+\Genericcomment{AVT}{#1}
+}
+
+\newcommand{\SKcomment}[1]{
+\Genericcomment{SK}{#1}
+}
+
+\newcommand{\HashValue}[0]{\mathsf{HashValue}}
+\newcommand{\Substring}[3]{#1\lbrack #2\ldots#3\rbrack}
+\newcommand{\Subchar}[2]{#1\lbrack #2\rbrack}
+\newcommand{\Scoretablename}[0]{\mathsf{ST}}
+\newcommand{\Scoretable}[1]{\Scoretablename\lbrack #1\rbrack}
+\newcommand{\Reals}{\mathbb{R}}
+\newcommand{\Permname}[1]{\varphi_{#1}}
+\newcommand{\Perm}[2]{\Permname{#1}(#2)}
+\newcommand{\Permnameinverse}[1]{\varphi_{#1}^{-1}}
+\newcommand{\Perminverse}[2]{\Permnameinverse{#1}(#2)}
+\newcommand{\Alpha}[0]{\mathcal{A}}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{pdfpages}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{palatino}
+\usepackage{numprint}
+\usepackage{svg}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\title{Efficient Preprocessing of Short Sequence Segments for Efficient Filtering in Comparing Protein Sequences}
+\author{Anh Viet Ta (6747004)}
+
+\begin{document}
+\begin{titlepage}
+\maketitle
+\pagenumbering{gobble}% Remove page numbers (and reset to 1)
+\thispagestyle{empty}
+
+\textbf{Abstract:} 
+\end{titlepage}
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\section{Introduction}
+\section{Modern bioinformatic sequence searching and clustering}
+\subsection{Recent developments}
+\input{mmseqs2_intro}
+\subsection{MMseqs2}
+MMseqs is a software suite for fast and deep clustering and searching of large datasets. It was published on January 6 2016 by Maria Hauser, Martin Steinegger and Johannes S\"odding. An improved, updated version MMseqs2 was published on June 7 2017. It contains three core modules: a fast and sensitive preﬁltering module that sums up the scores of similar k-mers between query and target sequences, an SSE2- and multi-core-parallelized local alignment module, and a clustering module. Compared to BLAST
+\subsubsection{Fast q-gram prefiltering stage}
+\input{mmseqs2_prefiltering}
+\subsubsection{Ungapped alignment stage}
+\input{mmseqs2_ungapped}
+\subsubsection{Smith-Waterman alignment stage}
+\input{mmseqs2_swalign}
+\section{Theoretical background}
+\subsection{Algorithm description}
+\input{Theory_Algodescription}
+\subsection{Score function}
+\input{Theory_scorefunc}
+\subsection{Internal representations of $q$-grams}
+\input{Theory_invint}
+\subsection{SIMD instructions}
+\section{Implementation \& Design}
+\subsection{Input}
+\input{Implementation_Input}
+\subsection{Structure}
+\subsubsection{Relevant classes and dataflow}
+\input{Implementation_structure_classes}
+\subsubsection{Datatypes}
+\input{Implementation_structure_datatypes}
+\subsection{Determining threshold}
+\input{Implementation_threshold}
+\subsection{Sorted q-grams}
+\input{Implementation_sortedqgram}
+\subsubsection{Enumerating}
+\subsubsection{Encoding sequence in linear time}
+\subsection{Extracting and sorting q-gram from spaced seeds}
+\input{Implementation_extracting}
+\subsection{Constructing sub-q-gram environments}
+\input{Implementation_constructing}
+\subsection{Iterating over sequence}
+\input{Implementation_iterating}
+\subsection{SIMD}
+\input{Implementation_SIMD}
+\subsection{Output}
+\input{Implementation_output}
+\section{Benchmark \& Performance}
+\subsection{Determining threshold}
+\subsection{Time performance}
+\subsubsection{Compile time performance}
+\subsubsection{Execute time performance analysis with gprof}
+\subsubsection{Dependence of execute time on acceptance rate}
+\subsection{Spatial Performance with valgrind massif}
+\section{Retrospection \& Future improvements}
+\subsection{Scalability}
+\subsection{Full compile-time calculation of environments}
+\section{Conclusion}
+\section{Reference}
+
+\end{document}

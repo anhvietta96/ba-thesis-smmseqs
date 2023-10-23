@@ -189,8 +189,7 @@ class SpacedSeedEncoder {
     bool swapped = false;
     for(size_t pm = 0; pm < weight; pm++)
     {
-      for(size_t pl = pm; pl > 0 and alpha.char_to_rank(sorted_qgram[pl-1]) 
-      > alpha.char_to_rank(sorted_qgram[pl]); pl--)
+      for(size_t pl = pm; pl > 0 and sorted_qgram[pl-1] > sorted_qgram[pl]; pl--)
       {
         const uint8_t tmp_cc = sorted_qgram[pl-1];
         sorted_qgram[pl-1] = sorted_qgram[pl];
@@ -230,7 +229,7 @@ class SpacedSeedEncoder {
     for(uint8_t i = 0; i < num_of_primary_env; i++){
       code = 0;
       for(uint8_t j = 0; j < subqgram_length_arr[i]; j++){
-        code += multiset_encoder.relative_encode(subqgram_length_arr[i],j,alpha.char_to_rank(sorted_qgram[qgram_idx]));
+        code += multiset_encoder.relative_encode(subqgram_length_arr[i],j,sorted_qgram[qgram_idx]);
         qgram_idx++;
       }
       sorted_qgram_codes[i] = code;

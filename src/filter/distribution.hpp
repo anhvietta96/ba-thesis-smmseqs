@@ -3,11 +3,11 @@
 #include<array>
 #include<cassert>
 #include "filter/utils.hpp"
+#include <math.h>
 
 #ifndef THRESHOLD_FACTOR
-#define THRESHOLD_FACTOR 4
+#define THRESHOLD_FACTOR 1
 #endif
-
 
 template<class ScoreClass,const uint8_t max_num_of_convolution>
 class Distribution {
@@ -155,6 +155,186 @@ class Distribution_2{
     }
 
     return rel_score + 1 + min_val;
+  }
+};
+
+template<class ScoreClass,const uint8_t weight>
+class BGDistribution {
+  static constexpr const ScoreClass sc{};
+  static constexpr const auto undefined_rank = sc.num_of_chars;
+  static constexpr const size_t num_possible_values_single = sc.highest_score - sc.smallest_score + 1;
+  static constexpr const size_t num_possible_values_max = num_possible_values_single*weight;
+
+  public:
+  /*BGDistribution(const std::array<uint64_t,undefined_rank+1>& target_distribution,
+    const uint64_t num_bins,const uint64_t sensitivity){
+    size_t sum_count = 0;
+    for(uint8_t i = 0; i < alpha_size; i++){
+      sum_count += target_distribution[i];
+    }
+
+    double lowest = 0, highest = 0;
+    double corrected_score_matrix[undefined_rank][undefined_rank]{};
+
+    for(size_t i = 0; i < undefined_rank; i++){
+      for(size_t j = 0; j < undefined_rank; j++){
+        corrected_score_matrix[i][j] = sc.score_matrix * target_distribution[i] 
+        * target_distribution[j] / (sum_count * sum_count);
+
+        if(lowest > corrected_score_matrix[i][j]) lowest = corrected_score_matrix[i][j];
+        if(highest < corrected_score_matrix[i][j]) highest = corrected_score_matrix[i][j];
+      }
+    }
+
+    std::array<uint64_t,num_bins> base_hist{};
+    std::array<double,num_bins> intervals{};
+
+    //calc_intervals(intervals,lowest,highest,__UINT64_MAX__);
+    intervals[num_bins-1] = highest;
+    double diff = (highest-lowest)/num_bins;
+    for(size_t i = num_bins-1; i != 0; i--){
+      intervals[i-1] = intervals[i] - diff;
+    }
+    const double base_diff = diff;
+    const std::array<double,num_bins> base_intervals = intervals;
+
+    for(size_t i = 0; i < undefined_rank; i++){
+      for(size_t j = 0; j < undefined_rank; j++){
+        for(size_t k = 0; k < num_bins; k++){
+          if(intervals[k] > corrected_score_matrix[i][j]){
+            base_hist[k]++;
+            break;
+          }
+        }
+      }
+    }
+    
+    std::array<uint64_t,num_bins> hist = base_hist;
+
+    for(uint8_t convolution_num = 0; convolution_num < weight-1; convolution_num++){
+      std::array<double,num_bins> averages{};
+      for(size_t i = num_bins-1; i != 0; i--){
+        averages[i] = intervals[i] - diff/2;
+      }
+      averages[0] = intervals[0] - diff/2;
+      
+      std::array<double,num_bins> old_intervals = intervals;
+      intervals[num_bins-1] = highest*(convolution_num+2);
+      const double new_diff = (highest-lowest)*(convolution_num+2)/num_bins;
+      for(size_t i = num_bins-2; i < num_bins; i--){
+        intervals[i] = intervals[i+1] - diff;
+      }
+      
+      std::array<double,num_bins> temp_hist{};
+      for(size_t i = 0; i < num_bins; i++){
+        for(size_t j = 0; j < num_bins; j++){
+          const curr_score = (old_intervals[i] - diff/2) + (base_intervals[j] - base_diff/2);
+          size_t idx = 0;
+          for(;idx < num_bins;idx++) if(intervals[idx] > curr_score) break;
+          temp_hist[idx] += hist[i] * base_hist[j];
+        }
+      }
+      hist = temp_hist;
+      diff = new_diff;  
+    }
+
+    extract_threshold(hist,sensitity);
+    size_t idx = num_bins-1;
+    
+    for(;idx < num_bins;idx++){
+
+    }
+  }*/
+  //BGDistribution(){};
+  BGDistribution(){};
+
+  int64_t custom_threshold_get(const double sensitivity) const {
+    std::array<uint64_t,num_possible_values_max> base_hist{};
+    for(size_t i = 0; i < undefined_rank; i++){
+      for(size_t j = 0; j < undefined_rank; j++){
+        base_hist[sc.score_matrix[i][j]-sc.smallest_score]++; 
+      }
+    }
+    std::array<uint64_t,num_possible_values_max> hist = base_hist;
+
+    for(uint8_t convolution_num = 1; convolution_num < weight; convolution_num++){
+      std::array<uint64_t,num_possible_values_max> next_hist{};
+      for(size_t i = 0; i < num_possible_values_single * convolution_num; i++){
+        for(size_t j = 0; j < num_possible_values_single; j++){
+          next_hist[i+j] += hist[i] * base_hist[j];
+        }
+      }
+      hist = next_hist;
+    }
+
+    /*std::array<double,num_possible_values_max> test_hist;
+    for(size_t i = 0; i < num_possible_values_max; i++){
+      test_hist[i] = static_cast<double>(hist[i])/constexpr_pow(undefined_rank,weight);
+      test_hist[i] /= constexpr_pow(undefined_rank,weight);
+      std::cout << test_hist[i] << std::endl;
+    }*/
+
+    const uint64_t cutoff = constexpr_pow(undefined_rank,weight)*sensitivity;
+    //std::cout << "Cutoff " << cutoff << std::endl;
+    uint64_t count = 0;
+    size_t idx = num_possible_values_max-1;
+    for(;idx < num_possible_values_max;idx--){
+      count += hist[idx];
+      //std::cout << count << std::endl;
+      if(count > cutoff) break;
+    }
+
+
+
+    return idx + sc.smallest_score * weight + 1;
+  }
+
+  int64_t custom_threshold_get(const std::array<uint64_t,undefined_rank+1>& target_distribution,
+    const double sensitivity) const {
+    
+    size_t sum_count = 0;
+    for(uint8_t i = 0; i < undefined_rank; i++){
+      sum_count += target_distribution[i];
+    }
+    std::array<double,undefined_rank> freq{};
+    for(uint8_t i = 0; i < undefined_rank; i++){
+      freq[i] = static_cast<double>(target_distribution[i]) / sum_count;
+      //std::cout << freq[i] << std::endl;
+    }
+
+    std::array<double,num_possible_values_max> base_hist{};
+    for(size_t i = 0; i < undefined_rank; i++){
+      for(size_t j = 0; j < undefined_rank; j++){
+        base_hist[sc.score_matrix[i][j]-sc.smallest_score] += freq[i] * freq[j]; 
+      }
+    }
+    std::array<double,num_possible_values_max> hist = base_hist;
+
+    for(uint8_t convolution_num = 1; convolution_num < weight; convolution_num++){
+      std::array<double,num_possible_values_max> next_hist{};
+      for(size_t i = 0; i < num_possible_values_single * convolution_num; i++){
+        for(size_t j = 0; j < num_possible_values_single; j++){
+          next_hist[i+j] += hist[i] * base_hist[j];
+        }
+      }
+      hist = next_hist;
+    }
+    /*std::cout << "Distribution" << std::endl;
+    for(size_t i = 0; i < hist.size(); i++){
+      std::cout << hist[i] << std::endl;
+    }*/
+
+    const double cutoff = sensitivity / constexpr_pow(undefined_rank,weight); 
+    //std::cout << "Cutoff " << cutoff << std::endl;
+    double count = 0;
+    size_t idx = num_possible_values_max-1;
+    for(;idx < num_possible_values_max;idx--){
+      count += hist[idx];
+      //std::cout << count << std::endl;
+      if(count > cutoff) break;
+    }
+
+    return sc.smallest_score * weight + idx + 1;
   }
 };
 #endif
