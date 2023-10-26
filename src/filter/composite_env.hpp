@@ -1050,7 +1050,7 @@ class CompositeEnvironment {
   public:
   CompositeEnvironment(){};
 
-  void background_correction_set(const std::array<uint64_t,alpha_size+1>& target_distribution) {
+  void background_correction_set(const std::array<size_t,alpha_size+1>& target_distribution) {
     //calculate frequency of background data
     std::array<float,undefined_rank> frequency;
     size_t sum_count = 0;
