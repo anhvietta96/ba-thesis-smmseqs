@@ -501,7 +501,8 @@ class BytesCompositeEnvironment2 {
   public:
   BytesCompositeEnvironment2(){};
 
-  void set_background_data(const std::array<uint64_t,alpha_size+1>& target_distribution,const double sensitivity){
+  void set_background_data(const std::array<uint64_t,alpha_size+1>& target_distribution,
+  GTTL_UNUSED const std::array<uint64_t,alpha_size+1>& query_distribution,const double sensitivity){
     background_correction_set(target_distribution);
     const BGDistribution<ScoreClass,weight> distribution{};
     threshold = distribution.custom_threshold_get(sensitivity);

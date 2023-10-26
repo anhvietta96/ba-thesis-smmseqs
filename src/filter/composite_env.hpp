@@ -55,7 +55,7 @@ struct LocalEnvElem {
   int8_t score;
   std::array<uint8_t,qgram_length> qgram;
 
-  LocalEnvElem(const size_t& _position, const int8_t& _score,
+  LocalEnvElem(const size_t _position, const int8_t _score,
     const std::array<uint8_t,qgram_length>& _qgram): position(_position),score(_score),qgram(_qgram){};
 
   void set_qgram(const uint8_t* ref_qgram)
@@ -539,9 +539,9 @@ class CompositeEnvironment {
 #endif
   }
 
-  void direct_add(const std::array<uint16_t,num_of_primary_env> qgram_codes,
-                  const std::array<uint8_t,weight> permutation,const bool& sorted,
-                  const size_t& position, GTTL_UNUSED const bool with_simd) {
+  void direct_add(const std::array<uint16_t,num_of_primary_env>& qgram_codes,
+                  const std::array<uint8_t,weight>& permutation,const bool sorted,
+                  const size_t position, GTTL_UNUSED const bool with_simd) {
     //Init all primary environments
     constexpr_for<0,num_of_primary_env,1>([&] (auto env_idx)
     {

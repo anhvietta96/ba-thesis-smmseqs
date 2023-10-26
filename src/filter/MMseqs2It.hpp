@@ -123,7 +123,7 @@ class MMseqs2 {
     multiseq_hash.template dbhash<sizeof_target_unit>(target,target_hash_data,target_packer);
     multiseq_hash.template dbsort<sizeof_target_unit>(target_hash_data,hashbits);
     std::cout << "Finished target hashing" << std::endl;
-    env_constructor.set_background_data(literate_target.rank_dist_get(),sensitivity);
+    env_constructor.set_background_data(literate_target.rank_dist_get(),literate_query.rank_dist_get(),sensitivity);
     env_constructor.template process_multiseq<sizeof_query_unit>(query,query_hash_data,query_packer);
     env_constructor.template dbsort<sizeof_query_unit>(query_hash_data,hashbits);
     std::cout << "Finished query hashing" << std::endl;

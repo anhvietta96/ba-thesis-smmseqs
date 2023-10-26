@@ -183,7 +183,7 @@ class InvIntHashFunc {
       hashval *= undefined_rank;
       auto ch = seq[span-1-i];
       if(ch >= undefined_rank){
-        std::cout << "Invalid char" << std::endl;
+        std::cout << "Invalid char" << '\t' << (int) ch << '\t' << (int) undefined_rank << std::endl;
         ch = undefined_rank-1;
       }
       hashval += ch;
@@ -196,8 +196,8 @@ class InvIntHashFunc {
       auto ch_to_remove = seq[block_schematics[block_num].to_be_removed];
       auto rank_removed = block_schematics[block_num].rank_removed;
       if(ch_to_remove >= undefined_rank){
+        std::cout << "Invalid char" << '\t' << (int) ch_to_remove << '\t' << (int) rank_removed << std::endl;
         ch_to_remove = undefined_rank-1;
-        std::cout << "Invalid char" << std::endl;
       }
       assert(ch_to_remove < undefined_rank && rank_removed < weight);
       hashval -= precomputed_table[ch_to_remove*weight+rank_removed];
@@ -205,11 +205,11 @@ class InvIntHashFunc {
     hashval *= undefined_rank;
     for(uint64_t block_num = 0; block_num < num_blocks; block_num++){
       auto ch_to_add = seq[block_schematics[block_num].to_be_added];
-      if(ch_to_add >= undefined_rank){
-        ch_to_add = undefined_rank-1;
-        std::cout << "Invalid char" << std::endl;
-      }
       auto rank_added = block_schematics[block_num].rank_added;
+      if(ch_to_add >= undefined_rank){
+        std::cout << "Invalid char" << '\t' << (int) ch_to_add << '\t' << (int) rank_added << std::endl;
+        ch_to_add = undefined_rank-1;
+      }
       assert(ch_to_add < undefined_rank && rank_added < weight);
       hashval += precomputed_table[ch_to_add*weight+rank_added];
     }

@@ -104,7 +104,7 @@ int main(int argc, char *argv[]){
 
   static constexpr const Blosum62 sc{};
   static constexpr const uint64_t undefined_rank = sc.num_of_chars;
-  uint64_t count = 0;
+  double count = 0;
   
   const uint8_t input_qgram_length = std::stoi(options.qgram_length_get());
   const int8_t threshold = std::stoi(options.threshold_get());
@@ -140,7 +140,7 @@ int main(int argc, char *argv[]){
             score += sc.score_matrix[qgram_1[k]][qgram_2[k]];
             sfreq *= freq[qgram_1[k]] * freq[qgram_2[k]];
           }
-          count += score >= threshold;
+          count += (score >= threshold) * sfreq;
           hist[score-lowest_score] += sfreq;
 
           qgram_2[qgram_length-1]++;
@@ -155,7 +155,7 @@ int main(int argc, char *argv[]){
         std::cout << hist[i] << std::endl;
       }
       std::cout << "Expected sensitivity: " << std::endl;
-      std::cout << static_cast<double>(count) / constexpr_pow(undefined_rank,qgram_length) << std::endl;
+      std::cout << count * constexpr_pow(undefined_rank,qgram_length) << std::endl;
     }
   });
 

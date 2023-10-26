@@ -150,7 +150,7 @@ void process(GttlMultiseq* multiseq, const bool show, const bool with_simd)
 {
   constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
   constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
-  const LiterateMultiseq<char_spec,undefined_rank> literate_multiseq{*multiseq};
+  const LiterateMultiseq<char_spec,undefined_rank> literate_multiseq{multiseq};
   const auto target_distribution = literate_multiseq.rank_dist_get();
   CompositeEnvironment<Blosum62,seed> env_constructor{};
   env_constructor.background_correction_set(target_distribution);
