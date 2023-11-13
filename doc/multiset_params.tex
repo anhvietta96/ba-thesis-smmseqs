@@ -1,0 +1,30 @@
+\begin{tikzpicture}
+  [arraynode/.style={inner sep=1pt,minimum height=19pt,minimum width=19pt,rectangle,draw},
+   alphanode/.style={inner sep=1pt,minimum height=15pt,minimum width=15pt,rectangle},
+   position label/.style={
+       below = 3pt,
+       text height = 1.5ex,
+       text depth = 1ex
+   },
+   overbrace/.style={decoration={brace},decorate},
+   underbrace/.style={decoration={brace,mirror},decorate}
+   ]
+   \begin{scope}[start chain=1 going right,node distance=-0.5mm]
+     \node [alphanode,on chain=1] {\(\mathcal{A}:\)};
+     \node [alphanode,on chain=1] {\FirstMultisetSymbol};
+     \node [alphanode,on chain=1] (A0) {\SecondMultisetSymbol};
+     \node [alphanode,on chain=1] (A1) {\ThirdMultisetSymbol};
+     \draw [overbrace,decoration={raise=-1ex}] (A0.north west) --
+             node [position label,yshift=2.5ex] {\(k=2\)} (A1.north east);
+   \end{scope}
+
+   \begin{scope}[shift={(0cm,-17pt)},start chain=2 going right,node distance=-0.15mm]
+      \node [arraynode,on chain=2] {\FirstMultisetSymbol};
+      \node [arraynode,on chain=2] (Posb) {\FirstMultisetSymbol};
+      \node [arraynode,on chain=2] (N0) {};
+      \node [arraynode,on chain=2]  {};
+      \node [arraynode,on chain=2] (N1) {};
+    \draw [underbrace,decoration={raise=1pt}] (N0.south west) --
+            node [position label,yshift=-1ex] {\(m=3\)} (N1.south east);
+   \end{scope}
+\end{tikzpicture}

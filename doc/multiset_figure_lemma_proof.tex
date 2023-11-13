@@ -1,0 +1,48 @@
+\documentclass[12pt,a4paper]{scrartcl}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\usepackage{times}
+\usepackage{theorem}
+\usepackage{tikz}
+\usepackage{amssymb}
+\usetikzlibrary{chains}
+\usetikzlibrary{decorations.pathmorphing}
+\usepgflibrary{decorations.pathreplacing}
+\usetikzlibrary{decorations.text}
+\newcommand{\AllReps}{r}
+\newcommand{\Indels}{id}
+\newcommand{\Size}[1]{|#1}
+\theorembodyfont{\rmfamily}
+\theoremheaderfont{\rmfamily\bfseries}
+\newcounter{Lemmacounter}
+\newtheorem{myLemma}[Lemmacounter]{Lemma}
+\newcommand{\AfterNumber}{}
+\newcommand{\Skiptheorem}{\smallskipamount}
+\newcommand{\StartFormal}[1]{\par\addvspace{\Skiptheorem}\noindent\textbf{#1}}
+\newcommand{\EndFormal}{\par\addvspace{\Skiptheorem}}
+\newenvironment{Lemma}{\begin{myLemma}\AfterNumber}{\end{myLemma}}
+\newenvironment{Proof}{\StartFormal{Proof:}}{\EndFormal}
+\begin{document}
+\def\FirstMultisetSymbol{a} 
+\def\SecondMultisetSymbol{b}
+\def\ThirdMultisetSymbol{c}
+\input{multiset_params}
+
+\begin{Lemma}
+\label{Relatesequencelength2editoperations}
+Let \(A\) be an alignment of \(u\) and \(v\). Let \(\Indels\) be the number of
+insertions and deletions, and \(\AllReps\) be the number of replacements in
+\(A\). Then \(\Size{u}+\Size{v}=\Indels+2\cdot\AllReps\).
+\begin{Proof}
+Each of the \(\Size{u}+\Size{v}\) characters in \(u\) and \(v\) must occur in
+\(A\). Moreover, all characters in \(A\) are from the sequences \(u\) and
+\(v\). Hence the number of characters in \(A\) and in \(u\) and \(v\) must
+be identical. In each indel one character occurs.
+In each replacement two of these characters occur. Hence the number of
+characters in \(A\) is \(\Indels+2\cdot\AllReps\). By the argumentation above,
+this number must be equal to \(\Size{u}+\Size{v}\). So the equation holds.
+\(\Box\)
+\end{Proof}
+\end{Lemma}
+
+\end{document}
