@@ -4,7 +4,7 @@ In MMseqs, the prefiltering stage is the first step to process all sequences and
 \includegraphics[scale=0.3]{graphics/MMseqs_prefilter.png}
 \end{center}
 
-In MMseqs2, the prefiltering stage was reengineered. In the innermost loop 4 we go through this list to detect double k-mer matches by comparing the current diagonal ij with the previously matched diagonal for targetID. If the previous and current diagonals agree, we store the diagonal i−j and targetID as a double match.
+In MMseqs2, the prefiltering stage was reengineered. In the innermost loop 4 we go through this list to detect double k-mer matches by comparing the current diagonal ij with the previously matched diagonal for targetID. If the previous and current diagonals agree, we store the diagonal i-j and targetID as a double match.
 
 \begin{center}
 \includegraphics[scale=0.5]{graphics/MMseqs2_prefilter.png}

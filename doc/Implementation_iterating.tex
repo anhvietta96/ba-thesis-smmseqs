@@ -11,6 +11,8 @@ The corrected score can then be computed as the sum of the pairwise amino acid s
 An issue in enumerating the Cartesian product is the possible difference in number of loops (e.g 2 loops for seed weight 4-6, 3 loops for seed weight 7). To resolve this problem and allow the easy expansion to greater seed size, a flexible loop structure is designed, where an array containing the loop indexes is created. The earliest entry of the array holds the most outer loop index and the later an entry is, the more inner the loop index the entry holds. By iterating through only the most outer loop and only adjusting the inner loop indexes as needed, the scheme can account for any number of loops.
 
 The formulation of the loop structure, along with the integration of background score correction, is outlined in the pseudocode below:
+
+\begin{comment}
 \begin{algorithm}[t]
 \caption{Merging query and target data}
 \label{code:merging_data}
@@ -41,3 +43,4 @@ table to remove character}
 \EndFor
 \end{algorithmic}
 \end{algorithm}
+\end{comment}
