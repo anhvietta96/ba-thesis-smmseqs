@@ -24,6 +24,10 @@
 }
 
 \newcommand{\HashValue}[0]{\mathsf{HashValue}}
+\newcommand{\HashValVec}[0]{\mathsf{HashValVec}}
+\newcommand{\CurrentWeight}[0]{\mathsf{CurrentWeight}}
+\newcommand{\SuffixCode}[0]{\mathsf{SuffixCode}}
+
 \newcommand{\Substring}[3]{#1\lbrack #2\ldots#3\rbrack}
 \newcommand{\Subchar}[2]{#1\lbrack #2\rbrack}
 \newcommand{\Scoretablename}[0]{\mathsf{ST}}
@@ -35,6 +39,7 @@
 \newcommand{\Perminverse}[2]{\Permnameinverse{#1}(#2)}
 \newcommand{\Alpha}[0]{\mathcal{A}}
 
+
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{mathtools}
@@ -45,6 +50,8 @@
 \usepackage{palatino}
 \usepackage{numprint}
 \usepackage{svg}
+\usepackage{comment}
+\usepackage{float}
 \usepackage[colorlinks=true, allcolors=blue]{hyperref}
 \title{Efficient Preprocessing of Short Sequence Segments for Efficient Filtering in Comparing Protein Sequences}
 \author{Anh Viet Ta (6747004)}
@@ -65,7 +72,15 @@
 \subsection{Recent developments}
 \input{mmseqs2_intro}
 \subsection{MMseqs2}
-MMseqs is a software suite for fast and deep clustering and searching of large datasets. It was published on January 6 2016 by Maria Hauser, Martin Steinegger and Johannes S\"odding. An improved, updated version MMseqs2 was published on June 7 2017. It contains three core modules: a fast and sensitive preﬁltering module that sums up the scores of similar k-mers between query and target sequences, an SSE2- and multi-core-parallelized local alignment module, and a clustering module. Compared to BLAST
+MMseqs (Many-against-Many sequence searching) is a software suite for fast and deep clustering and searching of large datasets. It was published on January 6 2016 by Maria Hauser, Martin Steinegger and Johannes S\"odding. It contains three core modules: a fast and sensitive preﬁltering module that eliminates most non-homologous sequences, an local alignment module based on the striped Gotoh algorithm, and a clustering module based on similary graph. Due to the modularity of the structure, it allows user to create workflows tailored to specific clustering and searching needs. The default workflow utilizes the UniProt databases to create predefined parameters and resembles the average use case. The second, cascaded clustering, clusters the input database in multiple steps, increasing the sensitivity between each steps and therefore enables finding best-hit-searches 4-10 times faster. The third workflow simply compares databases using only prefiltering and aligning modules. The last workflow updates clustering between new and old clustered database by deleting deprecated sequences and appending new sequences to each cluster.
+
+In benchmark, MMseqs showed to be 4-30 times faster than UBLAST and RAPsearch2. MMseqs could cluster large databases down to 30\% sequence identity 2000 times the speed of BLASTclust.
+
+%sums up the all similar \(q\)-grams (hexagrams by default) scores between query and target sequences and estimates homology by applying a z-score statistic
+
+An improved, updated version MMseqs2 was published on June 7 2017. It boasts dramatic improvements in both efficiency and sensitivity by introducing several novel ideas. It revamped the prefiltering stage by introducing algorithm to find two consecutive, inexact \(q\)-gram matches and optimizing memory access. It also allowed the use of \(7\)-grams due to the speedup of the algorithm. %Need more
+
+An in-depth look into the three core modules is presented below:
 \subsubsection{Fast q-gram prefiltering stage}
 \input{mmseqs2_prefiltering}
 \subsubsection{Ungapped alignment stage}
@@ -73,45 +88,35 @@ MMseqs is a software suite for fast and deep clustering and searching of large d
 \subsubsection{Smith-Waterman alignment stage}
 \input{mmseqs2_swalign}
 \section{Theoretical background}
-\subsection{Algorithm description}
+Since for every alphabet \(\Alpha\), a transformer function \(f:\Alpha \rightarrow \mathcal{N}\) can be defined, mapping every character in \(\Alpha\) to a integer rank, the following sections will discuss the biological sequences not as sequences of residues, but as of transformed, coded integers.
+\subsection{Optimizing target data processing}
+\input{Implementation_target}
+\subsection{Optimizing query data processing}
 \input{Theory_Algodescription}
-\subsection{Score function}
-\input{Theory_scorefunc}
-\subsection{Internal representations of $q$-grams}
-\input{Theory_invint}
-\subsection{SIMD instructions}
+\subsubsection{Working with sorted \(q\)-grams}
+\input{Implementation_sortedqgram}
+\subsection{Simplified approach in determining threshold}
+\input{Implementation_threshold}
 \section{Implementation \& Design}
+\subsection{Design overview}
+\input{Implementation_structure_classes}
 \subsection{Input}
 \input{Implementation_Input}
-\subsection{Structure}
-\subsubsection{Relevant classes and dataflow}
-\input{Implementation_structure_classes}
-\subsubsection{Datatypes}
-\input{Implementation_structure_datatypes}
-\subsection{Determining threshold}
-\input{Implementation_threshold}
-\subsection{Sorted q-grams}
-\input{Implementation_sortedqgram}
-\subsubsection{Enumerating}
-\subsubsection{Encoding sequence in linear time}
-\subsection{Extracting and sorting q-gram from spaced seeds}
+\subsection{Compile time computation}
+Figure~\ref{fig:classes} shows that some classes/tables can be evaluated at compile time. Each seed gets transcoded and its weight and span can be precomputed and therefore, the two seed readers and their schematics can be predetermined. The two index tables for sorted/unsorted digrams/trigrams take in only scoring function as parameter and therefore, can be wholely precomputed. Since the linear encoding table LE (see Algorithm~\ref{code:linearEncodingTable}) based solely on the sorted digrams/trigrams index table, it also can be evaluated at compilation.
+\subsection{Run time computation}
 \input{Implementation_extracting}
-\subsection{Constructing sub-q-gram environments}
-\input{Implementation_constructing}
-\subsection{Iterating over sequence}
 \input{Implementation_iterating}
-\subsection{SIMD}
-\input{Implementation_SIMD}
-\subsection{Output}
+\subsection{Merging target and query data}
 \input{Implementation_output}
 \section{Benchmark \& Performance}
 \subsection{Determining threshold}
-\subsection{Time performance}
-\subsubsection{Compile time performance}
-\subsubsection{Execute time performance analysis with gprof}
+\subsection{Performance}
+\subsubsection{Overall execute time performance}
+\subsubsection{Execute time performance analysis}
 \subsubsection{Dependence of execute time on acceptance rate}
-\subsection{Spatial Performance with valgrind massif}
-\section{Retrospection \& Future improvements}
+\subsection{Possibility of expanding seed}
+\section{Discussion \& Future improvements}
 \subsection{Scalability}
 \subsection{Full compile-time calculation of environments}
 \section{Conclusion}

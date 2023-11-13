@@ -1,26 +1,11 @@
-The prefiltering stage serves to reduce the search space significantly, therefore it's imperative for the algorithm to be as efficient as possible.
-Prefiltering in MMseqs2:
-Input Sequences:
-MMseqs2 takes a database of target sequences and a query sequence(s) as input. These sequences can be proteins, nucleotides, or any biological sequences.
+In MMseqs, the prefiltering stage is the first step to process all sequences and serves to reduce the search space significantly, therefore it's imperative for the algorithm to be as efficient as possible. Query sequences are searched one by one against the target set (Fig. 1b, loop 1). For each k-mer starting position in the query (loop 2) we generate a list of all similar k-mers (orange frame) with a Blosum62 similarity above a threshold score. Lower threshold scores (option --k-score) result in higher average numbers of similar k-mers and thereby higher sensitivity and lower speed. The similar k-mers are generated with a linear-time branch-and-bound algorithm. For each k-mer in the list of similar k-mers (loop 3), we obtain from the index table (blue frame) the list of target sequence identiﬁers targetID and the positions j of the k-mer (green frame). In the last step the corresponding score in the target score vector is incremented.
 
-Sequence Filtering:
-Before prefiltering, MMseqs2 might perform basic sequence filtering, including removing low-complexity regions or sequences that are below a certain length threshold. These filtered sequences are then used in the prefiltering step.
+\begin{center}
+\includegraphics[scale=0.3]{graphics/MMseqs_prefilter.png}
+\end{center}
 
-k-mer Indexing:
-MMseqs2 constructs an index of k-mers from the target sequences. K-mers are substrings of length 'k' extracted from each sequence. These k-mers serve as keys in an index data structure that allows for fast lookup. By creating this index, MMseqs2 can quickly identify potential matches for a given k-mer in the query sequence.
+In MMseqs2, the prefiltering stage was reengineered. In the innermost loop 4 we go through this list to detect double k-mer matches by comparing the current diagonal ij with the previously matched diagonal for targetID. If the previous and current diagonals agree, we store the diagonal i−j and targetID as a double match.
 
-Query K-mer Generation:
-Similarly, k-mers are generated from the query sequence. These query k-mers are used to search the index constructed from the target sequences.
-
-Prefiltering Algorithm:
-The prefiltering algorithm in MMseqs2 involves comparing the query k-mers against the indexed k-mers of the target sequences. It typically employs heuristics and cutoff values to quickly eliminate sequences that are unlikely to be significant matches. For instance, if a particular target sequence lacks a certain number of k-mers found in the query, it may be excluded from further consideration.
-
-Score Thresholding:
-MMseqs2 might employ a scoring threshold during prefiltering. Sequences that do not meet a minimum score requirement based on the prefiltering algorithm are discarded. The score is usually computed from the number and quality of matching k-mers between the query and target sequences.
-
-Remaining Candidates:
-After prefiltering, MMseqs2 retains a reduced set of candidate sequences that are likely to contain significant matches to the query sequence. These candidates undergo further, more intensive, sequence alignment steps to determine the final matches and alignments.
-
-Output:
-The final output of the prefiltering stage is a subset of target sequences that pass the prefiltering criteria. These sequences are then subjected to more detailed alignment methods to identify the most significant matches.
-
+\begin{center}
+\includegraphics[scale=0.5]{graphics/MMseqs2_prefilter.png}
+\end{center}

@@ -1,18 +1,23 @@
-The program consists of six main classes:
+The program consists of seven main classes:
 \begin{enumerate}
-    \item SortedQgram, which creates a table to index every sorted q-gram of given $ScoreClass$ and $q$.
-    \item MultisetEncoder, which creates a table to encode every possible sorted q-gram to integer.
-    \item Distribution, which approximates a threshold $k$ for a $k$-environment given a $ScoreClass$.
-    \item QgramEnvironment, which generates a score matrix between all sorted $q$-grams and unsorted $q$-grams.
-    \item SpacedSeedEncoder, which generate schemes to divide spaced seed, divides them into sub-$q$-grams and encodes them into sorted $q$-gram codes.
-    \item CompositeEnvironment, which is the main class. It passes sequences into SpacedSeedEncoder, uses the sorted $q$-gram codes to call individual $k$-environment and generates a Cartesian product from the environments.
+    \item Seed readers convert seed into binary representation, computing its span and weight. To further process seed, two variants are created:
+    \begin{enumerate}
+        \item Target reader divides seeds into blocks of shorter \(q\)-grams as input for recursive hashing function.
+        \item Query reader divides seeds into blocks of short segments, sorts query sequences and uses sorted \(q\)-gram encoder to linearly encode the resulted sorted \(q\)-grams.
+    \end{enumerate}
+    \item A recursive hash engine to collect every \(q\)-gram hashes from target sequences and package them.
+    \item A sorted \(q\)-gram index table to index every sorted q-gram of given scoring function and \(q\).
+    \item Sorted \(q\)-gram encoder creates a table to help linearly encode sorted \(q\)-grams.
+    \item A class to approximate an appropriate threshold given target sequence data.
+    \item A score matrix to cache all scores between sorted $q$-grams and unsorted $q$-grams.
+    \item An environment constructor gets sorted \(q\)-gram codes from the query seed reader, uses them to call individual scores from the score matrices and generates a Cartesian product from the environments.
 \end{enumerate}
-In Figure~\ref{fig:classes}, the relationship and dataflow between the classes are outlined.
+In Figure~\ref{fig:classes}, the relationship and dataflow between the classes are outlined. Since the implementation of the recursive hashing of target sequences is straightforward and doesn't diverge much from pseudocode, the section below focuses mainly on the processing of query sequences.
 
 \begin{figure}[t]
 \begin{center}
-\includegraphics[scale=0.6]{graphics/Class Diagram.png}
+\includegraphics[scale=0.5]{graphics/Class_Diagram.png}
 \end{center}
-\caption{Relationship between the six main classes and inputs. $Italic$ denotes compile-time evaluated classes.}
+\caption{Relationship between the main classes and inputs}
 \label{fig:classes}
 \end{figure}

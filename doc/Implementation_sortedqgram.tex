@@ -1,37 +1,108 @@
-\subsubsection{Enumerating}
-Multisets can be enumerated recursively:
+\subsubsection{Enumeration}
+In mathematics, a set is defined as a collection of items, where every element occurs exactly once. This definition can be expanded to multisets, where elements can occur more than once. Applying an order on these multisets, we can formalize a notion of sorted \(q\)-grams:
+
+Given an alphabet \(\Alpha\) and a natural number \(q > 0\), a sorted \(q\)-gram over \(\Alpha\) is a multiset \(M=a_0a_1...a_{q-1}\), \(a_i\in\mathcal{A}\forall 0\leq i<q\) and \(a_i \leq a_j\forall 0\leq i < j < q\).
+
+%The number of possible sorted \(q\)-grams for a given \(\mathcal(A)\) and \(q\) can be computed as the binomial \(\binom{q+|\mathcal{A}|-1}{q}\). The proof can be shown with induction: 
+An index table of sorted \(q\)-grams can be computed recursively. Given a sorted \(q\)-gram \(u\) where the prefix of \(m\) characters is sorted and fixed, and \(u[m-1]\) has a rank of \(a_i\) then the task is to enumerate every \((q-m)\)-grams of alphabet size (\(|\mathcal{A}|-a_i\)). The induction base case is then sorted unigrams over alphabet \(\Alpha_i = \{a_j| a_j\in\Alpha \land j\geq i\}\), where there are \(|\Alpha_i|\) unigrams indexed from \(a_i\) to \(|\Alpha|-1\).
+
 \begin{algorithm}[t]
-\caption{Enumerating multisets}
-\label{code:ntHash}
+\caption{multisetEnumerateRecursion}
+\label{code:enumerateMultisetRec}
 \begin{tabular}{@{}l@{~}l}
-\textbf{Input:}&sequence $s$ of length $n$\\
-               &size of alphabet $|\mathcal{A}|$\\
-               &function \(\mathsf{process}\) processing hash values
+\textbf{Input:}&current multiset length \(q\)\\
+               &current alphabet \(\Alpha_i\)\\
+               &current prefix \(u\)\\
+               &current index table IT\\
 \end{tabular}
 \begin{algorithmic}
-\For{\(i\) \textbf{from} 1 to $|\mathcal{A}|$} \Comment{Generate random
-integers for each character}
-\State \(f(A[i]) \gets \mathsf{RandomInteger}()\)
+\If{\(q = 0\)}
+\State \(\text{IT.append}(u)\)
+\Else
+\For{\(a_j \in \Alpha_i\)}
+\State \(multisetEnumerateRecursion(q-1,\Alpha_i \backslash [a_i,a_j),u+a_j,\text{IT})\)
 \EndFor
-\For{\(i\) \textbf{from} 1 to $|\mathcal{A}|$} \Comment{Generate lookup
-table to remove character}
-\State \(f_r(A[i]) \gets \rol(f(A[i]),k-1)\)
-\EndFor
-\State \(\HashValue \gets 0\)
-\For{\(i\) \textbf{from} 1 to $k$} \Comment{Compute first hash value}
-\State \(\HashValue = \rol(\HashValue,1)\)
-\State \(\HashValue = \XOR(\HashValue,f(s[i]))\)
-\EndFor
-\State \(\mathsf{process}(\HashValue)\)
-\For{\(j\) \textbf{from} 1 to $n-k$} \Comment{Compute other hash values}
-\State \(\HashValue = \XOR(\HashValue,\rol(f(s[j]),k-1))\)
-\State \(\HashValue = \rol(\HashValue,1)\)
-\State \(\HashValue = \XOR(\HashValue,f(s[j+k])\)
-\State \(\mathsf{process}(\HashValue)\)
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[t]
+\caption{multisetEnumerate}
+\label{code:enumerateMultiset}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}&multiset length \(q\)\\
+               &alphabet \(\Alpha\)
+\end{tabular}
+\begin{algorithmic}
+\State \(\text{IT}\gets []\)
+\For{\(a_i \in \Alpha\)}
+\State \(multisetEnumerateRecursion(q-1,\Alpha \backslash [a_0,a_j),a_i,\text{IT})\)
 \EndFor
 \end{algorithmic}
 \end{algorithm}
 
+\subsubsection{Linear encoding}
 
+Using the index table, a scheme to encode any given \(q\)-gram over alphabet \(\Alpha\) to its table index in \(O(q)\) can be devised. The proposition is, there exists an unique integer weight for each character \(a\) in position \(p\) so that given any sorted \(q\)-gram \(u\) over an alphabet \(\Alpha\),
+\begin{align}
+    c(u)=\sum_{p=0}^{q-1} w(p,u[p])\label{Equation:linearenc}
+\end{align} 
 
-\subsubsection{Encoding sequence in linear time}
+encodes exactly \(u\) to its index in table IT. This can be shown with induction:
+
+\textbf{Base case:} In case of \(q=1\), \(|\Alpha|\) unigrams can be clearly encoded with \(w(0,a) = a \forall a \in \Alpha\).
+
+\textbf{Inductive step:} Given the above scheme is valid up until \(q\in \mathcal{N}\), it needs to be shown \(w(q,a)\) is unique for all \(a\in \Alpha\). Assuming the weight isn't unique, therefore there exist two different weights \(w_a\neq w_a'\) so that \(c(au) = w_a + c(u)\) and \(c(av) = w_a' + c(v)\) encode \((q+1)\)-grams \(au\) and \(av\) respectively, \(u,v\in \Alpha^q,a\in\Alpha\). The codes \(c(au)\) and \(c(av)\) must but differ exactly the code of their suffixes \(c(u)-c(v)\), since the \(q+1\)-grams share the same prefix. One can then formulate:
+\begin{align}
+    c(au) - c(av) &= (w_a + c(u)) - (w_a' + c(v))\\
+    &= (w_a - w_a') + (c(u) - c(v))\\
+    &= c(u) - c(v)
+\end{align}
+which leads to \(w_a - w_a' = 0\), or \(w_a = w_a'\), which is a contradiction.
+
+The recursive method to then compute a \(q\times |\Alpha|\) table LE is based on the above proof. The base case can be directly given and based on index tables \(\text{IT}_{q_i,\Alpha},2 \leq q_i \leq q\), the \(q_i\)-grams are tracked for change in prefix and the weight of the prefix can be calculated with Equation~\ref{Equation:linearenc}.
+\begin{algorithm}[t]
+\caption{Creating linear encoding table}
+\label{code:linearEncodingTable}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}&sequence length \(q\)\\
+               &alphabet \(\Alpha\)\\
+               &index tables \(\text{IT}_{q_i,\Alpha}\forall q_i \in [1,q]\)\\
+\end{tabular}
+\begin{algorithmic}
+\State LE \(\gets []\)
+\State LE.append(\([0,...,|\Alpha|-1]\))
+\For{\(q_i\in[2,q]\)}
+\State \(\CurrentWeight \gets [None \times |\Alpha|]\)
+\For{\(u,i\in\text{IT}_{q_i,\Alpha}\)}\Comment{Key-Value loop}
+\If{\(\CurrentWeight [u[0]] = None\)}
+\State \(\SuffixCode\gets 0\)
+\For{\(j \in [1,q_i]\)}
+\State \(\SuffixCode += \text{LE}[j-1][u[j]]\)
+\EndFor
+\State \(\CurrentWeight [u[0]] \gets i - \SuffixCode\)
+\EndIf
+\EndFor
+\State \(\text{LE}.insert(0,\CurrentWeight)\)\Comment{Place more significant weight at beginning}
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\begin{comment}
+\begin{algorithm}[t]
+\caption{Linear encoding of sorted \(q\)-grams}
+\label{code:linearEncode}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}&sorted \(q\)-gram \(u\)\\
+                &alphabet \(\Alpha\)\\
+               &linear encoding table LE of size \(q\times|\Alpha|\)
+\end{tabular}
+\begin{algorithmic}
+\State \(\text{Code} \gets 0\)
+\For{\(i\in [0,q-1]\)}
+\State \(\text{Code} += \text{LE}[i][u[i]]\)
+\EndFor
+\State return \(\text{Code}\)
+\end{algorithmic}
+\end{algorithm}    
+\end{comment}

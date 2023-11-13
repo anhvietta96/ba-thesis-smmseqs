@@ -1,9 +1,5 @@
-As compile constants, the program takes in a class $ScoreClass$, which represents a scoring function and a spaced seed. 
+At compile time, the program takes in a scoring function, which in the context of protein sequences could be a BLOSUM or PAM matrix, a spaced seed and a recursive hashing function. The scoring function should detail the relevant alphabet, the transformer function, which encodes every character in the alphabet to its corresponding rank, and a matrix of scores between every pairs of characters. Internally, the spaced seed is initially represented as a numeric constant, which during computation will be transcoded into a bitset. The span of the seed can then be computed according to the position of the first 1 in the bitset and also the seed weight can be calculated by counting 1s. 
 
-ScoreClass should contain a C-style $char$ array called $character\_spec$ detailing all bijective mappings from $\mathcal{A}$ to $[0,|\mathcal{A}|-1]$ and a 64-bit numeric value $num\_of\_chars$ equal to $|\mathcal{A}|$. Additionally the class should contain a C-style array of size $(num\_of\_chars)^2$ called $score\_matrix$ describing $f(x,y) \forall x,y\in \mathcal{A}$. The minimum and maximum value in $ScoreClass$ should also be included as $smallest\_score$ and $highest\_score$ respectively.
+At run time the program takes in two sequence databases in FASTA format. Any data error, for example empty file or wrong data format will automatically lead to termination of the program and an error message will be logged. Additionally, the sensitivity of the program can be adjusted.
 
-The spaced seed is represented as a numeric 64-bit constant, which in compiling will be converted into a bitset.
-
-At run time the program takes in a sequence in FASTA format. Any data error, for example empty file or wrong data format will automatically lead to termination of the program and an error message will be logged. These behaviours are well-defined in class GttlMultiseq.
-
-Additionally some fixed parameters, for example maximum sub-$q$-gram length and acceptance rate are defined as preprocessor constants in $utils.hpp$
+To further assist in expansion, some fixed parameters, e.g maximum sub-$q$-gram length are defined as preprocessor constants.

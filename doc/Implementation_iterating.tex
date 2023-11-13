@@ -1,0 +1,43 @@
+In the implementation of MMseqs2, a mechanism to evaluate the surrounding of current position while iterating the query sequences is introduced. The idea of this mechanism is to adjust the threshold of the \(q\)-gram environment in response to regions where local composition varies considerably from the background distribution. Without adjusting, these low regions can lead to biases in the prefiltering result. This correction of the threshold can be summarized as follow:
+\begin{align}
+    \Delta S_i(u[i]) = \sum_{a=1}^{|\mathcal{A}|}f(a)\sigma(a,u[i])-\frac{1}{2d}\sum_{j=i-d,j\neq i}^{i+d}\sigma (u[i],u[j])
+\end{align}
+where \(u\) is the query sequence, \(i\) the current residue on the sequence and \(f(a)\) the background frequency of residue \(a\).
+
+The minuend is a representation of the expected score resulting from the background distribution, which can be precomputed when the target data is read. The subtrahend involves the current region in the query sequence and introduces a parameter \(d\) for the radius of the region, defined in MMseqs2 as a constant 20.
+
+The corrected score can then be computed as the sum of the pairwise amino acid score and the score correction. In the implementation, this correction is subtracted from the threshold at the beginning of the computation.
+
+An issue in enumerating the Cartesian product is the possible difference in number of loops (e.g 2 loops for seed weight 4-6, 3 loops for seed weight 7). To resolve this problem and allow the easy expansion to greater seed size, a flexible loop structure is designed, where an array containing the loop indexes is created. The earliest entry of the array holds the most outer loop index and the later an entry is, the more inner the loop index the entry holds. By iterating through only the most outer loop and only adjusting the inner loop indexes as needed, the scheme can account for any number of loops.
+
+The formulation of the loop structure, along with the integration of background score correction, is outlined in the pseudocode below:
+\begin{algorithm}[t]
+\caption{Merging query and target data}
+\label{code:merging_data}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}&query data \(query\)\\
+               &target data \(target\)
+\end{tabular}
+\begin{algorithmic}
+\For{\(i\) \textbf{from} 1 to $|\mathcal{A}|$} \Comment{Generate random
+integers for each character}
+\State \(f(A[i]) \gets \mathsf{RandomInteger}()\)
+\EndFor
+\For{\(i\) \textbf{from} 1 to $|\mathcal{A}|$} \Comment{Generate lookup
+table to remove character}
+\State \(f_r(A[i]) \gets \rol(f(A[i]),k-1)\)
+\EndFor
+\State \(\HashValue \gets 0\)
+\For{\(i\) \textbf{from} 1 to $k$} \Comment{Compute first hash value}
+\State \(\HashValue = \rol(\HashValue,1)\)
+\State \(\HashValue = \XOR(\HashValue,f(s[i]))\)
+\EndFor
+\State \(\mathsf{process}(\HashValue)\)
+\For{\(j\) \textbf{from} 1 to $n-k$} \Comment{Compute other hash values}
+\State \(\HashValue = \XOR(\HashValue,\rol(f(s[j]),k-1))\)
+\State \(\HashValue = \rol(\HashValue,1)\)
+\State \(\HashValue = \XOR(\HashValue,f(s[j+k])\)
+\State \(\mathsf{process}(\HashValue)\)
+\EndFor
+\end{algorithmic}
+\end{algorithm}

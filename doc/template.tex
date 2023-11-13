@@ -1,0 +1,410 @@
+\documentclass[11pt,a4paper]{scrartcl}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+\newcounter{mycommentcounter}
+\newcommand{\Genericcomment}[2]{%
+\par%
+\noindent%
+\fbox{%
+\begin{minipage}{0.95\textwidth}
+\textsl{#1: \#\refstepcounter{mycommentcounter}%
+\arabic{mycommentcounter}: #2}%
+\end{minipage}%
+}%
+\par%
+}
+
+\newcommand{\AVTcomment}[1]{
+\Genericcomment{AVT}{#1}
+}
+
+\newcommand{\SKcomment}[1]{
+\Genericcomment{SK}{#1}
+}
+
+\newcommand{\HashValue}[0]{\mathsf{HashValue}}
+\newcommand{\Mask}[0]{\mathsf{Mask}}
+\newcommand{\XOR}[0]{\mathtt{XOR}}
+\newcommand{\AND}[0]{\mathtt{AND}}
+\newcommand{\rol}[0]{\mathtt{rol}}
+\newcommand{\ror}[0]{\mathtt{ror}}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{pdfpages}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{palatino}
+\usepackage{numprint}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\title{ Recursive Hashing in Analysis of DNA-Sequences}
+\author{Anh Viet Ta (6747004)}
+
+\begin{document}
+\begin{titlepage}
+\maketitle
+\pagenumbering{gobble}% Remove page numbers (and reset to 1)
+\thispagestyle{empty}
+
+\textbf{Abstract:} Hashing has been widely used for indexing, similarity
+search and querying in many bioinformatics applications. In this short
+paper, a class of hash-based algorithms called recursive hashing is
+examined, where the general purpose and, as a result, the common structure
+of these algorithms are summarized. Specific examples of these algorithms,
+namely the invertible integer hashing algorithm and ntHash, are also of focus.
+The paper analyzes their background, advantages, disadvantages and how the
+algorithms are intricately linked. Finally, the runtime of the
+algorithms for the human genome and the correlation of bits of the
+hash values is evaluated for varying input.
+\end{titlepage}
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\section{Introduction}
+
+Sequence Analysis is dealing with algorithms for
+processing biological sequences, such as DNA and Protein. Due to the size
+of the subject, for example the human genome consists of 3 billion base
+pairs,
+efficiency is of utmost importance.
+Because sequences are essentially strings, hashing is a powerful tool to
+efficiently transform them into numerical values of constant size.
+In the context of
+sequence analysis, it has found its use in rapid indexing~\cite{WU:2016},
+fast
+reconstruction of phylogenetic trees~\cite{brown2012fast}, and many more
+applications.
+In this short paper we will consider a specific class of hashing
+algorithms, namely those based on rolling hashing (also known as
+recursive hashing).
+\section{Recursive Hashing Model~\cite{cohen1997recursive}}
+In the problem of querying sequences against another, for example to find
+local similarities, the sequences are often preprocessed. This processing
+often includes hashing, not as a whole, but in a window that moves through
+the sequence, essentially hashing every substring of fixed length $k$.
+In the context of biological sequence analysis, these substrings are
+named $k$-mers. A sequence of length $n$ contains $n-k+1$ $k$-mers.
+A normal hash function treat every single $k$-mer as an
+independent string and therefore it would take at least \(O(k)\) time to
+compute a hash value for each \(k\)-mer. For the complete sequence this
+would sum up to $O((n-k+1)k)=O(nk)$ time.
+But the $k$-mers are in fact not
+independent from each other. To create the next \(k\)-mer,
+one would only have to remove the first
+character of the previous \(k\)-mer and append the next character in the
+sequence. Assuming these operations are of constant
+time complexity, the whole process would be require only $O(n+k)$ time.
+Therefore,
+a family of hash algorithms, namely recursive hashing, were developed in
+allowing to efficiently enumerate hash values of all \(k\)-mers of a
+sequence.
+In order to achieve the
+dependence between hash values, the characters are usually assigned a
+weight, which might be expressed as $r^{k-i}$, where $r$, the radix, is a
+constant integer and $i$ is the position of the character in the $k$-mer.
+Moreover, as the goal is to transform a sequence into a numeric
+value, a transformer function $f:\mathcal{A}\to \mathbb{N}$ must be
+defined,
+mapping every character in the alphabet to a number. The
+calculation of a hash value could then be expressed as follows:
+\begin{align}
+H(w) = \sum_{i=1}^kr^{k-i}f(w[i])\label{DefineHfunction}
+\end{align}
+where $w$ is a \(k\)-mer and $w[i]$ is the $i$-th character in $w$.
+As a base case of the recursive algorithm, the hash value for the
+first $k$-mer of the sequence is computed in \(O(k)\) time by evaluating
+the
+sum defined in Equation (\ref{DefineHfunction}).
+Provided we have calculated the hash value of the previous $k$-mer
+\(ax\), where \(a\) is a character and \(x\) is a \((k-1)\)-mer.
+Then the hash value
+of the next \(k\)-mer could be computed from \(H(ax)\) and the next not yet
+processed character, say \(c\). Firstly, the contribution of \(a\)
+character is subtracted from the hash value. The virtual window is then
+shifted right one character. This means that the weight of all characters
+in \(x\) increases by a factor or \(r\). That is, we multiply by the radix.
+Lastly, the new character \(c\) is added to the hash.
+The hash value of \(xc\) is then calculated as follows:
+\begin{align}
+H(xc) = (H(ax)-r^{n-1}\cdot f(a))\cdot r+f(c)\label{IncrementallyComputeH}
+\end{align}
+Equations (\ref{DefineHfunction}) and (\ref{IncrementallyComputeH})
+provide the basic schema of recursive hashing. The
+difference across implementations is mostly the choice of the radix $r$ and
+the transformer function $f$. The pseudocode for the general schema is
+outlined in Algorithm \ref{code:generalhashing}.
+\begin{algorithm}[t]
+\caption{General recursive hashing schema.}
+\label{code:generalhashing}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}&sequence $s$ of length $n$\\
+               &radix \(r\)\\
+               &transformer function \(f\)\\
+               &function \(\mathsf{process}\) processing hash values
+\end{tabular}
+\begin{algorithmic}
+\State \(\HashValue \gets 0\)
+\For{\(i\) \textbf{from} 1 to $k$}\Comment{Compute 1st hash}
+\State \(\HashValue \gets \HashValue \cdot r\)
+\State \(\HashValue \gets \HashValue + f(s[i])\)
+\EndFor
+\State \(\mathsf{process}(\HashValue)\)
+\For{\(j\) \textbf{from} 1 to $n-k$}\Comment{Compute other hash values}
+\State \(\HashValue \gets \HashValue - r^{n-1}\cdot f(s[j])\)
+\State \(\HashValue \gets \HashValue \cdot r\)
+\State \(\HashValue \gets \HashValue + f(s[j+k])\)
+\State \(\mathsf{process}(\HashValue)\)
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\section{A basic model: invertible integer hashing}
+The most basic recursive hashing algorithm uses the alphabet size as
+radix and defines the transformer function such that it uniquely
+maps every character $s$ to an integers in the interval
+$[0,|\mathcal{A}|-1]$. For example, in nucleotide sequence we have
+$(|\mathcal{A}|=r=4)$,
+a possible mapping (which respect the alphabet order) would be:
+\begin{center}
+\begin{tabular}{c|c}
+$u$ & $f(u)$\\
+\hline
+A & 0 \\
+C & 1 \\
+G & 2\\
+T & 3
+\end{tabular}
+\end{center}
+This type of hash function, as a whole, basically translates the sequence
+to a $|\mathcal{A}|$-ary number (quaternary in nucleotide sequence),
+expressed in
+decimal value. The minimum value is thus 0 and the maximum value is
+$(|\mathcal{A}|^k-1)$. For example, it holds $H(AAAA) = 0$ and
+$H(TTTT) = 4^4-1 = 255$.
+For applications on nucleotide sequences,
+the algorithm could then be optimized further by considering the bit
+representation of the numbers 0 to 3. So the transformer is written as
+follows:
+\begin{center}
+\begin{tabular}{c|c}
+$u$ & $f(u)$ \\
+\hline
+A & 00\\
+C & 01\\
+G & 10\\
+T & 11
+\end{tabular}
+\end{center}
+As a consequence, instead of
+arithmetic operations such as multiplication and addition, one can
+use bitwise operations such as shifting ($\rol$) and exclusive OR (\(\XOR\),
+denoted by
+$\oplus$), see the pseudocode in Algorithm \ref{IncrementallyComputeH}.
+
+\begin{algorithm}[t]
+\caption{Invertible Integer Hashing (bitwise)}
+\label{code:bitwiseinvint}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}&sequence $s$ of length $n$\\
+               &size of alphabet \(r\)\\
+               &transformer function \(f\)\\
+               &function \(\mathsf{process}\) processing hash values
+\end{tabular}
+\begin{algorithmic}
+\State \(\Mask \gets \rol(1,2k)-1\)\Comment{Note: $\rol(a,b)$ describes the
+shifting of $a$ by $b$ bits).}
+\State \(\HashValue \gets 0\)
+\For{\(i\) \textbf{from} 1 to $k$}\Comment{Compute 1st hash}
+\State \(\HashValue = \rol(\HashValue,2)\)
+\State \(\HashValue = \XOR(\HashValue,f(s[i]))\)
+\EndFor
+\State \(\mathsf{process}(\HashValue)\)
+\For{\(j\) \textbf{from} $k+1$ to $n$}\Comment{Compute other hash values}
+\State \(\HashValue = \rol(\HashValue,2)\)
+\State \(\HashValue = \AND(\HashValue,\Mask)\)
+\State \(\HashValue = \XOR(\HashValue,f(s[j]))\)
+\State \(\mathsf{process}(\HashValue)\)
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+The scheme is simple, easy to implement and fast. It is important to note
+the use of the \(\AND\)-Operator and a bitmask in the pseudocode above.
+The leftmost character \(a\), whose contribution is to be removed from the
+hash value (see Equation \ref{IncrementallyComputeH})
+is represented by the two most significant bits of the hash value.
+So after shifting (to multiply by \(r\)), the removal is obtained
+by using an \(\AND\)-Operation with a precomputed mask \(4^{r}-1\)
+without even knowing character \(a\).
+It is also essential to note that because each character is mapped exactly
+onto two bits, the maximum size of the $k$-mer is limited. A 64-bit
+structure could only handle the hash values of 32-mer before significant
+information loss. And due to the same reason, the hash values are biased in
+regards to the input. For example, with a nucleotide distribution heavily
+biased on Guanine, which is encoded as 10 on two bits, it is expected to
+observe a bias on 1 in every odd-numbered bits and on 0 in every
+even-numbered.
+\section{ntHash}
+Due to the nature of the invertible integer hashing model, which limits
+size of \(k\) (for example \(k\leq 32\) when using 64-bit
+unsigned integers), there is a need for a more expansive hashing method.
+In 1997, Jonathan Cohen outlined a recursive hashing scheme called hashing
+by cyclic polynomials. In 2016, Mohamadi et.\ al.
+further developed this concept to obtain
+ntHash~\cite{MOH:CHU:VAN:BIR:2016}, a
+recursive hashing algorithm specifically created for nucleotide sequences.
+ntHash follows the same principle mentioned above, and
+employs the use of bitwise operators, namely shifting and exclusive OR to
+accelerate calculations. Compared to bitwise version of invertible integer hashing outlined above, some
+modifications were conceived:
+\begin{enumerate}
+\item The transformer function maps each character to a word of
+64 bits, instead of 2 bits as used for the invertible integer encoding.
+\item
+Single bit shifting is implemented instead of shifting 2 bits for each character. .
+\item
+Cyclic shift is implemented instead of simple arithmetic shift.
+\end{enumerate}
+
+Due to the first modification, a single character does not only affect
+a limited number of bits, but all bits of the hash value. This
+allows the scheme to be pseudorandom, in that changing a single
+character could potentially, and ideally, impact the whole hash value. This
+effect is related to the second modification, where shifting by fixed
+length of 2 is no
+longer necessary and the scheme could theoretically work with shifting of
+any length.~\cite{cohen1997recursive}Due to the third modification, the rolled-over most significant
+bit is not lost (as is the case of arithmetic shift),
+but inserted at the right end of the bit vector.
+This ensures
+that the information content of any character is fully preserved by the
+shift operation.
+The pseudocode of ntHash is given in Algorithm~\ref{code:ntHash}.
+\begin{algorithm}[t]
+\caption{ntHash}
+\label{code:ntHash}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}&sequence $s$ of length $n$\\
+               &size of alphabet $|\mathcal{A}|$\\
+               &function \(\mathsf{process}\) processing hash values
+\end{tabular}
+\begin{algorithmic}
+\For{\(i\) \textbf{from} 1 to $|\mathcal{A}|$} \Comment{Generate random
+integers for each character}
+\State \(f(A[i]) \gets \mathsf{RandomInteger}()\)
+\EndFor
+\For{\(i\) \textbf{from} 1 to $|\mathcal{A}|$} \Comment{Generate lookup
+table to remove character}
+\State \(f_r(A[i]) \gets \rol(f(A[i]),k-1)\)
+\EndFor
+\State \(\HashValue \gets 0\)
+\For{\(i\) \textbf{from} 1 to $k$} \Comment{Compute first hash value}
+\State \(\HashValue = \rol(\HashValue,1)\)
+\State \(\HashValue = \XOR(\HashValue,f(s[i]))\)
+\EndFor
+\State \(\mathsf{process}(\HashValue)\)
+\For{\(j\) \textbf{from} 1 to $n-k$} \Comment{Compute other hash values}
+\State \(\HashValue = \XOR(\HashValue,\rol(f(s[j]),k-1))\)
+\State \(\HashValue = \rol(\HashValue,1)\)
+\State \(\HashValue = \XOR(\HashValue,f(s[j+k])\)
+\State \(\mathsf{process}(\HashValue)\)
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+Important to note is the step to remove the old character, specifically the use of $\XOR$-Operator to replace subtraction in Equation~\ref{IncrementallyComputeH}. The reason is that $\XOR$ is its own additive inverse. Here an important performance improvement could also be made, where a lookup table could be cached for the computation of $\rol(f(s[j]),k-1))$, which will be discussed in later section.
+
+The hash values resulted from the algorithm were shown to be independently and uniformly
+distributed across the target values~\cite{MOH:CHU:VAN:BIR:2016}.
+The algorithm's runtime 
+was compared against the three hashing methods cityhash, murmurhash and xxhash.
+These are widely used in bioinformatics applications and the result established
+that ntHash performed more than 20 times faster than the closest competitor
+cityhash when applied on a 50-mer hashing of randomly generated sequences of length 250~bp.
+
+As a hash function designed for nucleotide sequences, ntHash also supports
+reverse-complementary strand hashing without actually reversing the input
+sequence. It achieves this through creating a lookup table $\overleftarrow{f}$ to
+determine the complementary bases. Then in order to calculate the hash value
+of last \(k\)-mer in the reverse strand, the weight in the formula is reversed:
+\begin{equation}
+H(\overleftarrow{w}) = \bigoplus_{i=1}^k \rol(\overleftarrow{f}(w[i]),i-1)
+\end{equation}
+where $\overleftarrow{w}$ denotes the reverse complimentary of $w$.
+
+In the computation of the next hash value, the algorithm employs the use of
+right cyclic shift ($\ror$) as the multiplicative inverse of the left cyclic
+shift. Following the general principle of recursive hashing, one obtains:
+\begin{equation}
+H(\overleftarrow{xc}) = \ror(H(\overleftarrow{ax})\oplus \overleftarrow{f}(a),1)\oplus
+\rol(\overleftarrow{f}(c),k-1)
+\end{equation}
+\section{Results}
+In order to evaluate the hash functions, two computational experiments
+were carried out. In the first experiment different implementations of
+the two hashing method described here were
+applied to compute the hash values of all \(k\)-mers for entire
+human genome CHM13~\cite{Rhie2022.12.01.518724}. The measurements were carried out using C++ on a Intel Core Duo T6600 2.2 GHz running Ubuntu on a SSD.
+
+The implementation includes:
+\begin{itemize}
+    \item \textsf{invint\_arith}: The implementation of invertible integer hashing using arithmetic operations from \href{https://github.com/stefan-kurtz/gttl}{\textsf{Genometools Template Library}}
+    \item \textsf{invint\_bitwise}: The \href{https://gitlab.rrz.uni-hamburg.de/BAR3085/cis-seminar-rekursives-hashing}{self-implemented} bitwise counterpart of \textsf{invint\_arith}.
+    \item \textsf{ntHash\_orig}: The original implementation of ntHash~\cite{MOH:CHU:VAN:BIR:2016}
+    \item \textsf{ntHash\_lookup}: A custom implementation of ntHash where a lookup table of to be removed characters was cached to improve performance. Source code can be found under \href{https://github.com/stefan-kurtz/gttl}{\textsf{Genometools Template Library}}
+\end{itemize}
+The measured running times are shown in Figure~\ref{fig:runtime}.
+There is a clear performance lead of \textsf{invint\_bitwise}.
+It requires about 8.6~s, which is about twice as fast as \textsf{invint\_arith}
+(20.8~s) and one order of magnitude faster than \textsf{ntHash\_orig} (68.9~s).
+\textsf{ntHash\_lookup} requires about 31.4~s which
+is twice as fast as \textsf{ntHash\_orig}, but slower by a factor of 4 compared
+to \textsf{invint\_bitwise}.
+\begin{figure}[t]
+\begin{center}
+\includegraphics[scale=0.45]{images/Runtime.png}
+\end{center}
+\caption{Performance measurement of invertible integer hashing and ntHash
+on human genome.}
+\label{fig:runtime}
+\end{figure}
+
+In order to measure the correlation between the bit values, one thousand
+and eventually one million random nucleotide k-mers each of length 32
+were generated under  bias ($p(A):p(C):p(G):p(T)=0.15:0.20:0.30:0.35$, where $p(X)$ refers to the indepedent probability of a nucleotide being $X$). These sequences were then
+hashed and a Pearson correlation coefficient matrix was computed for all 64
+bits of the hash values, such that each entry in the matrix shows the
+color encoded correlation coefficient of two bit positions.
+
+The bias is clearly visible in the matrix resulted from invertible integer hashing (see Figure~\ref{fig:pearson_biased}), as correlation coefficients
+for neighboring bit positions ranging between 0.3 and 0.4. The effect is even more
+observable with higher number of generated sequences. On the other hand, ntHash shows no correlations between any pair of bit positions.
+\begin{figure}[t]
+\begin{tabular}{@{}cc@{}}
+\includegraphics[scale=0.48]{images/invint_biased_1k.png}&
+\includegraphics[scale=0.48]{images/invint_biased_1M.png}\\
+\includegraphics[scale=0.48]{images/ntHash_biased_1k.png}&
+\includegraphics[scale=0.48]{images/ntHash_biased_1M.png}
+\end{tabular}
+\caption{
+Heatmap of Pearson correlation coefficient matrix. Results are obtained from
+randomly generated nucleotide sequences with bias. Top:
+invertible integer hashing. Bottom: ntHash. Left: \numprint{1000}
+sequences. Right: 1 million sequences.}
+\label{fig:pearson_biased}
+\end{figure}
+
+\section{Conclusion}
+Recursive hashing is a powerful tool to transform $k$-mers of biological
+sequences to integers. While the basic method of invertible integer
+hashing achieves very low running time, it comes with a drawback of limited $k$-mer
+size and a high Pearson correlation of the bit pairs in its hash values.
+In need of hash values of higher quality, ntHash was developed. With some tradeoff in performance
+compared to invertible integer hashing, it allows much larger $k$-mer sizes
+and the bit positions of the hash values do not show any correlations, even
+for biased input.
+
+\bibliography{local}
+\bibliographystyle{plain}
+\end{document}
