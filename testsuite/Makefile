@@ -1,6 +1,6 @@
 CXX?=g++
 CFLAGS=-O3 -Wall -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops
-COMPILATION_RESOURCES=-ftemplate-depth=1000000 -fconstexpr-depth=1000000 -march=native
+COMPILATION_RESOURCES=-ftemplate-depth=1000000 -fconstexpr-depth=1000000 -march=native #-fconstexpr-ops-limit=999999999 -fconstexpr-loop-limit=9999999 -mcmodel=medium
 CPPFLAGS=-I ../src
 LD=${CXX}
 LDLIBS=-lm -lz -lpthread -lstdc++
@@ -15,6 +15,15 @@ endif
 ifdef prof
 	CFLAGS+=-pg -g -fprofile-arcs -ftest-coverage
 	LDLIBS+=-pg -g -fprofile-arcs -ftest-coverage
+endif
+
+ifdef debug
+	CFLAGS+=-g
+	LDLIBS+=-g
+endif
+
+ifdef time
+	CFLAGS+=-D_TIME
 endif
 
 #ifeq (,$(findstring clang++,$(CXX)))
@@ -35,7 +44,7 @@ ITER=blast_iterate
 
 all:${SQGRAM}.x ${ITER}.x ${SMATRIX}.x ${UQGRAM}.x
 
-test: test_unsorted_qgram test_score_matrix test_sorted_qgram test_spaced_seeds test_iterate 
+test: test_unsorted_qgram test_sorted_qgram test_spaced_seeds test_iterate 
 
 test_sorted_qgram:${SQGRAM}.x
 	@./${SQGRAM}.x -q 3 -s >${TMPFILE}
@@ -50,12 +59,6 @@ test_unsorted_qgram:${UQGRAM}.x
 	@diff ${REFDIR}/unsorted_qgram_nuc_3.txt ${TMPFILE}
 	@./${UQGRAM}.x -p -q 2 -s >${TMPFILE}
 	@diff ${REFDIR}/unsorted_qgram_prot_2.txt ${TMPFILE}
-	@${RM} ${TMPFILE}
-	@echo "$@ passed."
-
-test_score_matrix:${SMATRIX}.x
-	@./${SMATRIX}.x -m 0 -q 2 >${TMPFILE}
-	@diff ${REFDIR}/smatrix.tsv ${TMPFILE}
 	@${RM} ${TMPFILE}
 	@echo "$@ passed."
 

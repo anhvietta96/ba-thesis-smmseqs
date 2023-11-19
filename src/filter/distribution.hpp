@@ -4,6 +4,8 @@
 #include<cassert>
 #include "filter/utils.hpp"
 #include <math.h>
+#include "filter/env_matrix.hpp"
+#include "utilities/bytes_unit.hpp"
 
 #ifndef THRESHOLD_FACTOR
 #define THRESHOLD_FACTOR 1
@@ -164,6 +166,7 @@ class BGDistribution {
   static constexpr const auto undefined_rank = sc.num_of_chars;
   static constexpr const size_t num_possible_values_single = sc.highest_score - sc.smallest_score + 1;
   static constexpr const size_t num_possible_values_max = num_possible_values_single*weight;
+  static constexpr const int64_t smallest_score = sc.smallest_score * weight;
 
   public:
   /*BGDistribution(const std::array<uint64_t,undefined_rank+1>& target_distribution,
@@ -284,8 +287,6 @@ class BGDistribution {
       if(count > cutoff) break;
     }
 
-
-
     return idx + sc.smallest_score * weight + 1;
   }
 
@@ -335,6 +336,378 @@ class BGDistribution {
     }
 
     return sc.smallest_score * weight + idx + 1;
+  }
+
+  int64_t custom_threshold_get2(const std::array<uint64_t,undefined_rank+1>& target_distribution,
+    const double sensitivity) const {
+    
+    size_t sum_count = 0;
+    for(uint8_t i = 0; i < undefined_rank; i++){
+      sum_count += target_distribution[i];
+    }
+    std::array<double,undefined_rank> freq{};
+    for(uint8_t i = 0; i < undefined_rank; i++){
+      freq[i] = static_cast<double>(target_distribution[i]) / sum_count;
+    }/*
+    std::array<double,undefined_rank> freq2{};
+    for(uint8_t i = 0; i < undefined_rank; i++){
+      freq2[i] = static_cast<double>(1) / undefined_rank;
+    }*/
+
+    std::array<double,num_possible_values_max> base_hist{};
+    for(size_t i = 0; i < undefined_rank; i++){
+      for(size_t j = 0; j < undefined_rank; j++){
+        base_hist[sc.score_matrix[i][j]-sc.smallest_score] += freq[i]; 
+      }
+    }
+    std::array<double,num_possible_values_max> hist = base_hist;
+    /*std::cout << "Base Distribution" << std::endl;
+    for(size_t i = 0; i < base_hist.size(); i++){
+      std::cout << base_hist[i] << std::endl;
+    }*/
+
+    for(uint8_t convolution_num = 1; convolution_num < weight; convolution_num++){
+      std::array<double,num_possible_values_max> next_hist{};
+      for(size_t i = 0; i < num_possible_values_single * convolution_num; i++){
+        for(size_t j = 0; j < num_possible_values_single; j++){
+          next_hist[i+j] += hist[i] * base_hist[j];
+        }
+      }
+      hist = next_hist;
+    }
+
+    /*std::cout << "Distribution" << std::endl;
+    for(size_t i = 0; i < hist.size(); i++){
+      std::cout << hist[i] << std::endl;
+    }*/
+
+    const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
+    //std::cout << "Cutoff " << cutoff << std::endl;
+    double count = 0;
+    size_t idx = num_possible_values_max-1;
+    for(;idx < num_possible_values_max;idx--){
+      count += hist[idx];
+      //std::cout << count << std::endl;
+      if(count > cutoff) break;
+    }
+
+    return sc.smallest_score * weight + idx + 1;
+  }
+
+  void get_next_qgram(std::array<uint8_t,4>& qgram)const{
+    if(qgram[3] == undefined_rank-1){
+      for(uint8_t i = 3; i < 4; i--){
+        if(qgram[i] == undefined_rank-1) qgram[i] = 0;
+        else{
+          qgram[i]++;
+          break;
+        }
+      }
+    } else {
+      qgram[3]++;
+    }
+  }
+
+  template<const size_t sizeof_unit>
+  int64_t context_sensitive_threshold_get(const std::vector<BytesUnit<sizeof_unit,3>>& hash_data,const GttlBitPacker<sizeof_unit,3>& packer, const double sensitivity) const {
+    if constexpr(weight == 4){
+      constexpr const size_t hash_size = constexpr_pow(undefined_rank,weight);
+      std::array<uint32_t,hash_size> code_count{};
+      for(size_t i = 0; i < hash_data.size(); i++){
+        const size_t code = hash_data[i].template decode_at<0>(packer);
+        code_count[code]++;
+      }
+
+      size_t total = 0;
+      for(size_t i = 0; i < hash_size; i++){
+        total += code_count[i];
+      }
+      
+      std::array<double,hash_size> freq{};
+      for(size_t i = 0; i < hash_size; i++){
+        freq[i] = static_cast<double>(code_count[i])/total;
+      }
+
+      constexpr const size_t curr_max_num = num_possible_values_single * weight;
+      constexpr const int64_t curr_min = sc.smallest_score * weight;
+      std::array<double,curr_max_num> hist{};
+      
+      std::array<uint8_t,weight> qgram1{};
+      std::array<uint8_t,weight> qgram2{};
+
+      for(size_t i = 0; i < hash_size; i++){
+        //std::cout << (int) qgram1[0] << (int) qgram1[1] << (int) qgram1[2] << (int) qgram1[3] << std::endl;
+        for(size_t j = 0; j < hash_size; j++){
+          //std::cout << (int) qgram2[0] << (int) qgram2[1] << (int) qgram2[2] << (int) qgram2[3] << std::endl;
+          int64_t score = 0;
+          for(uint8_t k = 0; k < weight; k++){
+            assert(qgram1[k] < undefined_rank and qgram2[k] < undefined_rank);
+            score += sc.score_matrix[qgram1[k]][qgram2[k]];
+          }
+          //std::cout << score << std::endl;
+          assert(score >= curr_min);
+          hist[score-curr_min] += freq[i];
+          get_next_qgram(qgram2);
+        }
+        get_next_qgram(qgram1);
+      }
+      
+      const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
+      //std::cout << "Cutoff " << cutoff << std::endl;
+      double count = 0;
+      size_t idx = curr_max_num-1;
+      for(;idx < curr_max_num;idx--){
+        count += hist[idx];
+        //std::cout << count << std::endl;
+        if(count > cutoff) break;
+      }
+
+      return curr_min + idx + 1;
+    } else if constexpr(weight == 5){
+      constexpr const size_t hash_size1 = constexpr_pow(undefined_rank,3);
+      constexpr const size_t hash_size2 = constexpr_pow(undefined_rank,2);
+
+      std::array<uint32_t,hash_size1> code_count1{};
+      std::array<uint32_t,hash_size2> code_count2{};
+      for(size_t i = 0; i < hash_data.size(); i++){
+        const size_t code = hash_data[i].template decode_at<0>(packer);
+        code_count1[code/hash_size2]++;
+        code_count2[code%hash_size2]++;
+      }
+
+      const size_t total = hash_data.size();
+      
+      std::array<double,hash_size1> freq1{};
+      std::array<double,hash_size2> freq2{};
+      for(size_t i = 0; i < hash_size1; i++){
+        freq1[i] = static_cast<double>(code_count1[i])/total;
+      }
+      for(size_t i = 0; i < hash_size2; i++){
+        freq2[i] = static_cast<double>(code_count2[i])/total;
+      }
+
+      const FullMatrix<ScoreClass,3> fm1{};
+      const FullMatrix<ScoreClass,2> fm2{};
+      constexpr const int64_t min1 = sc.smallest_score * 3;
+      constexpr const int64_t min2 = sc.smallest_score * 2;
+
+      std::array<double,num_possible_values_max> hist1{};
+      std::array<double,num_possible_values_max> hist2{};
+
+      for(size_t i = 0; i < hash_size1; i++){
+        const auto& env = fm1.sorted_env_get(i);
+        for(size_t j = 0; j < env.size(); j++){
+          hist1[env[j].score-min1] += freq1[i];
+        }
+      }
+
+      for(size_t i = 0; i < hash_size2; i++){
+        const auto& env = fm2.sorted_env_get(i);
+        for(size_t j = 0; j < env.size(); j++){
+          hist2[env[j].score-min2] += freq2[i];
+        }
+      }
+
+      std::array<double,num_possible_values_max> hist{};
+      for(size_t i = 0; i < num_possible_values_single * 3; i++){
+        for(size_t j = 0; j < num_possible_values_single * 2; j++){
+          hist[i+j] += hist1[i] * hist2[j];
+        }
+      }
+
+      const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
+      //std::cout << "Cutoff " << cutoff << std::endl;
+      double count = 0;
+      size_t idx = num_possible_values_max-1;
+      for(;idx < num_possible_values_max;idx--){
+        count += hist[idx];
+        //std::cout << count << std::endl;
+        if(count > cutoff) break;
+      }
+
+      return smallest_score + idx + 1;
+    } else if constexpr(weight == 6){
+      constexpr const size_t hash_size = constexpr_pow(undefined_rank,3);
+
+      std::array<uint32_t,hash_size> code_count1{};
+      std::array<uint32_t,hash_size> code_count2{};
+      for(size_t i = 0; i < hash_data.size(); i++){
+        const size_t code = hash_data[i].template decode_at<0>(packer);
+        code_count1[code/hash_size]++;
+        code_count2[code%hash_size]++;
+      }
+
+      const size_t total = hash_data.size();
+      
+      std::array<double,hash_size> freq1{};
+      std::array<double,hash_size> freq2{};
+      for(size_t i = 0; i < hash_size; i++){
+        freq1[i] = static_cast<double>(code_count1[i])/total;
+        freq2[i] = static_cast<double>(code_count2[i])/total;
+      }
+
+      const FullMatrix<ScoreClass,3> fm1{};
+      constexpr const int64_t min = sc.smallest_score * 3;
+
+      std::array<double,num_possible_values_max> hist1{};
+      std::array<double,num_possible_values_max> hist2{};
+
+      for(size_t i = 0; i < hash_size; i++){
+        const auto& env = fm1.sorted_env_get(i);
+        for(size_t j = 0; j < env.size(); j++){
+          hist1[env[j].score-min] += freq1[i];
+          hist2[env[j].score-min] += freq2[i];
+        }
+      }
+
+      std::array<double,num_possible_values_max> hist{};
+      for(size_t i = 0; i < num_possible_values_single * 3; i++){
+        for(size_t j = 0; j < num_possible_values_single * 3; j++){
+          hist[i+j] += hist1[i] * hist2[j];
+        }
+      }
+
+      const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
+      //std::cout << "Cutoff " << cutoff << std::endl;
+      double count = 0;
+      size_t idx = num_possible_values_max-1;
+      for(;idx < num_possible_values_max;idx--){
+        count += hist[idx];
+        //std::cout << count << std::endl;
+        if(count > cutoff) break;
+      }
+
+      return smallest_score + idx + 1;
+    } else {
+      assert(weight == 7);
+      constexpr const size_t hash_size1 = constexpr_pow(undefined_rank,4);
+      constexpr const size_t hash_size2 = constexpr_pow(undefined_rank,3);
+
+      std::array<uint32_t,hash_size1> code_count1{};
+      std::array<uint32_t,hash_size2> code_count2{};
+      for(size_t i = 0; i < hash_data.size(); i++){
+        const size_t code = hash_data[i].template decode_at<0>(packer);
+        code_count1[code/hash_size2]++;
+        code_count2[code%hash_size2]++;
+      }
+
+      const size_t total = hash_data.size();
+      
+      std::array<double,hash_size1> freq1{};
+      std::array<double,hash_size2> freq2{};
+      for(size_t i = 0; i < hash_size1; i++){
+        freq1[i] = static_cast<double>(code_count1[i])/total;
+      }
+      for(size_t i = 0; i < hash_size2; i++){
+        freq2[i] = static_cast<double>(code_count2[i])/total;
+      }
+
+      const FullMatrix<ScoreClass,3> fm2{};
+      constexpr const int64_t min1 = sc.smallest_score * 4;
+      constexpr const int64_t min2 = sc.smallest_score * 3;
+
+      std::array<double,num_possible_values_max> hist1{};
+      std::array<double,num_possible_values_max> hist2{};
+      
+      std::array<uint8_t,4> qgram1{};
+      std::array<uint8_t,4> qgram2{};
+
+      for(size_t i = 0; i < hash_size1; i++){
+        for(size_t j = 0; j < hash_size1; j++){
+          int64_t score = 0;
+          for(uint8_t k = 0; k < 4; k++){
+            assert(qgram1[k] < undefined_rank and qgram2[k] < undefined_rank);
+            score += sc.score_matrix[qgram1[k]][qgram2[k]];
+          }
+          assert(score >= min1);
+          hist1[score-min1] += freq1[i];
+          get_next_qgram(qgram2);
+        }
+        get_next_qgram(qgram1);
+      }
+
+      for(size_t i = 0; i < hash_size2; i++){
+        const auto& env = fm2.sorted_env_get(i);
+        for(size_t j = 0; j < env.size(); j++){
+          hist2[env[j].score-min2] += freq2[i];
+        }
+      }
+
+      std::array<double,num_possible_values_max> hist{};
+      for(size_t i = 0; i < num_possible_values_single * 4; i++){
+        for(size_t j = 0; j < num_possible_values_single * 3; j++){
+          hist[i+j] += hist1[i] * hist2[j];
+        }
+      }
+
+      const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
+      //std::cout << "Cutoff " << cutoff << std::endl;
+      double count = 0;
+      size_t idx = num_possible_values_max-1;
+      for(;idx < num_possible_values_max;idx--){
+        count += hist[idx];
+        //std::cout << count << std::endl;
+        if(count > cutoff) break;
+      }
+
+      return smallest_score + idx + 1;
+    }
+  }
+};
+
+template<typename T>
+struct FilterStats {
+  T appears;
+  size_t length;
+  constexpr FilterStats(): appears(0),length(0){};
+};
+
+template<class ScoreClass, const size_t weight>
+class ThresholdEvaluate {
+  static constexpr const ScoreClass sc{};
+  static constexpr const size_t undefined_rank = sc.num_of_chars;
+  static constexpr const auto char_spec = sc.character_spec;
+  
+  static constexpr const UnsortedQmer<char_spec,undefined_rank,weight> index_table{};
+  const FullMatrix<ScoreClass,weight> m{};
+  static constexpr const  size_t size = constexpr_pow(undefined_rank,weight);
+  std::array<FilterStats<double>,size> stats;
+  
+  public:
+  void eval(const std::array<size_t,undefined_rank+1>& target_distribution,const int64_t threshold){
+    std::array<FilterStats<double>,size> _stats{};
+    
+    size_t sum_count = 0;
+    for(uint8_t i = 0; i < undefined_rank; i++){
+      sum_count += target_distribution[i];
+    }
+    std::array<double,undefined_rank> freq{};
+    for(uint8_t i = 0; i < undefined_rank; i++){
+      freq[i] = static_cast<double>(target_distribution[i]) / sum_count;
+    }
+
+    for(size_t qgram_code = 0; qgram_code < size; qgram_code++){
+      const auto qgram_ref = index_table.qgram_get(qgram_code);
+      double p = static_cast<double>(1);
+      for(size_t i = 0; i < weight; i++){
+        p *= freq[qgram_ref[i]];
+      }
+      _stats[qgram_code].appears = p;
+      
+      const auto env = m.sorted_env_get(qgram_code);
+      size_t count = 0;
+      for(size_t i = 0; i < env.size(); i++){
+        if(env[i].score < threshold) break;
+        count++;
+      }
+      _stats[qgram_code].length = count;
+    }
+
+    stats = _stats;
+  }
+
+  const std::array<FilterStats<double>,size>& stats_get() const {
+    return stats;
   }
 };
 #endif

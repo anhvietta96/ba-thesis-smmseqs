@@ -5,6 +5,7 @@
 #include "filter/byte_composite_env.hpp"
 #include "filter/InvIntHash.hpp"
 #include "utilities/unused.hpp"
+#include "utilities/runtime_class.hpp"
 
 template<class ScoreClass,template<class,size_t> class HashFunc,const size_t seed>
 class MMseqs2 {
@@ -12,7 +13,7 @@ class MMseqs2 {
   static constexpr const uint8_t max_unit_size = 9;
 
   BytesCompositeEnvironment2<ScoreClass,seed> env_constructor{};
-  Multiseq_Hash<ScoreClass,HashFunc,seed> multiseq_hash{};
+  static constexpr const Multiseq_Hash<ScoreClass,HashFunc,seed> multiseq_hash{};
 
   static constexpr const ScoreClass sc{};
   static constexpr const auto char_spec = sc.character_spec;
@@ -92,7 +93,9 @@ class MMseqs2 {
   template<const uint8_t sizeof_query_unit, const uint8_t sizeof_target_unit,
     const uint8_t sizeof_match_unit>
   void query_all_vs_all(GttlMultiseq* query, GttlMultiseq* target,const double sensitivity,
-                        GTTL_UNUSED const bool with_simd,const bool short_header,const bool show) {
+                        GTTL_UNUSED const bool with_simd,const bool short_header,const bool show, 
+                        const bool mmseqs, const bool correct,const double correct_ratio,
+                        const size_t num_threads) {
     const size_t target_seq_len_bits = target->sequences_length_bits_get();
     const size_t target_seq_num_bits = target->sequences_number_bits_get();
     const size_t query_seq_len_bits = query->sequences_length_bits_get();
@@ -120,16 +123,52 @@ class MMseqs2 {
                                         static_cast<int>(query_seq_num_bits),
                                         static_cast<int>(target_seq_len_bits),
                                         static_cast<int>(query_seq_len_bits)}}};
-    multiseq_hash.template dbhash<sizeof_target_unit>(target,target_hash_data,target_packer);
-    multiseq_hash.template dbsort<sizeof_target_unit>(target_hash_data,hashbits);
-    std::cout << "Finished target hashing" << std::endl;
-    env_constructor.set_background_data(literate_target.rank_dist_get(),literate_query.rank_dist_get(),sensitivity);
-    env_constructor.template process_multiseq<sizeof_query_unit>(query,query_hash_data,query_packer);
-    env_constructor.template dbsort<sizeof_query_unit>(query_hash_data,hashbits);
-    std::cout << "Finished query hashing" << std::endl;
+#ifdef TIME    
+    RunTimeClass rt{};
+    multiseq_hash.template hash<sizeof_target_unit>(target,target_hash_data,target_packer);
+    rt.show("Target hashing finished");
+    multiseq_hash.template sort<sizeof_target_unit>(target_hash_data,hashbits);
+    rt.show("Target sorting finished");
+    constexpr const uint8_t weight = multiseq_hash.weight_get();
+    const BGDistribution<Blosum62,weight> distribution{};
+    //const auto threshold = distribution.template context_sensitive_threshold_get<sizeof_target_unit>(target_hash_data,target_packer,sensitivity);
+    const auto threshold = distribution.custom_threshold_get2(literate_target.rank_dist_get(),sensitivity);
+    //std::cout << "Threshold " << (int) threshold << std::endl;
+    env_constructor.set_background_data(literate_target.rank_dist_get(),threshold);
+    rt.show("Prepare Query Input");
+    env_constructor.template process_pthread<sizeof_query_unit>(query,query_hash_data,query_packer,mmseqs,with_simd,correct,correct_ratio,num_threads);
+    rt.show("Constructed Cartesian products");
+    std::cout << "Total generated qgrams: " << query_hash_data.size() << std::endl;
+    env_constructor.template sort<sizeof_query_unit>(query_hash_data,hashbits);
+    rt.show("Query sorting finished");
     find_hits<sizeof_query_unit,sizeof_target_unit,sizeof_match_unit>(query_hash_data,target_hash_data,matches,query_packer,target_packer,match_packer);
+    rt.show("Merging query - target completed");
     hit_sort<sizeof_match_unit>(matches,target_seq_num_bits+query_seq_num_bits);
-
+    rt.show("Match data sorted");
+    std::cout << "Matches found: " << matches.size() << std::endl;
+#else
+    multiseq_hash.template hash<sizeof_target_unit>(target,target_hash_data,target_packer);
+    
+    multiseq_hash.template sort<sizeof_target_unit>(target_hash_data,hashbits);
+    
+    constexpr const uint8_t weight = multiseq_hash.weight_get();
+    const BGDistribution<Blosum62,weight> distribution{};
+    //const auto threshold = distribution.template context_sensitive_threshold_get<sizeof_target_unit>(target_hash_data,target_packer,sensitivity);
+    const auto threshold = distribution.custom_threshold_get2(literate_target.rank_dist_get(),sensitivity);
+    //std::cout << "Threshold " << (int) threshold << std::endl;
+    env_constructor.set_background_data(literate_target.rank_dist_get(),threshold);
+    
+    env_constructor.template process_pthread<sizeof_query_unit>(query,query_hash_data,query_packer,mmseqs,with_simd,correct,correct_ratio,num_threads);
+    
+    std::cout << "Total generated qgrams: " << query_hash_data.size() << std::endl;
+    env_constructor.template sort<sizeof_query_unit>(query_hash_data,hashbits);
+    
+    find_hits<sizeof_query_unit,sizeof_target_unit,sizeof_match_unit>(query_hash_data,target_hash_data,matches,query_packer,target_packer,match_packer);
+    
+    hit_sort<sizeof_match_unit>(matches,target_seq_num_bits+query_seq_num_bits);
+    
+    std::cout << "Matches found: " << matches.size() << std::endl;
+#endif
     if(show){
       if(!short_header){
         std::cout << "#target_seq_num" << '\t' << "query_seq_num" << '\t' << 
@@ -188,7 +227,8 @@ class MMseqs2 {
 
   public:
   MMseqs2(GttlMultiseq* query, GttlMultiseq* target,const double sensitivity,
-          const bool with_simd,const bool short_header,const bool show){
+          const bool with_simd,const bool short_header,const bool show, const bool mmseqs,
+          const bool correct, const double correct_ratio, const size_t num_threads){
     
     const size_t target_seq_len_bits = target->sequences_length_bits_get();
     const size_t target_seq_num_bits = target->sequences_number_bits_get();
@@ -200,10 +240,10 @@ class MMseqs2 {
     const auto sizeof_query_unit = sizeof_unit_get(hashbits+query_seq_num_bits+query_seq_len_bits);
     const auto sizeof_match_unit = sizeof_unit_get(query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits);
 
-    std::cout << (int) sizeof_target_unit << '\t' << (int) sizeof_query_unit << '\t' << (int) sizeof_match_unit << std::endl;
+    /*std::cout << (int) sizeof_target_unit << '\t' << (int) sizeof_query_unit << '\t' << (int) sizeof_match_unit << std::endl;
     std::cout << (int) hashbits+target_seq_num_bits+target_seq_len_bits << '\t' 
     << (int) hashbits+query_seq_num_bits+query_seq_len_bits << '\t' 
-    << (int) query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits << std::endl;
+    << (int) query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits << std::endl;*/
 
 
     if(sizeof_match_unit > max_unit_size or sizeof_query_unit > max_unit_size
@@ -219,7 +259,7 @@ class MMseqs2 {
           constexpr_target_size == sizeof_target_unit and
           constexpr_match_size == sizeof_match_unit){
             query_all_vs_all<constexpr_query_size,constexpr_target_size,
-            constexpr_match_size>(query,target,sensitivity,with_simd,short_header,show);
+            constexpr_match_size>(query,target,sensitivity,with_simd,short_header,show,mmseqs,correct,correct_ratio,num_threads);
           }
         });
       });

@@ -1,6 +1,7 @@
 #include <iostream>
 #include "utilities/cxxopts.hpp"
 #include "filter/sorted_qgram.hpp"
+#include "alignment/blosum62.hpp"
 
 static void usage(const cxxopts::Options &options)
 {
@@ -85,13 +86,6 @@ class SortedQmerOptions
 int main(int argc, char *argv[])
 {
   static constexpr const char nucleotides_upper_lower_ACTG[] = "Aa|Cc|TtUu|Gg";
-  static constexpr const char amino_acids[]
-      = "A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y";
-  constexpr const SortedQmer<nucleotides_upper_lower_ACTG,4,3> map_nuc_3{};
-  constexpr const SortedQmer<nucleotides_upper_lower_ACTG,4,4> map_nuc_4{};
-  constexpr const SortedQmer<amino_acids,20,1> map_prot_1{};
-  constexpr const SortedQmer<amino_acids,20,2> map_prot_2{};
-  constexpr const SortedQmer<amino_acids,20,3> map_prot_3{};
 
   //static_assert(map.get_seq_num(0)[0] != 0);
 
@@ -117,13 +111,14 @@ int main(int argc, char *argv[])
   constexpr_for<1,MAX_LENGTH+1,1>([&] (auto qgram_length_constexpr){
     if(qgram_length == qgram_length_constexpr){
       if(options.protein_option_is_set()) {
-        constexpr const SortedQmer<amino_acids,20,qgram_length_constexpr> map{};
+        constexpr const Blosum62 sc{};
+        constexpr const SortedQmer<sc.character_spec,sc.num_of_chars,qgram_length_constexpr> map{};
         for(size_t i = 0; i < map.size_get(); i++) {
           const auto qgram = map.extern_qgram_get(i);
           if(options.display_option_is_set())
           {
             const std::string output_qgram(std::begin(qgram),std::end(qgram));
-            std::cout << output_qgram << std::endl;
+            std::cout << i << '\t' << output_qgram << std::endl;
           }
         }
       } else {
@@ -133,7 +128,7 @@ int main(int argc, char *argv[])
           if(options.display_option_is_set())
           {
             const std::string output_qgram(std::begin(qgram),std::end(qgram));
-            std::cout << output_qgram << std::endl;
+            std::cout << i << '\t' << output_qgram << std::endl;
           }
         }
       }

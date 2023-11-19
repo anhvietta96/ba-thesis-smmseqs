@@ -136,17 +136,12 @@ class SortedQmer
     return ms_size;
   }
 
-  constexpr std::array<uint8_t,qgram_length> qgram_get(const size_t qgram_idx) const
+  constexpr const uint8_t* const qgram_get(const size_t qgram_idx) const
   {
-    std::array<uint8_t,qgram_length> qgram{};
-    for(size_t i = 0; i < qgram_length; i++)
-    {
-      qgram[i] = map[qgram_idx*qgram_length+i];
-    }
-    return qgram;
+    return map.data() + qgram_idx*qgram_length;
   }
 
-  constexpr void get_qgram(const uint16_t qgram_idx, std::array<uint8_t,qgram_length>& qgram) const {
+  constexpr void get_qgram(const size_t qgram_idx, std::array<uint8_t,qgram_length>& qgram) const {
     for(uint8_t i = 0; i < qgram_length; i++){
       qgram[i] = map[qgram_idx*qgram_length+i];
     }

@@ -1,3 +1,5 @@
+#ifndef ENV_MATRIX
+#define ENV_MATRIX
 #include <iostream>
 #include "filter/sorted_qgram.hpp"
 #include "filter/unsorted_qgram.hpp"
@@ -166,34 +168,65 @@ struct EnvMatrix2 {
   //static constexpr const size_t matrix_size = sorted_size*unsorted_size;
 
   //std::array<int8_t,matrix_size> matrix{};
-  std::array<std::array<ScoreQgramcodePair2,unsorted_size>,sorted_size> matrix;
+  using Environment = std::vector<ScoreQgramcodePair2>;
+  std::array<Environment,unsorted_size> matrix{};
 
   EnvMatrix2()
   {
-    for(uint64_t sorted_idx = 0; sorted_idx < sorted_size; sorted_idx++)
+    for(uint16_t sorted_idx = 0; sorted_idx < sorted_size; sorted_idx++)
     //constexpr_for<0,sorted_size,1>([&] (uint16_t sorted_idx)
     {
-      std::array<ScoreQgramcodePair2,unsorted_size> temp_arr;
-      const auto sorted_qgram = sorted_q.qgram_get(sorted_idx);
-      for(uint64_t unsorted_idx = 0; unsorted_idx < unsorted_size; unsorted_idx++)
+      const uint8_t* const sorted_qgram = sorted_q.qgram_get(sorted_idx);
+      for(uint16_t unsorted_idx = 0; unsorted_idx < unsorted_size; unsorted_idx++)
       //constexpr_for<0,unsorted_size,1>([&] (uint16_t unsorted_idx)
       {
-        const auto unsorted_qgram = unsorted_q.qgram_get(unsorted_idx);
+        const uint8_t* const unsorted_qgram = unsorted_q.qgram_get(unsorted_idx);
         int8_t score = 0;
         for(uint8_t q_idx = 0; q_idx < qgram_length; q_idx++)
         //constexpr_for<0,qgram_length,1>([&] (uint8_t q_idx)
         {
           score += sc.score_matrix[sorted_qgram[q_idx]][unsorted_qgram[q_idx]];
         }
-        temp_arr[unsorted_idx] = ScoreQgramcodePair2(score,unsorted_idx);
+        matrix[sorted_idx].push_back(ScoreQgramcodePair2(score,unsorted_idx));
       }
-      std::sort(temp_arr.begin(),temp_arr.end());
-      matrix[sorted_idx] = temp_arr;
+      std::sort(matrix[sorted_idx].begin(),matrix[sorted_idx].end());
     }
   };
 
-  std::vector<ScoreQgramcodePair2> sorted_env_get(const uint64_t sq_code) const {
-    const auto env = matrix[sq_code];
-    return std::vector<ScoreQgramcodePair2>{env.begin(),env.end()};
+  const ScoreQgramcodePair2* const sorted_env_get(const uint64_t sq_code) const {
+    return matrix[sq_code].data();
   }
 };
+
+template<class ScoreClass,const uint8_t qgram_length>
+struct FullMatrix {
+  static constexpr const ScoreClass sc{};
+  static constexpr const auto undefined_rank = sc.num_of_chars;
+  static constexpr const auto char_spec = sc.character_spec;
+
+  static constexpr const UnsortedQmer<char_spec,undefined_rank,qgram_length> unsorted_q{};
+  static constexpr const uint16_t unsorted_size = unsorted_q.size_get();
+  
+  using Environment = std::vector<ScoreQgramcodePair2>;
+  std::array<Environment,unsorted_size> matrix{};
+
+  FullMatrix(){
+    for(size_t idx1 = 0; idx1 < unsorted_size; idx1++){
+      const uint8_t* const qgram1 = unsorted_q.qgram_get(idx1);
+      for(uint64_t idx2 = 0; idx2 < unsorted_size; idx2++){
+        const uint8_t* const qgram2 = unsorted_q.qgram_get(idx2);
+        int8_t score = 0;
+        for(uint8_t q_idx = 0; q_idx < qgram_length; q_idx++){
+          score += sc.score_matrix[qgram1[q_idx]][qgram2[q_idx]];
+        }
+        matrix[idx1].push_back(ScoreQgramcodePair2(score,idx2));
+      }
+      std::sort(matrix[idx1].begin(),matrix[idx1].end());
+    }
+  };
+
+  const ScoreQgramcodePair2* const sorted_env_get(const uint64_t sq_code) const {
+    return matrix[sq_code].data();
+  }
+};
+#endif

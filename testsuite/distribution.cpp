@@ -6,6 +6,7 @@
 #include "filter/distribution.hpp"
 #include "alignment/blosum62.hpp"
 #include "utilities/constexpr_for.hpp"
+#include "filter/InvIntHash.hpp"
 
 static void usage(const cxxopts::Options &options)
 {
@@ -91,9 +92,54 @@ int main(int argc, char *argv[]){
     const BGDistribution<Blosum62,weight> distribution{};
     const auto custom_threshold_wo_dis = distribution.custom_threshold_get(sensitivity);
     const auto custom_threshold_with_dis = distribution.custom_threshold_get(lit_multiseq.rank_dist_get(),sensitivity);
-    std::cout << (int) weight << '\t' << (int) custom_threshold_wo_dis << '\t' << custom_threshold_with_dis << std::endl;
+    const auto custom_threshold_with_dis2 = distribution.custom_threshold_get2(lit_multiseq.rank_dist_get(),sensitivity);
+    std::cout << (int) weight << '\t' << (int) custom_threshold_wo_dis << '\t' << custom_threshold_with_dis << '\t' << custom_threshold_with_dis2 << std::endl;
   });
 
+  /*const BGDistribution<Blosum62,3> distribution{};
+  const auto custom_threshold_with_dis = distribution.custom_threshold_get(sensitivity);
+  const auto custom_threshold_with_dis2 = distribution.custom_threshold_get2(lit_multiseq.rank_dist_get(),sensitivity);
+  ThresholdEvaluate<Blosum62,3> teval{};
+  teval.eval(lit_multiseq.rank_dist_get(),custom_threshold_with_dis);
+  const auto& stats = teval.stats_get();
+  double sum = 0, sum2 = 0;
+  for(size_t i = 0; i < stats.size(); i++){
+    sum += stats[i].appears * stats[i].length;
+  }
+  std::cout << sum << std::endl;
+  
+  if(true){
+    teval.eval(lit_multiseq.rank_dist_get(),custom_threshold_with_dis2+2);
+    const auto& stats2 = teval.stats_get();
+    for(size_t i = 0; i < stats.size(); i++){
+      sum2 += stats2[i].appears * stats2[i].length;
+      //std::cout << (int) i << '\t' << stats2[i].appears << '\t' << (int) stats2[i].length << std::endl;
+    }
+    std::cout << sum2 << std::endl;
+  }*/
+
+  /*static constexpr const size_t seed = 29UL;
+  Multiseq_Hash<Blosum62,InvIntHashFunc,seed> multiseq_hash{};
+  const size_t seq_len_bits = multiseq->sequences_length_bits_get();
+  const size_t seq_num_bits = multiseq->sequences_number_bits_get();
+  const size_t hashbits = multiseq_hash.hashbits_get();
+
+  std::cout << seq_len_bits << '\t' << seq_num_bits << '\t' << hashbits << std::endl;
+
+  static constexpr const size_t sizeof_unit = 8;
+  std::vector<BytesUnit<sizeof_unit,3>> hash_data;
+  const GttlBitPacker<sizeof_unit,3> packer{
+                                    {static_cast<int>(hashbits),
+                                    static_cast<int>(seq_num_bits),
+                                    static_cast<int>(seq_len_bits)}};
+
+  multiseq_hash.template hash<sizeof_unit>(multiseq,hash_data,packer);
+  multiseq_hash.template sort<sizeof_unit>(hash_data,hashbits);
+  std::cout << "Hash complete" << std::endl;
+  const BGDistribution<Blosum62,4> distribution{};
+  const auto threshold = distribution.template context_sensitive_threshold_get<sizeof_unit>(hash_data,packer,sensitivity);
+  std::cout << (int) threshold << std::endl;*/
+   
   delete multiseq;
 
   //std::cout << (int) distribution.threshold(0.95) << std::endl;

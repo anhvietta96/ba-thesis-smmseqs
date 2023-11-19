@@ -124,6 +124,10 @@ constexpr void process(GttlMultiseq* multiseq, const bool show)
   constexpr const auto num_primary_env = spaced_seeds.num_of_primary_env_get();
   
   const auto total_seq_num = multiseq->sequences_number_get();
+  constexpr const uint8_t weight = spaced_seeds.weight_get();
+  std::array<uint8_t,weight> qgram{};
+  std::array<uint8_t,weight> perm{};
+  bool sorted;
   for(size_t seqnum = 0; seqnum < total_seq_num; seqnum++)
   {
     size_t code = 0;
@@ -134,9 +138,9 @@ constexpr void process(GttlMultiseq* multiseq, const bool show)
     {
       for(size_t i = 0; i < seq_len - seed_len + 1; i++)
       {
-        const auto encode_inf = spaced_seeds.encode(curr_seq+i);
+        const auto codes = spaced_seeds.encode(curr_seq+i,qgram.data(),perm.data(),sorted);
         for(size_t env_idx = 0; env_idx < num_primary_env; env_idx++){
-          code += encode_inf.codes[env_idx];
+          code += codes[env_idx];
         }
       }
       if(show)

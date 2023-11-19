@@ -2,7 +2,7 @@
 #define FILTER_UTILS_HPP
 
 constexpr size_t constexpr_pow(const size_t base, const size_t exponent){
-  return (exponent == 1) ? base : base * constexpr_pow(base,exponent-1);
+  return (exponent == 0) ? 1 : base * constexpr_pow(base,exponent-1);
 }
 
 constexpr size_t binom(size_t a,size_t b)

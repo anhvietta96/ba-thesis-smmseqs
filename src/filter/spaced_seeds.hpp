@@ -165,21 +165,26 @@ class SpacedSeedEncoder {
 
   public:
   constexpr SpacedSeedEncoder(){
-    constexpr const uint8_t overcount = (num_of_primary_env * max_subqgram_length) - weight;
+    uint8_t overcount = (num_of_primary_env * max_subqgram_length) - weight;
     for(uint8_t i = 0; i < num_of_primary_env; i++){
-      subqgram_length_arr[i] = 3;
+      subqgram_length_arr[i] = max_subqgram_length;
     }
-    for(uint8_t i = 0; i < overcount; i++){
-      subqgram_length_arr[num_of_primary_env-1-i]--;
+    
+    while(overcount != 0){
+      const uint8_t _overcount = overcount;
+      for(uint8_t i = 0; i < _overcount; i++){
+        subqgram_length_arr[num_of_primary_env-1-i]--;
+        overcount--;
+      }
     }
-
+    
     for(uint8_t i = 0; i < num_of_primary_env; i++){
       env_threshold_arr[i] = threshold - (weight - subqgram_length_arr[i]) * sc.highest_score;
     }
   };
 
   bool sort(const uint8_t* qgram_ptr,uint8_t* sorted_qgram, 
-            std::array<uint8_t,weight>& permutation) const
+            uint8_t* permutation) const
   {
     for(size_t idx = 0; idx < weight; idx++)
     {
@@ -205,13 +210,9 @@ class SpacedSeedEncoder {
     return !swapped;
   }
 
-  EncodeInfo<weight,num_of_primary_env> encode(const char* seq) const {
-    std::array<uint8_t,weight> permutation{};
-    std::array<uint16_t,num_of_primary_env> sorted_qgram_codes{};
-    
-    uint16_t code = 0;
+  std::array<size_t,num_of_primary_env> encode(const char* seq, uint8_t* qgram, uint8_t* permutation, bool& sorted) const {
+    std::array<size_t,num_of_primary_env> sorted_qgram_codes{};
     uint8_t extracted_qgram[weight];
-    uint8_t sorted_qgram[weight];
     uint8_t qgram_idx = 0;
     
     constexpr_for<0,span,1>([&] (auto idx)
@@ -223,19 +224,52 @@ class SpacedSeedEncoder {
       }
     });
 
-    bool sorted = sort(extracted_qgram,sorted_qgram,permutation);
+    sorted = sort(extracted_qgram,qgram,permutation);
 
     qgram_idx = 0;
+    size_t code;
     for(uint8_t i = 0; i < num_of_primary_env; i++){
       code = 0;
       for(uint8_t j = 0; j < subqgram_length_arr[i]; j++){
-        code += multiset_encoder.relative_encode(subqgram_length_arr[i],j,sorted_qgram[qgram_idx]);
+        code += multiset_encoder.relative_encode(subqgram_length_arr[i],j,qgram[qgram_idx]);
         qgram_idx++;
       }
       sorted_qgram_codes[i] = code;
     }
 
-    return EncodeInfo<weight,num_of_primary_env>(permutation,sorted,sorted_qgram_codes);
+    return sorted_qgram_codes;
+  }
+
+  std::array<size_t,num_of_primary_env> encode_unsorted(const char* seq) const {
+    std::array<size_t,num_of_primary_env> sorted_qgram_codes{};
+    
+    size_t code = 0;
+    uint8_t extracted_qgram[weight];
+    uint8_t qgram_idx = 0;
+    
+    constexpr_for<0,span,1>([&] (auto idx)
+    {
+      if constexpr(seed_bitset[span-1-idx] == 1)
+      {
+        extracted_qgram[qgram_idx] = static_cast<uint8_t>(seq[idx]);
+        qgram_idx++;
+      }
+    });
+
+    qgram_idx = 0;
+    for(uint8_t i = 0; i < num_of_primary_env; i++){
+      code = 0;
+      //std::cout << (int)subqgram_length_arr[i] << std::endl;
+      for(uint8_t j = 0; j < subqgram_length_arr[i]; j++){
+        code *= undefined_rank;
+        code += extracted_qgram[qgram_idx];
+        qgram_idx++;
+        //std::cout << code << std::endl;
+      }
+      sorted_qgram_codes[i] = code;
+    }
+
+    return sorted_qgram_codes;
   }
 
   constexpr const std::array<uint8_t,num_of_primary_env>& subqgram_length_arr_get() const {

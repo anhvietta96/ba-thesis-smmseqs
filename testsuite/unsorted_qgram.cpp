@@ -1,6 +1,7 @@
 #include <iostream>
 #include "utilities/cxxopts.hpp"
 #include "filter/unsorted_qgram.hpp"
+#include "alignment/blosum62.hpp"
 
 static void usage(const cxxopts::Options &options)
 {
@@ -85,13 +86,6 @@ class UnsortedQmerOptions
 int main(int argc, char *argv[])
 {
   static constexpr const char nucleotides_upper_lower_ACTG[] = "Aa|Cc|TtUu|Gg";
-  static constexpr const char amino_acids[]
-      = "A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y";
-  constexpr const UnsortedQmer<nucleotides_upper_lower_ACTG,4,3> map_nuc_3{};
-  constexpr const UnsortedQmer<nucleotides_upper_lower_ACTG,4,4> map_nuc_4{};
-  constexpr const UnsortedQmer<amino_acids,20,1> map_prot_1{};
-  constexpr const UnsortedQmer<amino_acids,20,2> map_prot_2{};
-  constexpr const UnsortedQmer<amino_acids,20,3> map_prot_3{};
 
   //static_assert(map.get_seq_num(0)[0] != 0);
 
@@ -112,86 +106,38 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
   }
 
-  if (options.protein_option_is_set())
-  {
-    if(options.get_qgram_length() == "1")
-    {
-      const size_t map_size = map_prot_1.size_get();
-      for(size_t i = 0; i < map_size; i++)
-      {
-        const std::array<uint8_t,1> qgram = map_prot_1.extern_qgram_get(i);
-        if(options.display_option_is_set())
-        {
-          const std::string output_qgram(std::begin(qgram),std::end(qgram));
-          std::cout << output_qgram << std::endl;
+  const uint8_t qgram_length = options.get_qgram_length()[0]-48;
+#define MAX_LENGTH 3
+  constexpr_for<1,MAX_LENGTH+1,1>([&] (auto qgram_length_constexpr){
+    if(qgram_length == qgram_length_constexpr){
+      if(options.protein_option_is_set()) {
+        constexpr const Blosum62 sc{};
+        constexpr const UnsortedQmer<sc.character_spec,sc.num_of_chars,qgram_length_constexpr> map{};
+        for(size_t i = 0; i < map.size_get(); i++) {
+          const auto qgram = map.extern_qgram_get(i);
+          if(options.display_option_is_set())
+          {
+            const std::string output_qgram(std::begin(qgram),std::end(qgram));
+            std::cout << i << '\t' << output_qgram << std::endl;
+          }
+        }
+      } else {
+        constexpr const UnsortedQmer<nucleotides_upper_lower_ACTG,4,qgram_length_constexpr> map{};
+        for(size_t i = 0; i < map.size_get(); i++) {
+          const auto qgram = map.extern_qgram_get(i);
+          if(options.display_option_is_set())
+          {
+            const std::string output_qgram(std::begin(qgram),std::end(qgram));
+            std::cout << i << '\t' << output_qgram << std::endl;
+          }
         }
       }
     }
-    else if(options.get_qgram_length() == "2")
-    {
-      const size_t map_size = map_prot_2.size_get();
-      for(size_t i = 0; i < map_size; i++)
-      {
-        const std::array<uint8_t,2> qgram = map_prot_2.extern_qgram_get(i);
-        if(options.display_option_is_set())
-        {
-          const std::string output_qgram(std::begin(qgram),std::end(qgram));
-          std::cout << output_qgram << std::endl;
-        }
-      }
-    }
-    else if(options.get_qgram_length() == "3")
-    {
-      const size_t map_size = map_prot_3.size_get();
-      for(size_t i = 0; i < map_size; i++)
-      {
-        const std::array<uint8_t,3> qgram = map_prot_3.extern_qgram_get(i);
-        if(options.display_option_is_set())
-        {
-          const std::string output_qgram(std::begin(qgram),std::end(qgram));
-          std::cout << output_qgram << std::endl;
-        }
-      }
-    }
-    else
-    {
-      std::cout << "Unaccounted qgram length" << std::endl;
-    }
-    return EXIT_SUCCESS;
-  }
-  else
-  {
-    if(options.get_qgram_length() == "3")
-    {
-      const size_t map_size = map_nuc_3.size_get();
-      for(size_t i = 0; i < map_size; i++)
-      {
-        const std::array<uint8_t,3> qgram = map_nuc_3.extern_qgram_get(i);
-        if(options.display_option_is_set())
-        {
-          const std::string output_qgram(std::begin(qgram),std::end(qgram));
-          std::cout << output_qgram << std::endl;
-        }
-      }
-    }
-    else if(options.get_qgram_length() == "4")
-    {
-      const size_t map_size = map_nuc_4.size_get();
-      for(size_t i = 0; i < map_size; i++)
-      {
-        const std::array<uint8_t,4> qgram = map_nuc_4.extern_qgram_get(i);
-        if(options.display_option_is_set())
-        {
-          const std::string output_qgram(std::begin(qgram),std::end(qgram));
-          std::cout << output_qgram << std::endl;
-        }
-      }
-    }
-    else
-    {
-      std::cout << "Unaccounted qgram length" << std::endl;
-      return EXIT_FAILURE;
-    }
+  });
+
+  if(qgram_length > MAX_LENGTH){
+    std::cerr << argv[0] << ": only accounts for 1 <= q <= 3" << std::endl;
+    return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;
 }

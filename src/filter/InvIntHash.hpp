@@ -8,6 +8,9 @@
 #include "utilities/mathsupport.hpp"
 #include "utilities/ska_lsb_radix_sort.hpp"
 #include "utilities/unused.hpp"
+#include "sequences/literate_multiseq.hpp"
+#include "utilities/constexpr_for.hpp"
+#include "filter/utils.hpp"
 
 #ifndef SEED_SIZE
 #define SEED_SIZE 64
@@ -83,7 +86,7 @@ constexpr std::array<HashBlock,num_blocks> divide_seed(const std::bitset<SEED_SI
   return block_schematics;
 }
 
-template<const uint64_t seed>
+template<const uint64_t seed, const size_t undefined_rank>
 class SpacedSeedInterpreter {
   static constexpr const std::bitset<SEED_SIZE> seed_bitset{seed};
   static constexpr const uint64_t span = get_span(seed_bitset);
@@ -104,8 +107,8 @@ class SpacedSeedInterpreter {
       if(in_block && !seed_bitset[i]){
         block_schematics[arr_idx].to_be_removed = block_start;
         block_schematics[arr_idx].to_be_added = span-1-i;
-        block_schematics[arr_idx].rank_removed = curr_rank+(span-1-i-block_start-1);
-        block_schematics[arr_idx].rank_added = curr_rank;
+        block_schematics[arr_idx].rank_removed = undefined_rank * (curr_rank+(span-1-i-block_start-1));
+        block_schematics[arr_idx].rank_added = undefined_rank * curr_rank;
         arr_idx++;
         in_block = false;
       }
@@ -117,8 +120,8 @@ class SpacedSeedInterpreter {
     }
     block_schematics[arr_idx].to_be_removed = block_start;
     block_schematics[arr_idx].to_be_added = span;
-    block_schematics[arr_idx].rank_removed = curr_rank+(span-block_start-1);
-    block_schematics[arr_idx].rank_added = curr_rank;
+    block_schematics[arr_idx].rank_removed = undefined_rank * (curr_rank+(span-block_start-1));
+    block_schematics[arr_idx].rank_added = undefined_rank * curr_rank;
   };
 
   constexpr uint64_t span_get() const {
@@ -149,7 +152,7 @@ class InvIntHashFunc {
   static constexpr const auto undefined_rank = sc.num_of_chars;
   static constexpr const GttlAlphabet<char_spec,undefined_rank> alpha{};
 
-  static constexpr const SpacedSeedInterpreter<seed> seed_interpreter{};
+  static constexpr const SpacedSeedInterpreter<seed,undefined_rank> seed_interpreter{};
   static constexpr const auto block_schematics = seed_interpreter.block_schematics_get();
   static constexpr const auto num_blocks = seed_interpreter.num_blocks_get();
   static constexpr const auto span = seed_interpreter.span_get();
@@ -166,10 +169,9 @@ class InvIntHashFunc {
       factor_table[i] = factor;
       factor *= undefined_rank;
     }
-
-    for(uint64_t ch = 0; ch < undefined_rank; ch++){
-      for(uint64_t rank = 0; rank < weight; rank++){
-        precomputed_table[ch*weight+rank] = ch * factor_table[rank];
+    for(uint64_t rank = 0; rank < weight; rank++){
+      for(uint64_t ch = 0; ch < undefined_rank; ch++){      
+        precomputed_table[rank*undefined_rank+ch] = ch * factor_table[rank];
       }
     }
   }
@@ -182,24 +184,38 @@ class InvIntHashFunc {
 
       hashval *= undefined_rank;
       auto ch = seq[span-1-i];
-      if(ch >= undefined_rank){
-        std::cout << "Invalid char" << '\t' << (int) ch << '\t' << (int) undefined_rank << std::endl;
-        ch = undefined_rank-1;
-      }
+      /*if(ch >= undefined_rank){
+        //std::cout << "Invalid char" << '\t' << (int) ch << '\t' << (int) undefined_rank << std::endl;
+        ch = undefined_rank-2;
+      }*/
       hashval += ch;
     }
     return hashval;
   }
 
   uint64_t next_hash_get(const char* seq, GTTL_UNUSED const uint64_t seq_len, uint64_t hashval) const {
+    constexpr_for<0,num_blocks,1>([&] (auto block_num){
+      constexpr const auto curr_block = block_schematics[block_num];
+      constexpr const auto rank_removed = curr_block.rank_removed;
+      auto ch_to_remove = seq[curr_block.to_be_removed];
+      hashval -= precomputed_table[rank_removed+ch_to_remove];
+    });
+    hashval *= undefined_rank;
+    constexpr_for<0,num_blocks,1>([&] (auto block_num){
+      constexpr const auto curr_block = block_schematics[block_num];
+      constexpr const auto rank_added = curr_block.rank_added;
+      auto ch_to_add = seq[curr_block.to_be_added];
+      hashval += precomputed_table[rank_added+ch_to_add];
+    });
+    /*
     for(uint64_t block_num = 0; block_num < num_blocks; block_num++){
       auto ch_to_remove = seq[block_schematics[block_num].to_be_removed];
       auto rank_removed = block_schematics[block_num].rank_removed;
       if(ch_to_remove >= undefined_rank){
-        std::cout << "Invalid char" << '\t' << (int) ch_to_remove << '\t' << (int) rank_removed << std::endl;
-        ch_to_remove = undefined_rank-1;
+        //std::cout << "Invalid char" << '\t' << (int) ch_to_remove << '\t' << (int) rank_removed << std::endl;
+        ch_to_remove = undefined_rank-2;
       }
-      assert(ch_to_remove < undefined_rank && rank_removed < weight);
+      //assert(ch_to_remove < undefined_rank && rank_removed < weight);
       hashval -= precomputed_table[ch_to_remove*weight+rank_removed];
     }
     hashval *= undefined_rank;
@@ -207,12 +223,12 @@ class InvIntHashFunc {
       auto ch_to_add = seq[block_schematics[block_num].to_be_added];
       auto rank_added = block_schematics[block_num].rank_added;
       if(ch_to_add >= undefined_rank){
-        std::cout << "Invalid char" << '\t' << (int) ch_to_add << '\t' << (int) rank_added << std::endl;
-        ch_to_add = undefined_rank-1;
+        //std::cout << "Invalid char" << '\t' << (int) ch_to_add << '\t' << (int) rank_added << std::endl;
+        ch_to_add = undefined_rank-2;
       }
-      assert(ch_to_add < undefined_rank && rank_added < weight);
+      //assert(ch_to_add < undefined_rank && rank_added < weight);
       hashval += precomputed_table[ch_to_add*weight+rank_added];
-    }
+    }*/
     return hashval;
   }
 
@@ -243,25 +259,14 @@ class Multiseq_Hash {
   static constexpr const HashFunc<ScoreClass,seed> hash_func{};
   static constexpr const auto span = hash_func.span_get();
   static constexpr const auto weight = hash_func.weight_get();
-
-  const uint64_t hashbits = gttl_required_bits(hash_func.max_hashval_get());
   
-  static constexpr const int8_t num_bytes_hash = 8;
-  std::vector<BytesUnit<num_bytes_hash,3>> bytes_unit_vec;
-  GttlBitPacker<num_bytes_hash,3> *hashed_qgram_packer = nullptr;
-  std::array<uint64_t,3> num_bits{};
-
   public:
-  Multiseq_Hash(){
-    num_bits[0] = hashbits;
-  };
-
   uint64_t hashbits_get() const {
-    return hashbits;
+    return gttl_required_bits(hash_func.max_hashval_get());
   }
 
   template<const uint64_t sizeof_unit>
-  void dbhash(const GttlMultiseq *multiseq,std::vector<BytesUnit<sizeof_unit,3>>&
+  void hash(const GttlMultiseq *multiseq,std::vector<BytesUnit<sizeof_unit,3>>&
             target_hash_container,const GttlBitPacker<sizeof_unit,3>& target_packer) const {
     if(multiseq == nullptr) return;
     uint64_t hashval;
@@ -298,8 +303,35 @@ class Multiseq_Hash {
     }
   };
 
+  template<const size_t sizeof_unit>
+  void linear_hash(const GttlMultiseq *multiseq,std::vector<BytesUnit<sizeof_unit,3>>&
+            target_hash_container,const GttlBitPacker<sizeof_unit,3>& target_packer) const {
+    if(multiseq == nullptr) return;
+    uint64_t hashval;
+    const uint64_t total_seq_num = multiseq->sequences_number_get();
+    for(uint64_t seq_num = 0; seq_num < total_seq_num; seq_num++){
+      const uint64_t seq_len = multiseq->sequence_length_get(seq_num);
+      if(seq_len < span) continue;
+      const char* seq = multiseq->sequence_ptr_get(seq_num);
+      hashval = hash_func.first_hash_get(seq,seq_len);
+      const BytesUnit<sizeof_unit,3> bu_0{target_packer,
+                                                {static_cast<uint64_t>(hashval),
+                                                static_cast<uint64_t>(seq_num),
+                                                static_cast<uint64_t>(0)}};
+      target_hash_container.push_back(bu_0);
+      for(uint64_t seq_pos = 1; seq_pos <= seq_len - span; seq_pos++){
+        hashval = hash_func.first_hash_get(seq+seq_pos,seq_len);
+        const BytesUnit<sizeof_unit,3> bu{target_packer,
+                                                {static_cast<uint64_t>(hashval),
+                                                static_cast<uint64_t>(seq_num),
+                                                static_cast<uint64_t>(seq_pos)}};
+        target_hash_container.push_back(bu);
+      }
+    }
+  }
+
   template<const uint64_t sizeof_unit>
-  void dbsort(std::vector<BytesUnit<sizeof_unit,3>>& target_hash_container,const uint64_t hash_bits) const {
+  void sort(std::vector<BytesUnit<sizeof_unit,3>>& target_hash_container,const uint64_t hash_bits) const {
     if constexpr (sizeof_unit == 8){
       ska_lsb_radix_sort<uint64_t>(hash_bits,
                               reinterpret_cast<uint64_t *>
@@ -313,7 +345,7 @@ class Multiseq_Hash {
     }
   }
 
-  void hash(const GttlMultiseq *multiseq){
+  /*void hash(const GttlMultiseq *multiseq){
     assert(multiseq != nullptr);
     //LiterateMultiseq<char_spec,undefined_rank> literate_multiseq{*multiseq};
     //literate_multiseq.perform_sequence_encoding();
@@ -337,11 +369,11 @@ class Multiseq_Hash {
       const uint64_t seq_len = multiseq->sequence_length_get(seq_num);
       const char* seq = multiseq->sequence_ptr_get(seq_num);
       hashval = hash_func.first_hash_get(seq,seq_len);
-      /*const BytesUnit<num_bytes_hash,3> bu_0{*hashed_qgram_packer,
+      const BytesUnit<num_bytes_hash,3> bu_0{*hashed_qgram_packer,
                                             {static_cast<uint64_t>(hashval),
                                             static_cast<uint64_t>(seq_num),
                                             static_cast<uint64_t>(0)}};
-      bytes_unit_vec.push_back(bu_0);*/
+      bytes_unit_vec.push_back(bu_0);
       bytes_unit_vec.emplace_back(BytesUnit<num_bytes_hash,3>{
                                      *hashed_qgram_packer,
                                     {static_cast<uint64_t>(hashval),
@@ -349,11 +381,11 @@ class Multiseq_Hash {
                                     static_cast<uint64_t>(0)}});
       for(uint64_t seq_pos = 1; seq_pos <= seq_len - span; seq_pos++){
         hashval = hash_func.next_hash_get(seq+seq_pos-1,seq_len,hashval);
-        /*const BytesUnit<num_bytes_hash,3> bu{*hashed_qgram_packer,
+        const BytesUnit<num_bytes_hash,3> bu{*hashed_qgram_packer,
                                             {static_cast<uint64_t>(hashval),
                                             static_cast<uint64_t>(seq_num),
                                             static_cast<uint64_t>(seq_pos)}};
-        bytes_unit_vec.push_back(bu);*/
+        bytes_unit_vec.push_back(bu);
         bytes_unit_vec.emplace_back(BytesUnit<num_bytes_hash,3>{
                                     *hashed_qgram_packer,
                                     {static_cast<uint64_t>(hashval),
@@ -365,30 +397,10 @@ class Multiseq_Hash {
                               reinterpret_cast<uint64_t *>
                               (bytes_unit_vec.data()),
                               bytes_unit_vec.size());
-  };
+  };*/
 
-  ~Multiseq_Hash(){
-    if(hashed_qgram_packer) delete hashed_qgram_packer;
-  }
-
-  uint64_t size()const{
-    return bytes_unit_vec.size();
-  }
-
-  const std::array<uint64_t,3>& num_bits_get() const {
-    return num_bits;
-  }
-
-  const std::vector<BytesUnit<num_bytes_hash,3>>& bytes_unit_vec_get() const {
-    return bytes_unit_vec;
-  }
-
-  const BytesUnit<num_bytes_hash,3>& bytes_unit_get(const uint64_t idx) const {
-    return bytes_unit_vec[idx];
-  }
-
-  const GttlBitPacker<num_bytes_hash,3> *packer_get() const {
-    return hashed_qgram_packer;
+  constexpr uint8_t weight_get() const {
+    return weight;
   }
 };
 

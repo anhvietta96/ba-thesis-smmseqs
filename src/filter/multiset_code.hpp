@@ -19,7 +19,7 @@ class MultisetEncoder {
       size_t curr_char = undefined_rank;
       constexpr const SortedQmer<char_spec,undefined_rank,q_idx+1> sorted_q{};
       
-      for(uint16_t sorted_idx = 0; sorted_idx < sorted_q.size_get(); sorted_idx++){
+      for(size_t sorted_idx = 0; sorted_idx < sorted_q.size_get(); sorted_idx++){
         const auto multiset = sorted_q.qgram_get(sorted_idx);
         if(multiset[0] == curr_char) continue;
 
@@ -35,8 +35,8 @@ class MultisetEncoder {
     });
   };
 
-  uint16_t encode(const std::array<uint8_t,qgram_length>& qgram) const {
-    uint16_t code = 0;
+  size_t encode(const std::array<uint8_t,qgram_length>& qgram) const {
+    size_t code = 0;
     for(uint8_t q_idx = 0; q_idx < qgram_length; q_idx++){
       code += multiset_weights[(q_idx)*undefined_rank+qgram[q_idx]];
     }
