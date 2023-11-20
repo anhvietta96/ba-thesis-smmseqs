@@ -1,6 +1,6 @@
 CXX?=g++
 CFLAGS=-O3 -Wall -Wextra -Wno-ignored-attributes -Wunused-parameter -Wpointer-arith -DLARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -funroll-loops
-COMPILATION_RESOURCES=-ftemplate-depth=1000000 -fconstexpr-depth=1000000 -march=native #-fconstexpr-ops-limit=999999999 -fconstexpr-loop-limit=9999999 -mcmodel=medium
+COMPILATION_RESOURCES=-ftemplate-depth=1000000 -fconstexpr-depth=1000000 -march=native -fconstexpr-ops-limit=999999999 -fconstexpr-loop-limit=9999999 -mcmodel=medium
 CPPFLAGS=-I ../src
 LD=${CXX}
 LDLIBS=-lm -lz -lpthread -lstdc++

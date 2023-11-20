@@ -327,6 +327,20 @@ class Multiseq_Hash {
                                                 static_cast<uint64_t>(seq_pos)}};
         target_hash_container.push_back(bu);
       }
+
+      /*GttlCharRange<char_finder::AminoacidFinder,aminoacid_finder,true,false> aa_ranger(seq,seq_len);
+
+      for(auto const &&range : aa_ranger){
+        const size_t this_length = std::get<1>(range);
+        const char *substring = seq + std::get<0>(range);
+        if(this_length < span) break;
+        hashval = hash_func.first_hash_get(substring,seq_len);
+        const BytesUnit<sizeof_unit,3> bu_0{target_packer,
+                                                  {static_cast<uint64_t>(hashval),
+                                                  static_cast<uint64_t>(seq_num),
+                                                  static_cast<uint64_t>(0)}};
+        target_hash_container.push_back(bu_0);
+      }*/
     }
   }
 

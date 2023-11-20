@@ -7,12 +7,13 @@
 #include "utilities/unused.hpp"
 #include "utilities/runtime_class.hpp"
 
+#define TIME
+
 template<class ScoreClass,template<class,size_t> class HashFunc,const size_t seed>
 class MMseqs2 {
   static constexpr const uint8_t min_unit_size = 8;
   static constexpr const uint8_t max_unit_size = 9;
 
-  BytesCompositeEnvironment2<ScoreClass,seed> env_constructor{};
   static constexpr const Multiseq_Hash<ScoreClass,HashFunc,seed> multiseq_hash{};
 
   static constexpr const ScoreClass sc{};
@@ -28,7 +29,6 @@ class MMseqs2 {
     const GttlBitPacker<sizeof_target_unit,3>& target_packer,
     const GttlBitPacker<sizeof_match_unit,4>& match_packer) const {
     size_t target_idx = 0, query_idx = 0;
-
     while(target_idx < target_vec.size() and query_idx < query_vec.size()){
       const auto target_code = target_vec[target_idx].template decode_at<0>(target_packer);
       const auto query_code = query_vec[query_idx].template decode_at<0>(query_packer);
@@ -67,21 +67,10 @@ class MMseqs2 {
             const auto target_seqnum = target_vec[target_tmp_idx].template decode_at<1>(target_packer);
             const auto target_seqpos = target_vec[target_tmp_idx].template decode_at<2>(target_packer);
             
-            const BytesUnit<sizeof_match_unit,4> bu{
-              match_packer,
-                                    {static_cast<uint64_t>(target_seqnum),
-                                    static_cast<uint64_t>(query_seqnum),
-                                    static_cast<uint64_t>(target_seqpos),
-                                    static_cast<uint64_t>(query_seqpos)}
-            };
-            match_vec.push_back(bu);
-            
-            
-            /*match_vec.emplace_back({match_packer,
-                                    {static_cast<uint64_t>(target_seqnum),
-                                    static_cast<uint64_t>(query_seqnum),
-                                    static_cast<uint64_t>(target_seqpos),
-                                    static_cast<uint64_t>(query_seqpos)}});*/
+            match_vec.emplace_back(match_packer,std::array<uint64_t,4>{static_cast<uint64_t>(target_seqnum),
+                                                                      static_cast<uint64_t>(query_seqnum),
+                                                                      static_cast<uint64_t>(target_seqpos),
+                                                                      static_cast<uint64_t>(query_seqpos)});
           }
         }
         target_idx = target_end;
@@ -95,7 +84,7 @@ class MMseqs2 {
   void query_all_vs_all(GttlMultiseq* query, GttlMultiseq* target,const double sensitivity,
                         GTTL_UNUSED const bool with_simd,const bool short_header,const bool show, 
                         const bool mmseqs, const bool correct,const double correct_ratio,
-                        const size_t num_threads) {
+                        const size_t num_threads) const {
     const size_t target_seq_len_bits = target->sequences_length_bits_get();
     const size_t target_seq_num_bits = target->sequences_number_bits_get();
     const size_t query_seq_len_bits = query->sequences_length_bits_get();
@@ -134,7 +123,8 @@ class MMseqs2 {
     //const auto threshold = distribution.template context_sensitive_threshold_get<sizeof_target_unit>(target_hash_data,target_packer,sensitivity);
     const auto threshold = distribution.custom_threshold_get2(literate_target.rank_dist_get(),sensitivity);
     //std::cout << "Threshold " << (int) threshold << std::endl;
-    env_constructor.set_background_data(literate_target.rank_dist_get(),threshold);
+    const BytesCompositeEnvironment2<ScoreClass,seed> env_constructor{literate_target.rank_dist_get(),threshold};
+    //env_constructor.set_background_data();
     rt.show("Prepare Query Input");
     env_constructor.template process_pthread<sizeof_query_unit>(query,query_hash_data,query_packer,mmseqs,with_simd,correct,correct_ratio,num_threads);
     rt.show("Constructed Cartesian products");
@@ -156,7 +146,8 @@ class MMseqs2 {
     //const auto threshold = distribution.template context_sensitive_threshold_get<sizeof_target_unit>(target_hash_data,target_packer,sensitivity);
     const auto threshold = distribution.custom_threshold_get2(literate_target.rank_dist_get(),sensitivity);
     //std::cout << "Threshold " << (int) threshold << std::endl;
-    env_constructor.set_background_data(literate_target.rank_dist_get(),threshold);
+    const BytesCompositeEnvironment2<ScoreClass,seed> env_constructor{literate_target.rank_dist_get(),threshold};
+    //env_constructor.set_background_data(literate_target.rank_dist_get(),threshold);
     
     env_constructor.template process_pthread<sizeof_query_unit>(query,query_hash_data,query_packer,mmseqs,with_simd,correct,correct_ratio,num_threads);
     

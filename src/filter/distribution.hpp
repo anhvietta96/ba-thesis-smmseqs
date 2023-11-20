@@ -411,58 +411,58 @@ class BGDistribution {
   template<const size_t sizeof_unit>
   int64_t context_sensitive_threshold_get(const std::vector<BytesUnit<sizeof_unit,3>>& hash_data,const GttlBitPacker<sizeof_unit,3>& packer, const double sensitivity) const {
     if constexpr(weight == 4){
-      constexpr const size_t hash_size = constexpr_pow(undefined_rank,weight);
-      std::array<uint32_t,hash_size> code_count{};
+      constexpr const size_t hash_size = constexpr_pow(undefined_rank,2);
+      std::array<uint32_t,hash_size> code_count1{};
+      std::array<uint32_t,hash_size> code_count2{};
       for(size_t i = 0; i < hash_data.size(); i++){
         const size_t code = hash_data[i].template decode_at<0>(packer);
-        code_count[code]++;
+        code_count1[code/hash_size]++;
+        code_count2[code%hash_size]++;
       }
 
-      size_t total = 0;
+      const size_t total = hash_data.size();
+
+      std::array<double,hash_size> freq1{};
+      std::array<double,hash_size> freq2{};
       for(size_t i = 0; i < hash_size; i++){
-        total += code_count[i];
+        freq1[i] = static_cast<double>(code_count1[i])/total;
       }
-      
-      std::array<double,hash_size> freq{};
       for(size_t i = 0; i < hash_size; i++){
-        freq[i] = static_cast<double>(code_count[i])/total;
+        freq2[i] = static_cast<double>(code_count2[i])/total;
       }
 
-      constexpr const size_t curr_max_num = num_possible_values_single * weight;
-      constexpr const int64_t curr_min = sc.smallest_score * weight;
-      std::array<double,curr_max_num> hist{};
-      
-      std::array<uint8_t,weight> qgram1{};
-      std::array<uint8_t,weight> qgram2{};
+      const FullMatrix<ScoreClass,2> fm{};
+      constexpr const int64_t min = sc.smallest_score * 2;
+
+      std::array<double,num_possible_values_single*2> hist1{};
+      std::array<double,num_possible_values_single*2> hist2{};
 
       for(size_t i = 0; i < hash_size; i++){
-        //std::cout << (int) qgram1[0] << (int) qgram1[1] << (int) qgram1[2] << (int) qgram1[3] << std::endl;
+        const auto& env = fm.sorted_env_get(i);
         for(size_t j = 0; j < hash_size; j++){
-          //std::cout << (int) qgram2[0] << (int) qgram2[1] << (int) qgram2[2] << (int) qgram2[3] << std::endl;
-          int64_t score = 0;
-          for(uint8_t k = 0; k < weight; k++){
-            assert(qgram1[k] < undefined_rank and qgram2[k] < undefined_rank);
-            score += sc.score_matrix[qgram1[k]][qgram2[k]];
-          }
-          //std::cout << score << std::endl;
-          assert(score >= curr_min);
-          hist[score-curr_min] += freq[i];
-          get_next_qgram(qgram2);
+          hist1[env[j].score-min] += freq1[i];
+          hist2[env[j].score-min] += freq2[i];
         }
-        get_next_qgram(qgram1);
+      }
+
+      std::array<double,num_possible_values_max> hist{};
+      for(size_t i = 0; i < num_possible_values_single * 2; i++){
+        for(size_t j = 0; j < num_possible_values_single * 2; j++){
+          hist[i+j] += hist1[i] * hist2[j];
+        }
       }
       
       const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
       //std::cout << "Cutoff " << cutoff << std::endl;
       double count = 0;
-      size_t idx = curr_max_num-1;
-      for(;idx < curr_max_num;idx--){
+      size_t idx = num_possible_values_single * 2-1;
+      for(;idx < num_possible_values_single * 2;idx--){
         count += hist[idx];
         //std::cout << count << std::endl;
         if(count > cutoff) break;
       }
 
-      return curr_min + idx + 1;
+      return smallest_score + idx + 1;
     } else if constexpr(weight == 5){
       constexpr const size_t hash_size1 = constexpr_pow(undefined_rank,3);
       constexpr const size_t hash_size2 = constexpr_pow(undefined_rank,2);
@@ -496,14 +496,14 @@ class BGDistribution {
 
       for(size_t i = 0; i < hash_size1; i++){
         const auto& env = fm1.sorted_env_get(i);
-        for(size_t j = 0; j < env.size(); j++){
+        for(size_t j = 0; j < hash_size1; j++){
           hist1[env[j].score-min1] += freq1[i];
         }
       }
 
       for(size_t i = 0; i < hash_size2; i++){
         const auto& env = fm2.sorted_env_get(i);
-        for(size_t j = 0; j < env.size(); j++){
+        for(size_t j = 0; j < hash_size2; j++){
           hist2[env[j].score-min2] += freq2[i];
         }
       }
@@ -554,7 +554,7 @@ class BGDistribution {
 
       for(size_t i = 0; i < hash_size; i++){
         const auto& env = fm1.sorted_env_get(i);
-        for(size_t j = 0; j < env.size(); j++){
+        for(size_t j = 0; j < hash_size; j++){
           hist1[env[j].score-min] += freq1[i];
           hist2[env[j].score-min] += freq2[i];
         }
@@ -580,63 +580,71 @@ class BGDistribution {
       return smallest_score + idx + 1;
     } else {
       assert(weight == 7);
-      constexpr const size_t hash_size1 = constexpr_pow(undefined_rank,4);
-      constexpr const size_t hash_size2 = constexpr_pow(undefined_rank,3);
+      constexpr const size_t hash_size4 = constexpr_pow(undefined_rank,4);
+      constexpr const size_t hash_size2 = constexpr_pow(undefined_rank,2);
+      constexpr const size_t hash_size3 = constexpr_pow(undefined_rank,3);
+      constexpr const size_t hash_size5 = hash_size2*hash_size3;
 
-      std::array<uint32_t,hash_size1> code_count1{};
+      std::array<uint32_t,hash_size3> code_count1{};
       std::array<uint32_t,hash_size2> code_count2{};
+      std::array<uint32_t,hash_size2> code_count3{};
       for(size_t i = 0; i < hash_data.size(); i++){
         const size_t code = hash_data[i].template decode_at<0>(packer);
-        code_count1[code/hash_size2]++;
-        code_count2[code%hash_size2]++;
+        code_count1[code/hash_size4]++;
+        code_count2[(code/hash_size2)%hash_size2]++;
+        code_count3[code%hash_size2]++;
       }
 
       const size_t total = hash_data.size();
       
-      std::array<double,hash_size1> freq1{};
+      std::array<double,hash_size3> freq1{};
       std::array<double,hash_size2> freq2{};
-      for(size_t i = 0; i < hash_size1; i++){
+      std::array<double,hash_size2> freq3{};
+      for(size_t i = 0; i < hash_size3; i++){
         freq1[i] = static_cast<double>(code_count1[i])/total;
       }
       for(size_t i = 0; i < hash_size2; i++){
         freq2[i] = static_cast<double>(code_count2[i])/total;
       }
+      for(size_t i = 0; i < hash_size2; i++){
+        freq3[i] = static_cast<double>(code_count3[i])/total;
+      }
 
-      const FullMatrix<ScoreClass,3> fm2{};
-      constexpr const int64_t min1 = sc.smallest_score * 4;
-      constexpr const int64_t min2 = sc.smallest_score * 3;
+      const FullMatrix<ScoreClass,3> fm3{};
+      const FullMatrix<ScoreClass,2> fm2{};
+      constexpr const int64_t min1 = sc.smallest_score * 3;
+      constexpr const int64_t min2 = sc.smallest_score * 2;
 
       std::array<double,num_possible_values_max> hist1{};
       std::array<double,num_possible_values_max> hist2{};
+      std::array<double,num_possible_values_max> hist3{};
+      std::array<double,num_possible_values_max> temp_hist{};
       
-      std::array<uint8_t,4> qgram1{};
-      std::array<uint8_t,4> qgram2{};
-
-      for(size_t i = 0; i < hash_size1; i++){
-        for(size_t j = 0; j < hash_size1; j++){
-          int64_t score = 0;
-          for(uint8_t k = 0; k < 4; k++){
-            assert(qgram1[k] < undefined_rank and qgram2[k] < undefined_rank);
-            score += sc.score_matrix[qgram1[k]][qgram2[k]];
-          }
-          assert(score >= min1);
-          hist1[score-min1] += freq1[i];
-          get_next_qgram(qgram2);
+      for(size_t i = 0; i < hash_size3; i++){
+        const auto& env = fm3.sorted_env_get(i);
+        for(size_t j = 0; j < hash_size3; j++){
+          hist1[env[j].score-min1] += freq1[i];
         }
-        get_next_qgram(qgram1);
       }
 
       for(size_t i = 0; i < hash_size2; i++){
         const auto& env = fm2.sorted_env_get(i);
-        for(size_t j = 0; j < env.size(); j++){
+        for(size_t j = 0; j < hash_size2; j++){
           hist2[env[j].score-min2] += freq2[i];
+          hist3[env[j].score-min2] += freq3[i];
+        }
+      }
+
+      for(size_t i = 0; i < num_possible_values_single * 2; i++){
+        for(size_t j = 0; j < num_possible_values_single * 2; j++){
+          temp_hist[i+j] += hist2[i] * hist3[j];
         }
       }
 
       std::array<double,num_possible_values_max> hist{};
       for(size_t i = 0; i < num_possible_values_single * 4; i++){
         for(size_t j = 0; j < num_possible_values_single * 3; j++){
-          hist[i+j] += hist1[i] * hist2[j];
+          hist[i+j] += temp_hist[i] * hist1[j];
         }
       }
 

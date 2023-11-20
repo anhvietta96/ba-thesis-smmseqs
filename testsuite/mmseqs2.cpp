@@ -168,6 +168,8 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   851UL /* 5, 6, 10 1101010011, MMseq2_proteins_5 */,
   981UL /* 6, 7, 10 1111010101, MMseq2_proteins_6 */,
   1715UL /* 7, 7, 11 11010110011, MMseq2_proteins_7 */
+  //3699UL,
+  //7399UL
 };
 #endif
 
@@ -179,12 +181,12 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
 
 constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab)/sizeof(size_t);
 
-template<const char* char_spec, const size_t undefined_rank,const uint8_t seed_idx>
+template<class ScoreClass,const uint8_t seed_idx>
 void process(GttlMultiseq* query,GttlMultiseq* target,const double sensitivity,
             const bool with_simd,const bool show,const bool short_header, const bool mmseqs, const bool correct, const double correct_ratio, const size_t num_threads)
 {
   constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
-  MMseqs2<Blosum62,InvIntHashFunc,seed> mmseqs2{query,target,sensitivity,with_simd,short_header,show,mmseqs,correct,correct_ratio,num_threads};
+  const MMseqs2<ScoreClass,InvIntHashFunc,seed> mmseqs2{query,target,sensitivity,with_simd,short_header,show,mmseqs,correct,correct_ratio,num_threads};
 }
 
 int main(int argc, char *argv[])
@@ -272,10 +274,7 @@ int main(int argc, char *argv[])
   {
     if(seed_idx_constexpr == seed_idx)
     {
-      static constexpr const Blosum62 sc{};
-      static constexpr const auto char_spec = sc.character_spec;
-      static constexpr const auto undefined_rank = sc.num_of_chars;
-      process<char_spec,undefined_rank,seed_idx_constexpr>(query,target,sensitivity,with_simd,show,short_header,mmseqs,correct,correct_ratio,num_threads);
+      process<Blosum62,seed_idx_constexpr>(query,target,sensitivity,with_simd,show,short_header,mmseqs,correct,correct_ratio,num_threads);
     }
   });
   
@@ -297,6 +296,6 @@ int main(int argc, char *argv[])
       std::cout << "# " << msg << std::endl;
     }
   }
-  if(query) delete query;
-  if(target) delete target;
+  delete query;
+  delete target;
 }

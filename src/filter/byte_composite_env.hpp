@@ -19,6 +19,7 @@
 #include "utilities/bytes_unit.hpp"
 #include "utilities/ska_lsb_radix_sort.hpp"
 #include "filter/env_matrix.hpp"
+#include "threading/thread_pool_var.hpp"
 
 #ifndef CORRECTION_REGION_SIZE
 #define CORRECTION_REGION_SIZE 20
@@ -33,9 +34,6 @@
 #include <iostream>
 #include <vector>
 
-/*
-Difference: non predetermined threshold
-*/
 template<class ScoreClass, const size_t seed>
 class BytesCompositeEnvironment2 {
   //ScoreClass
@@ -68,12 +66,12 @@ class BytesCompositeEnvironment2 {
   static constexpr const size_t simd_vec_len = 16; // based on __mm_shuffle_epi8 instruction
 
   //mutex
-  std::mutex mut;
+  //std::mutex mut;
 
   //stats
   //static constexpr const size_t stats_size = constexpr_pow(undefined_rank,2);
 
-  void invert_permutation(std::array<uint8_t,simd_vec_len>& perm) const {
+  void invert_permutation(uint8_t* perm) const {
     uint8_t temp_p[weight];
     for(size_t i = 0; i < weight; i++){
       temp_p[perm[i]] = i;
@@ -83,20 +81,21 @@ class BytesCompositeEnvironment2 {
     }
   }
 
-  void reshuffle_no_simd(std::array<uint8_t,simd_vec_len>& qgram, std::array<uint8_t,simd_vec_len>& perm) const {
-    std::array<uint8_t,simd_vec_len> transformed_qgram{};
+  void reshuffle_no_simd(uint8_t* qgram, const uint8_t* perm) const {
+    std::array<uint8_t,weight> transformed_qgram{};
     for(uint8_t idx = 0; idx < weight; idx++)
     {
       transformed_qgram[idx] = qgram[perm[idx]];
     }
-    qgram = transformed_qgram;
+    std::memcpy(static_cast<void*>(qgram),static_cast<void*>(transformed_qgram.data()),weight);
+    //qgram = transformed_qgram;
   }
 
-  void reshuffle_with_simd(std::array<uint8_t,simd_vec_len>& qgram, std::array<uint8_t,simd_vec_len>& perm){
+  void reshuffle_with_simd(uint8_t* qgram, const uint8_t* perm) const {
 #if defined __SSSE3__
-    __m128i loaded_qgram = _mm_loadu_si128((__m128i*)(qgram.data()));
-    __m128i loaded_perm = _mm_loadu_si128((__m128i*)(perm.data()));
-    _mm_storeu_si128((__m128i*)(qgram.data()),_mm_shuffle_epi8(loaded_qgram,loaded_perm));
+    __m128i loaded_qgram = _mm_loadu_si128((__m128i*)(qgram));
+    __m128i loaded_perm = _mm_loadu_si128((__m128i*)(perm));
+    _mm_storeu_si128((__m128i*)(qgram),_mm_shuffle_epi8(loaded_qgram,loaded_perm));
 #endif
   }
 
@@ -107,12 +106,12 @@ class BytesCompositeEnvironment2 {
   }
   
   template<const uint8_t env_idx>
-  const uint8_t* const unsorted_subqgram_get(uint32_t qgram_code) const {
+  const uint8_t* const unsorted_subqgram_get(const uint32_t qgram_code) const {
     static constexpr const UnsortedQmer<char_spec,undefined_rank,qgram_length_arr[env_idx]> unsorted_q{};
     return unsorted_q.qgram_get(qgram_code);
   }
 
-  void reconstruct_qgram(std::array<uint16_t,num_of_primary_env> qgram_codes,uint8_t* qgram) const {
+  void reconstruct_qgram(uint16_t* qgram_codes,uint8_t* qgram) const {
     uint8_t i = 0;
     constexpr_for<0,num_of_primary_env,1>([&] (auto env_idx)
     {
@@ -142,7 +141,7 @@ class BytesCompositeEnvironment2 {
                   const size_t seqnum,const size_t position,const bool sorted, 
                   const bool with_simd,const double corrected_threshold,
                   std::vector<BytesUnit<sizeof_query_unit,3>>& query_vec,
-                  const GttlBitPacker<sizeof_query_unit,3>& query_packer) {
+                  const GttlBitPacker<sizeof_query_unit,3>& query_packer, GTTL_UNUSED std::mutex& mut) const {
     //std::cout << "Init env: " << seqnum << '\t' << position << std::endl;
     //Init all primary environments
     std::array<const ScoreQgramcodePair2*,num_of_primary_env> qgram_env_group;
@@ -167,10 +166,10 @@ class BytesCompositeEnvironment2 {
     if(score < corrected_threshold) return;
     //std::cout << "Start" << std::endl;
 
-    invert_permutation(perm);
-    reconstruct_qgram(unsorted_qgram_codes,qgram.data());
-    if(!sorted and !with_simd) reshuffle_no_simd(qgram,perm);
-    else if(with_simd) reshuffle_with_simd(qgram,perm);
+    invert_permutation(perm.data());
+    reconstruct_qgram(unsorted_qgram_codes.data(),qgram.data());
+    if(!sorted and !with_simd) reshuffle_no_simd(qgram.data(),perm.data());
+    else if(with_simd) reshuffle_with_simd(qgram.data(),perm.data());
     uint64_t code = qgram2code(qgram.data());
     //std::cout << code << '\t' << (int) score << std::endl;
     //mut.lock();
@@ -195,22 +194,22 @@ class BytesCompositeEnvironment2 {
         if(score >= corrected_threshold){
           unsorted_qgram_codes[loopid] = qgram_env_group[loopid][wheel[loopid]].code;
           //std::cout << wheel[0] << std::endl;
-          reconstruct_qgram(unsorted_qgram_codes,qgram.data());
-          if(!sorted and !with_simd) reshuffle_no_simd(qgram,perm);
-          else if(with_simd) reshuffle_with_simd(qgram,perm);
+          reconstruct_qgram(unsorted_qgram_codes.data(),qgram.data());
+          if(!sorted and !with_simd) reshuffle_no_simd(qgram.data(),perm.data());
+          else if(with_simd) reshuffle_with_simd(qgram.data(),perm.data());
           code = qgram2code(qgram.data());
           //std::cout << code << '\t' << (int) score << std::endl;
           //mut.lock();
           query_vec.emplace_back(query_packer,std::array<uint64_t,3>{
-                                  static_cast<uint64_t>(code),
-                                  static_cast<uint64_t>(seqnum),
-                                  static_cast<uint64_t>(position)});
+                                static_cast<uint64_t>(code),
+                                static_cast<uint64_t>(seqnum),
+                                static_cast<uint64_t>(position)});
           //mut.unlock();
         }else{
-          score -= qgram_env_group[last_loop][wheel[last_loop]].score;
-          wheel[last_loop]=env_size[last_loop]-1;
-          score += qgram_env_group[last_loop][wheel[last_loop]].score;
-          unsorted_qgram_codes[last_loop] = qgram_env_group[last_loop][wheel[last_loop]].code;
+          score -= qgram_env_group[loopid][wheel[loopid]].score;
+          wheel[loopid]=env_size[loopid]-1;
+          score += qgram_env_group[loopid][wheel[loopid]].score;
+          unsorted_qgram_codes[loopid] = qgram_env_group[loopid][wheel[loopid]].code;
         }
         if(loopid < last_loop) loopid = last_loop;
       }
@@ -228,7 +227,7 @@ class BytesCompositeEnvironment2 {
                         const std::array<size_t,num_of_primary_env>& qgram_codes,
                         const size_t seqnum,const size_t position,const double corrected_threshold,
                         std::vector<BytesUnit<sizeof_query_unit,3>>& query_vec,
-                        const GttlBitPacker<sizeof_query_unit,3>& query_packer){
+                        const GttlBitPacker<sizeof_query_unit,3>& query_packer, GTTL_UNUSED std::mutex& mut) const {
                         //,std::array<FilterStats<size_t>,stats_size>& stats){
     //std::cout << "Init env: " << seqnum << '\t' << position << std::endl;
     //Init all primary environmentss
@@ -258,7 +257,7 @@ class BytesCompositeEnvironment2 {
 
     //size_t length = 1,count=1;
 
-    reconstruct_qgram(unsorted_qgram_codes,qgram.data());
+    reconstruct_qgram(unsorted_qgram_codes.data(),qgram.data());
     uint64_t code = qgram2code(qgram.data());
     //std::cout << code << '\t' << (int) score << std::endl;
 
@@ -282,7 +281,7 @@ class BytesCompositeEnvironment2 {
         score += qgram_env_group[loopid][wheel[loopid]].score;
         if(score >= corrected_threshold){
           unsorted_qgram_codes[loopid] = qgram_env_group[loopid][wheel[loopid]].code;
-          reconstruct_qgram(unsorted_qgram_codes,qgram.data());
+          reconstruct_qgram(unsorted_qgram_codes.data(),qgram.data());
           code = qgram2code(qgram.data());
           //std::cout << code << '\t' << (int) score << std::endl;
           //mut.lock();
@@ -292,17 +291,17 @@ class BytesCompositeEnvironment2 {
                                   static_cast<uint64_t>(position)});
           //mut.unlock();
         }else{
-          score -= qgram_env_group[last_loop][wheel[last_loop]].score;
-          wheel[last_loop]=env_size[last_loop]-1;
-          score += qgram_env_group[last_loop][wheel[last_loop]].score;
-          unsorted_qgram_codes[last_loop] = qgram_env_group[last_loop][wheel[last_loop]].code;
+          score -= qgram_env_group[loopid][wheel[loopid]].score;
+          wheel[loopid]=env_size[loopid]-1;
+          score += qgram_env_group[loopid][wheel[loopid]].score;
+          unsorted_qgram_codes[loopid] = qgram_env_group[loopid][wheel[loopid]].code;
         }
         if(loopid < last_loop) loopid = last_loop;
       }
     }
   }
 
-  double score_correction_set(const char* seq, const size_t seq_len, size_t position){
+  double score_correction_set(const char* seq, const size_t seq_len, size_t position) const {
     double local_score_correction = 0;
     for(uint8_t i = span-1; i < span; i-- && position++){
       if(!seed_bitset[i]) continue;
@@ -326,10 +325,12 @@ class BytesCompositeEnvironment2 {
   }
 
   public:
-  BytesCompositeEnvironment2(){
+  BytesCompositeEnvironment2(const std::array<uint64_t,alpha_size+1>& target_distribution,const int64_t _threshold){
     for(uint8_t i = 0; i < num_of_primary_env; i++){
       env_size[i] = constexpr_pow(undefined_rank,qgram_length_arr[i]);
     }
+    background_correction_set(target_distribution);
+    threshold = _threshold;
   };
 
   void set_background_data(const std::array<uint64_t,alpha_size+1>& target_distribution,const double sensitivity){
@@ -370,15 +371,15 @@ class BytesCompositeEnvironment2 {
                     const char* seq,const size_t seqnum, const size_t seq_len,const size_t position, 
                     GTTL_UNUSED const bool with_simd,const bool correct,const double correct_ratio,
                     std::vector<BytesUnit<sizeof_query_unit,3>>& query_vec,
-                    const GttlBitPacker<sizeof_query_unit,3>& query_packer) {
+                    const GttlBitPacker<sizeof_query_unit,3>& query_packer, std::mutex& mut) const {
     bool sorted;
     const auto qgram_codes = spaced_seed_encoder.encode(seq,qgram.data(),perm.data(),sorted);
     const double local_score_correction = score_correction_set(seq,seq_len,position);
     const double corrected_threshold = threshold - local_score_correction * correct * correct_ratio;
 #if defined __SSSE3__
-    direct_add<sizeof_query_unit>(qgram,perm,qgram_codes,seqnum,position,sorted,with_simd,corrected_threshold,query_vec,query_packer);
+    direct_add<sizeof_query_unit>(qgram,perm,qgram_codes,seqnum,position,sorted,with_simd,corrected_threshold,query_vec,query_packer,mut);
 #else
-    direct_add<sizeof_query_unit>(qgram,perm,qgram_codes,seqnum,position,sorted,false,corrected_threshold,query_vec,query_packer);
+    direct_add<sizeof_query_unit>(qgram,perm,qgram_codes,seqnum,position,sorted,false,corrected_threshold,query_vec,query_packer,mut);
 #endif
   }
 
@@ -387,19 +388,19 @@ class BytesCompositeEnvironment2 {
                           const char* seq,const size_t seqnum, const size_t seq_len,const size_t position, 
                           const bool correct,const double correct_ratio, 
                           std::vector<BytesUnit<sizeof_query_unit,3>>& query_vec,
-                          const GttlBitPacker<sizeof_query_unit,3>& query_packer){
+                          const GttlBitPacker<sizeof_query_unit,3>& query_packer, std::mutex& mut) const {
                           //,std::array<FilterStats<size_t>,stats_size>& stats) {
     const auto qgram_codes = spaced_seed_encoder.encode_unsorted(seq);
     const double local_score_correction = score_correction_set(seq,seq_len,position);
     const double corrected_threshold = threshold - local_score_correction * correct * correct_ratio;
-    direct_add_mmseqs<sizeof_query_unit>(qgram,qgram_codes,seqnum,position,corrected_threshold,query_vec,query_packer);
+    direct_add_mmseqs<sizeof_query_unit>(qgram,qgram_codes,seqnum,position,corrected_threshold,query_vec,query_packer,mut);
   }
 
   template<const uint8_t sizeof_query_unit>
   void process_multiseq(std::array<uint8_t,simd_vec_len>& qgram, std::array<uint8_t,simd_vec_len>& perm, 
     const GttlMultiseq* query,std::vector<BytesUnit<sizeof_query_unit,3>>& query_vec,
     const GttlBitPacker<sizeof_query_unit,3>& query_packer, const bool mmseqs, const bool with_simd, 
-    const bool correct,const double correct_ratio,const size_t start, const size_t end) {
+    const bool correct,const double correct_ratio,const size_t start, const size_t end, std::mutex& mut) const {
     
     //std::array<FilterStats<size_t>,stats_size> stats{};
     //size_t old_size = 0;
@@ -409,13 +410,13 @@ class BytesCompositeEnvironment2 {
         const char* curr_seq = query->sequence_ptr_get(seqnum);
         if(!mmseqs){
           for(size_t i = 0; i < seq_len - span + 1; i++){
-            process_seed<sizeof_query_unit>(qgram,perm,curr_seq+i,seqnum,seq_len,i,with_simd,correct,correct_ratio,query_vec,query_packer);
+            process_seed<sizeof_query_unit>(qgram,perm,curr_seq+i,seqnum,seq_len,i,with_simd,correct,correct_ratio,query_vec,query_packer,mut);
             /*std::cout << i << '\t' << query_vec.size() - old_size << std::endl;
             old_size = query_vec.size();*/
           }
         } else {
           for(size_t i = 0; i < seq_len - span + 1; i++){
-            process_seed_mmseqs<sizeof_query_unit>(qgram,curr_seq+i,seqnum,seq_len,i,correct,correct_ratio,query_vec,query_packer);
+            process_seed_mmseqs<sizeof_query_unit>(qgram,curr_seq+i,seqnum,seq_len,i,correct,correct_ratio,query_vec,query_packer,mut);
             /*std::cout << i << '\t' << query_vec.size() - old_size << std::endl;
             old_size = query_vec.size();*/
           }
@@ -435,15 +436,36 @@ class BytesCompositeEnvironment2 {
     std::cout << sum << std::endl;*/
   }
 
+  /*template<const uint8_t sizeof_query_unit>
+  static void process_gttlthread(size_t thread_id, size_t task_id,std::array<uint8_t,simd_vec_len>* threads_qgram,
+                          std::array<uint8_t,simd_vec_len>* threads_perm,const GttlMultiseq* query,
+                          std::vector<BytesUnit<sizeof_query_unit,3>>* threads_vec,
+                          const GttlBitPacker<sizeof_query_unit,3>& query_packer,const bool mmseqs,
+                          const bool with_simd, const bool correct, const double correct_ratio) {
+    const size_t seq_len = query->sequence_length_get(task_id);
+    if(seq_len >= span){
+      const char* curr_seq = query->sequence_ptr_get(task_id);
+      if(!mmseqs){
+        for(size_t i = 0; i < seq_len - span + 1; i++){
+          process_seed<sizeof_query_unit>(object,threads_qgram[thread_id],threads_perm[thread_id],curr_seq+i,task_id,seq_len,
+                                          i,with_simd,correct,correct_ratio,threads_vec[thread_id],query_packer);
+        }
+      } else {
+        for(size_t i = 0; i < seq_len - span + 1; i++){
+          process_seed_mmseqs<sizeof_query_unit>(object,threads_qgram[thread_id],curr_seq+i,task_id,seq_len,i,correct,
+                                                correct_ratio,threads_vec[thread_id],query_packer);
+        }
+      }
+    }
+  }*/
+
   template<const uint8_t sizeof_query_unit>
   void process_pthread(const GttlMultiseq* query,std::vector<BytesUnit<sizeof_query_unit,3>>& query_vec,
     const GttlBitPacker<sizeof_query_unit,3>& query_packer, const bool mmseqs, const bool with_simd, 
-    const bool correct,const double correct_ratio,const size_t num_threads){
+    const bool correct,const double correct_ratio,const size_t num_threads) const {
     
     std::cout << "Curr threshold: " << (int)threshold << std::endl;
     const size_t total_seq_num = query->sequences_number_get();
-    
-    
     const size_t total_thread_num = (total_seq_num < num_threads) ? total_seq_num : num_threads;
 
     const std::array<uint8_t,simd_vec_len> ref_qgram{};
@@ -453,6 +475,7 @@ class BytesCompositeEnvironment2 {
     }
 
     std::vector<std::vector<BytesUnit<sizeof_query_unit,3>>> threads_vec{total_thread_num,query_vec};
+    std::mutex mut;
 
     std::vector<std::array<uint8_t,simd_vec_len>> threads_qgram{total_thread_num,ref_qgram};
     std::vector<std::array<uint8_t,simd_vec_len>> threads_perm{total_thread_num,ref_perm};
@@ -484,7 +507,7 @@ class BytesCompositeEnvironment2 {
       threads.push_back(std::thread(&BytesCompositeEnvironment2::process_multiseq<sizeof_query_unit>,
                                     this,std::ref(threads_qgram[thread_idx]),std::ref(threads_perm[thread_idx]),
                                     query,std::ref(threads_vec[thread_idx]),std::ref(query_packer),mmseqs,with_simd,correct,
-                                    correct_ratio,start_idx,end_idx));
+                                    correct_ratio,start_idx,end_idx,std::ref(mut)));
     }
     for(uint8_t thread_idx = 0; thread_idx < total_thread_num; thread_idx++){
       threads[thread_idx].join();
@@ -492,10 +515,15 @@ class BytesCompositeEnvironment2 {
                       std::make_move_iterator(threads_vec[thread_idx].begin()),
                       std::make_move_iterator(threads_vec[thread_idx].end()));
     }
+
+    /*GttlThreadPoolVar(total_thread_num,total_seq_num,&BytesCompositeEnvironment2::process_gttlthread<sizeof_query_unit>,
+                                    threads_qgram.data(),threads_perm.data(),
+                                    query,threads_vec.data(),query_packer,mmseqs,with_simd,correct,
+                                    correct_ratio);*/
   }
 
   template<const uint8_t sizeof_query_unit>
-  void sort(std::vector<BytesUnit<sizeof_query_unit,3>>& query_vec,const uint64_t hash_bits){
+  void sort(std::vector<BytesUnit<sizeof_query_unit,3>>& query_vec,const uint64_t hash_bits) const {
     if(sizeof_query_unit == 8){
       ska_lsb_radix_sort<size_t>(hash_bits,
                               reinterpret_cast<uint64_t *>

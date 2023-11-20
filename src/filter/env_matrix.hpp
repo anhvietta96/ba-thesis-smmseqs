@@ -198,6 +198,39 @@ struct EnvMatrix2 {
   }
 };
 
+/*template<class ScoreClass,const uint8_t qgram_length>
+struct EnvMatrix3 {
+  static constexpr const ScoreClass sc{};
+  static constexpr const auto undefined_rank = sc.num_of_chars;
+  static constexpr const auto char_spec = sc.character_spec;
+
+  static constexpr const SortedQmer<char_spec,undefined_rank,qgram_length> sorted_q{};
+  static constexpr const UnsortedQmer<char_spec,undefined_rank,qgram_length> unsorted_q{};
+  static constexpr const uint16_t sorted_size = sorted_q.size_get();
+  static constexpr const uint16_t unsorted_size = constexpr_pow(undefined_rank,qgram_length);
+  static constexpr const size_t matrix_size = sorted_size*unsorted_size;
+
+  std::array<int8_t,matrix_size> matrix{};
+
+  constexpr EnvMatrix3()
+  {
+    for(uint16_t sorted_idx = 0; sorted_idx < sorted_size; sorted_idx++)
+    {
+      const uint8_t* const sorted_qgram = sorted_q.qgram_get(sorted_idx);
+      for(uint16_t unsorted_idx = 0; unsorted_idx < unsorted_size; unsorted_idx++)
+      {
+        const uint8_t* const unsorted_qgram = unsorted_q.qgram_get(unsorted_idx);
+        int8_t score = 0;
+        for(uint8_t q_idx = 0; q_idx < qgram_length; q_idx++)
+        {
+          score += sc.score_matrix[sorted_qgram[q_idx]][unsorted_qgram[q_idx]];
+        }
+        matrix[sorted_idx*unsorted_size+unsorted_idx]=score;
+      }
+    }
+  };
+};*/
+
 template<class ScoreClass,const uint8_t qgram_length>
 struct FullMatrix {
   static constexpr const ScoreClass sc{};
