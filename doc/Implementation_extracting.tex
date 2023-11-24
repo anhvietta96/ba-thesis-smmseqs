@@ -1,4 +1,0 @@
-At run time, firstly the target and query database gets encoded using the transformer function. Using the target seed reader, the target sequences can then be hashed in linear \(O(nb)\) time and the hashes are packaged as byte units and saved in a contiguous container (i.e array or vector).
-
-In the processing of query sequences, firstly the digrams and trigrams score matrices \(\ScoreMatrix\) can be evaluated using the index tables from sorted and unsorted \(q\)-grams according to Equation~\ref{equation:sequenceScore}. The result then can then be stored as a pair of score and unsorted \(q\)-gram code and sorted after score value for further use. Thereafter, an appropriate threshold is evaluated using the target sequences and an user-provided sensitivity. Using the score matrices and the threshold, the program enters the step of iterating the Cartesian product.
-

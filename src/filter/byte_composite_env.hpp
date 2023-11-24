@@ -30,6 +30,7 @@
 #include <x86intrin.h>
 #endif
 
+#include <omp.h>
 #include <thread>
 #include <iostream>
 #include <vector>
@@ -473,8 +474,9 @@ class BytesCompositeEnvironment2 {
     for(size_t i = weight; i < simd_vec_len; i++){
       ref_perm[i] = 0x80;
     }
-
-    std::vector<std::vector<BytesUnit<sizeof_query_unit,3>>> threads_vec{total_thread_num,query_vec};
+    
+    using SeedVector = std::vector<BytesUnit<sizeof_query_unit,3>>;
+    std::vector<SeedVector> threads_vec{total_thread_num,query_vec};
     std::mutex mut;
 
     std::vector<std::array<uint8_t,simd_vec_len>> threads_qgram{total_thread_num,ref_qgram};
@@ -520,6 +522,57 @@ class BytesCompositeEnvironment2 {
                                     threads_qgram.data(),threads_perm.data(),
                                     query,threads_vec.data(),query_packer,mmseqs,with_simd,correct,
                                     correct_ratio);*/
+  }
+
+  template<const uint8_t sizeof_query_unit>
+  void process_openmp(const GttlMultiseq* query,std::vector<BytesUnit<sizeof_query_unit,3>>& query_vec,
+    const GttlBitPacker<sizeof_query_unit,3>& query_packer, const bool mmseqs, const bool with_simd, 
+    const bool correct,const double correct_ratio,const size_t num_threads) const {
+    
+    const size_t total_seq_num = query->sequences_number_get();
+    const size_t total_thread_num = (total_seq_num < num_threads) ? total_seq_num : num_threads;
+    const std::array<uint8_t,simd_vec_len> ref_qgram{};
+    std::array<uint8_t,simd_vec_len> ref_perm{};
+    for(size_t i = weight; i < simd_vec_len; i++){
+      ref_perm[i] = 0x80;
+    }
+    
+    using SeedVector = std::vector<BytesUnit<sizeof_query_unit,3>>;
+    std::vector<SeedVector> threads_vec{total_thread_num,query_vec};
+    std::mutex mut;
+
+    std::vector<std::array<uint8_t,simd_vec_len>> threads_qgram{total_thread_num,ref_qgram};
+    std::vector<std::array<uint8_t,simd_vec_len>> threads_perm{total_thread_num,ref_perm};
+
+    omp_set_dynamic(0);
+    omp_set_num_threads(num_threads);
+    std::cout << "Running with " << omp_get_num_threads() << " threads" << std::endl;
+
+    #pragma omp parallel for
+    for(size_t seqnum = 0; seqnum < query->sequences_number_get(); seqnum++){
+      const size_t seq_len = query->sequence_length_get(seqnum);
+      const size_t thread_idx = omp_get_thread_num();
+      if(seq_len >= span){
+        const char* curr_seq = query->sequence_ptr_get(seqnum);
+        if(!mmseqs){
+          for(size_t i = 0; i < seq_len - span + 1; i++){
+            process_seed<sizeof_query_unit>(threads_qgram[thread_idx],threads_perm[thread_idx],curr_seq+i,seqnum,
+            seq_len,i,with_simd,correct,correct_ratio,threads_vec[thread_idx],query_packer,mut);
+          }
+        } else {
+          for(size_t i = 0; i < seq_len - span + 1; i++){
+            process_seed_mmseqs<sizeof_query_unit>(threads_qgram[thread_idx],curr_seq+i,seqnum,seq_len,i,correct,
+            correct_ratio,threads_vec[thread_idx],query_packer,mut);
+          }
+        }
+      }
+    }
+
+    for(uint8_t thread_idx = 0; thread_idx < total_thread_num; thread_idx++){
+      query_vec.insert(query_vec.end(),
+                      std::make_move_iterator(threads_vec[thread_idx].begin()),
+                      std::make_move_iterator(threads_vec[thread_idx].end()));
+    }
   }
 
   template<const uint8_t sizeof_query_unit>

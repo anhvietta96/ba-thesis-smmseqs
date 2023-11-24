@@ -6,6 +6,7 @@
 #include <math.h>
 #include "filter/env_matrix.hpp"
 #include "utilities/bytes_unit.hpp"
+#include "utilities/runtime_class.hpp"
 
 #ifndef THRESHOLD_FACTOR
 #define THRESHOLD_FACTOR 1
@@ -411,6 +412,7 @@ class BGDistribution {
   template<const size_t sizeof_unit>
   int64_t context_sensitive_threshold_get(const std::vector<BytesUnit<sizeof_unit,3>>& hash_data,const GttlBitPacker<sizeof_unit,3>& packer, const double sensitivity) const {
     if constexpr(weight == 4){
+      RunTimeClass rt{};
       constexpr const size_t hash_size = constexpr_pow(undefined_rank,2);
       std::array<uint32_t,hash_size> code_count1{};
       std::array<uint32_t,hash_size> code_count2{};
@@ -430,7 +432,7 @@ class BGDistribution {
       for(size_t i = 0; i < hash_size; i++){
         freq2[i] = static_cast<double>(code_count2[i])/total;
       }
-
+      rt.show("Extracted from hash data");
       const FullMatrix<ScoreClass,2> fm{};
       constexpr const int64_t min = sc.smallest_score * 2;
 
@@ -451,6 +453,7 @@ class BGDistribution {
           hist[i+j] += hist1[i] * hist2[j];
         }
       }
+      rt.show("Constructed histogram");
       
       const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
       //std::cout << "Cutoff " << cutoff << std::endl;
@@ -466,7 +469,7 @@ class BGDistribution {
     } else if constexpr(weight == 5){
       constexpr const size_t hash_size1 = constexpr_pow(undefined_rank,3);
       constexpr const size_t hash_size2 = constexpr_pow(undefined_rank,2);
-
+      RunTimeClass rt{};
       std::array<uint32_t,hash_size1> code_count1{};
       std::array<uint32_t,hash_size2> code_count2{};
       for(size_t i = 0; i < hash_data.size(); i++){
@@ -485,7 +488,7 @@ class BGDistribution {
       for(size_t i = 0; i < hash_size2; i++){
         freq2[i] = static_cast<double>(code_count2[i])/total;
       }
-
+      rt.show("Extract from hash data");
       const FullMatrix<ScoreClass,3> fm1{};
       const FullMatrix<ScoreClass,2> fm2{};
       constexpr const int64_t min1 = sc.smallest_score * 3;
@@ -514,7 +517,7 @@ class BGDistribution {
           hist[i+j] += hist1[i] * hist2[j];
         }
       }
-
+      rt.show("Constructed histogram");
       const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
       //std::cout << "Cutoff " << cutoff << std::endl;
       double count = 0;
@@ -528,7 +531,7 @@ class BGDistribution {
       return smallest_score + idx + 1;
     } else if constexpr(weight == 6){
       constexpr const size_t hash_size = constexpr_pow(undefined_rank,3);
-
+      RunTimeClass rt{};
       std::array<uint32_t,hash_size> code_count1{};
       std::array<uint32_t,hash_size> code_count2{};
       for(size_t i = 0; i < hash_data.size(); i++){
@@ -545,7 +548,7 @@ class BGDistribution {
         freq1[i] = static_cast<double>(code_count1[i])/total;
         freq2[i] = static_cast<double>(code_count2[i])/total;
       }
-
+      rt.show("Extract from hash data");
       const FullMatrix<ScoreClass,3> fm1{};
       constexpr const int64_t min = sc.smallest_score * 3;
 
@@ -566,7 +569,7 @@ class BGDistribution {
           hist[i+j] += hist1[i] * hist2[j];
         }
       }
-
+      rt.show("Constructed histogram");
       const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
       //std::cout << "Cutoff " << cutoff << std::endl;
       double count = 0;
@@ -584,7 +587,7 @@ class BGDistribution {
       constexpr const size_t hash_size2 = constexpr_pow(undefined_rank,2);
       constexpr const size_t hash_size3 = constexpr_pow(undefined_rank,3);
       constexpr const size_t hash_size5 = hash_size2*hash_size3;
-
+      RunTimeClass rt{};
       std::array<uint32_t,hash_size3> code_count1{};
       std::array<uint32_t,hash_size2> code_count2{};
       std::array<uint32_t,hash_size2> code_count3{};
@@ -609,7 +612,7 @@ class BGDistribution {
       for(size_t i = 0; i < hash_size2; i++){
         freq3[i] = static_cast<double>(code_count3[i])/total;
       }
-
+      rt.show("Extract from hash data");
       const FullMatrix<ScoreClass,3> fm3{};
       const FullMatrix<ScoreClass,2> fm2{};
       constexpr const int64_t min1 = sc.smallest_score * 3;
@@ -647,7 +650,7 @@ class BGDistribution {
           hist[i+j] += temp_hist[i] * hist1[j];
         }
       }
-
+      rt.show("Constructed histogram");
       const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
       //std::cout << "Cutoff " << cutoff << std::endl;
       double count = 0;

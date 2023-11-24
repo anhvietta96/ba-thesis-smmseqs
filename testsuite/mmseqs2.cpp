@@ -167,9 +167,9 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   237UL /* 4, 6, 8 11101101, MMseq2_proteins_4 */,
   851UL /* 5, 6, 10 1101010011, MMseq2_proteins_5 */,
   981UL /* 6, 7, 10 1111010101, MMseq2_proteins_6 */,
-  1715UL /* 7, 7, 11 11010110011, MMseq2_proteins_7 */
-  //3699UL,
-  //7399UL
+  1715UL /* 7, 7, 11 11010110011, MMseq2_proteins_7 */,
+  3699UL, /* 8, 8, 12 111001110011*/
+  7399UL /* 9, 9, 13 1110011100111*/
 };
 #endif
 

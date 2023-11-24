@@ -123,10 +123,11 @@ class MMseqs2 {
     //const auto threshold = distribution.template context_sensitive_threshold_get<sizeof_target_unit>(target_hash_data,target_packer,sensitivity);
     const auto threshold = distribution.custom_threshold_get2(literate_target.rank_dist_get(),sensitivity);
     //std::cout << "Threshold " << (int) threshold << std::endl;
+    rt.show("Evaluated threshold");
     const BytesCompositeEnvironment2<ScoreClass,seed> env_constructor{literate_target.rank_dist_get(),threshold};
     //env_constructor.set_background_data();
     rt.show("Prepare Query Input");
-    env_constructor.template process_pthread<sizeof_query_unit>(query,query_hash_data,query_packer,mmseqs,with_simd,correct,correct_ratio,num_threads);
+    env_constructor.template process_openmp<sizeof_query_unit>(query,query_hash_data,query_packer,mmseqs,with_simd,correct,correct_ratio,num_threads);
     rt.show("Constructed Cartesian products");
     std::cout << "Total generated qgrams: " << query_hash_data.size() << std::endl;
     env_constructor.template sort<sizeof_query_unit>(query_hash_data,hashbits);
@@ -231,15 +232,22 @@ class MMseqs2 {
     const auto sizeof_query_unit = sizeof_unit_get(hashbits+query_seq_num_bits+query_seq_len_bits);
     const auto sizeof_match_unit = sizeof_unit_get(query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits);
 
-    /*std::cout << (int) sizeof_target_unit << '\t' << (int) sizeof_query_unit << '\t' << (int) sizeof_match_unit << std::endl;
+    //std::cout << (int) sizeof_target_unit << '\t' << (int) sizeof_query_unit << '\t' << (int) sizeof_match_unit << std::endl;
     std::cout << (int) hashbits+target_seq_num_bits+target_seq_len_bits << '\t' 
     << (int) hashbits+query_seq_num_bits+query_seq_len_bits << '\t' 
-    << (int) query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits << std::endl;*/
+    << (int) query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits << std::endl;
+    
+    std::cout << "Hashbits: " << (int) hashbits << std::endl;
+    std::cout << "Target_seqnum_bits: " << (int) target_seq_num_bits << std::endl;
+    std::cout << "Target_seqpos_bits: " << (int) target_seq_len_bits << std::endl; 
+    std::cout << "Query_seqnum_bits: " << (int) query_seq_num_bits << std::endl;
+    std::cout << "Query_seqpos_bits: " << (int) query_seq_len_bits << std::endl;
+
 
 
     if(sizeof_match_unit > max_unit_size or sizeof_query_unit > max_unit_size
     or sizeof_target_unit > max_unit_size){
-      std::cout << " Over max allowed size" << std::endl;
+      std::cerr << " Over max allowed size" << std::endl;
       return;
     }
 

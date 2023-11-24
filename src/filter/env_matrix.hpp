@@ -4,6 +4,8 @@
 #include "filter/sorted_qgram.hpp"
 #include "filter/unsorted_qgram.hpp"
 #include "filter/utils.hpp"
+#include "utilities/runtime_class.hpp"
+
 /*
 template<class ScoreClass,const uint8_t qgram_length, const int8_t threshold>
 constexpr std::array<int8_t,qgram_length> create_threshold_arr()
@@ -173,6 +175,7 @@ struct EnvMatrix2 {
 
   EnvMatrix2()
   {
+    RunTimeClass rt{};
     for(uint16_t sorted_idx = 0; sorted_idx < sorted_size; sorted_idx++)
     //constexpr_for<0,sorted_size,1>([&] (uint16_t sorted_idx)
     {
@@ -191,6 +194,7 @@ struct EnvMatrix2 {
       }
       std::sort(matrix[sorted_idx].begin(),matrix[sorted_idx].end());
     }
+    rt.show("Constructing Sorted - Unsorted score matrix");
   };
 
   const ScoreQgramcodePair2* const sorted_env_get(const uint64_t sq_code) const {
@@ -244,6 +248,7 @@ struct FullMatrix {
   std::array<Environment,unsorted_size> matrix{};
 
   FullMatrix(){
+    RunTimeClass rt{};
     for(size_t idx1 = 0; idx1 < unsorted_size; idx1++){
       const uint8_t* const qgram1 = unsorted_q.qgram_get(idx1);
       for(uint64_t idx2 = 0; idx2 < unsorted_size; idx2++){
@@ -256,6 +261,7 @@ struct FullMatrix {
       }
       std::sort(matrix[idx1].begin(),matrix[idx1].end());
     }
+    rt.show("Constructing Unsorted - Unsorted score matrix");
   };
 
   const ScoreQgramcodePair2* const sorted_env_get(const uint64_t sq_code) const {

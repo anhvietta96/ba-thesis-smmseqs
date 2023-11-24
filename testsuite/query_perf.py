@@ -3,30 +3,30 @@ import numpy as np
 
 groups = ("Sort method without SIMD","Sort method with SIMD","MMseqs2 Method")
 measurements = [{
-    '1': (679, 695, 3331),
-    '10': (675, 705, 3349),
-    '100': (1033, 1144, 3715),
-    '1000': (3681, 3948, 6210),
+    '1': (43, 47, 51),
+    '10': (80, 86, 81),
+    '100': (379, 450, 361),
+    '1000': (2709, 3344, 2399),
 },{
-    '1': (635, 703, 3432),
-    '10': (680, 726, 3391),
-    '100': (974, 1014, 3800),
-    '1000': (3668, 3840, 6415),
+    '1': (58, 58, 52),
+    '10': (84, 89, 77),
+    '100': (325, 412, 290),
+    '1000': (2549, 3425, 2341),
 },{
-    '1': (667, 661, 3310),
-    '10': (718, 730, 3390),
-    '100': (1287, 1311, 4154),
-    '1000': (5961, 6192, 9019),
+    '1': (67, 63, 61),
+    '10': (116, 124, 113),
+    '100': (543, 655, 490),
+    '1000': (4381, 5367, 3804),
 }]
 ref = 210848
 generated_ctxfree = [(162339,1857548,17981137,148986494),(259269,1555134,15615308,139012013),(227180,2420182,24048924,217952274)]
 generated_ctxsens = [(162339,1857548,17981137,148986494),(259269,1555134,15615308,139012013),(227180,2420182,24048924,217952274)]
 time_generated_ctxsens = [(3642,3672,3679,3671),(3684,4056,3825,3710),(3742,3644,3764,4765)]
-max = (7000,7000,10000)
+max = (3800,3800,5800)
 seeds = ('1101011','11101101','1111010101')
 
 #Time to Generate 
-'''
+
 for l in range(len(measurements)):
   x = np.arange(len(groups))  # the label locations
   width = 0.2  # the width of the bars
@@ -43,13 +43,13 @@ for l in range(len(measurements)):
   # Add some text for labels, title and custom x-axis tick labels, etc.
   ax.set_ylabel('Time (ms)')
   ax.set_xlabel('Generation method')
-  ax.set_title('Generate time of seed ' + seeds[l])
+  #ax.set_title('Generate time of seed ' + seeds[l])
   ax.set_xticks(x + width, groups)
   ax.legend(loc='upper left', ncols=3)
   ax.set_ylim(0, max[l])
 
   plt.show()
-'''
+
 
 #Estimation evaluation
 '''computed = {}
@@ -114,7 +114,7 @@ ax.set_ylim(0, 52)
 
 plt.show()
 '''
-
+'''
 hist = [1.57128*10**-10,
         4.99069*10**-9,
         7.43898*10**-8,
@@ -226,12 +226,13 @@ x = list(range(-28,78))
 
 fig, ax = plt.subplots()
 
-rects = ax.bar(x, hist[:28] + [0]*(78+28-28),color='lightblue')
-rects2 = ax.bar(x, [0]*28 + hist[28:],color='lightyellow')
+rects = ax.bar(x, hist[:28] + [0]*(78+28-28),color='blue')
+rects2 = ax.bar(x, [0]*28 + hist[28:],color='red')
 # Add some text for labels, title and custom x-axis tick labels, etc.
 ax.set_ylabel('Frequency')
 ax.set_xlabel('Score')
-ax.set_title('Score distribution of heptagram vs heptagram,\nboth uniformly distributed')
-ax.set_ylim(0, 0.1)
+#ax.set_title('Score distribution of heptagram vs heptagram,\nboth uniformly distributed')
+ax.set_ylim(0, 0.08)
 
 plt.show()
+'''

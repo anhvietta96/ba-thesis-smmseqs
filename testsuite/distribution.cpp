@@ -1,10 +1,10 @@
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>
+#include "alignment/blosum62.hpp"
 #include "utilities/cxxopts.hpp"
 #include "sequences/literate_multiseq.hpp"
 #include "filter/distribution.hpp"
-#include "alignment/blosum62.hpp"
 #include "utilities/constexpr_for.hpp"
 #include "filter/InvIntHash.hpp"
 
@@ -90,11 +90,15 @@ int main(int argc, char *argv[]){
 
   constexpr_for<1,8,1>([&] (auto weight){
     const BGDistribution<Blosum62,weight> distribution{};
-    const auto custom_threshold_wo_dis = distribution.custom_threshold_get(sensitivity);
+    //const auto custom_threshold_wo_dis = distribution.custom_threshold_get(sensitivity);
     const auto custom_threshold_with_dis = distribution.custom_threshold_get(lit_multiseq.rank_dist_get(),sensitivity);
     const auto custom_threshold_with_dis2 = distribution.custom_threshold_get2(lit_multiseq.rank_dist_get(),sensitivity);
-    std::cout << (int) weight << '\t' << (int) custom_threshold_wo_dis << '\t' << custom_threshold_with_dis << '\t' << custom_threshold_with_dis2 << std::endl;
+    std::cout << (int) weight << /*'\t' << (int) custom_threshold_wo_dis << */'\t' << custom_threshold_with_dis << '\t' << custom_threshold_with_dis2 << std::endl;
   });
+
+  const BGDistribution<Blosum62,7> distribution{};
+  const auto custom_threshold_wo_dis = distribution.custom_threshold_get(sensitivity);
+  std::cout << (int) custom_threshold_wo_dis << std::endl;
 
   /*const BGDistribution<Blosum62,3> distribution{};
   const auto custom_threshold_with_dis = distribution.custom_threshold_get(sensitivity);
