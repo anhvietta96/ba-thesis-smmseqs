@@ -167,8 +167,6 @@ The prefiltering module in MMseqs2 is of particular importance, since it
 serves to rapidly reduce possibility space. This paper looks at the first
 \Qgram{q} generation stage of the module and proposes some possible
 optimization approaches.
-
-This reference is only here to fill the bibliography: \cite{articleex}.
 %%%%<
 \normalsize
 
@@ -193,33 +191,44 @@ to a significant focus on developing searching and clustering methods that
 can handle large-scale datasets efficiently. Algorithms and software that
 can scale horizontally (across multiple machines) have gained importance.
 On sequence searching, new algorithms and heuristics have been developed to
-improve sensitivity without sacrificing speed. Tools like DIAMOND and
-MMseqs2 provide fast and sensitive sequence searching capabilities,
-especially in metagenomics and large-scale sequencing projects. HMM-based
-methods, such as the HMMER software, have been enhanced to improve their
+improve sensitivity without sacrificing speed. Tools like
+DIAMOND~\cite{buchfink2015fast} and
+MMseqs2~\cite{steinegger2017mmseqs2} provide fast and sensitive sequence
+searching capabilities,
+especially in metagenomics and large-scale sequencing projects. Hidden
+Markov Model based
+methods, such as the HMMER~\cite{finn2011hmmer} software, have been
+enhanced to improve their
 sensitivity and accuracy, making them invaluable for protein domain and
 family searching. The existing algorithms like BLAST have also seen massive
-improvement by using GPU parallelization and specific hardwares, namely
-FPGAs (Field-Programmable Gate Arrays) have been customized for
+improvement by using GPU parallelization~\cite{vouzis2011gpu} and specific
+hardwares, namely
+FPGAs (Field-Programmable Gate Arrays)~\cite{guo2012systolic} have been
+customized for
 accelerating sequence searching algorithms.
 Recent developments on metagenomics have also given ways to specialized
 databases and algorithms. These databases contain sequences from
 environmental samples and enable the identification of novel organisms and
 genes within complex microbial communities.
-On sequence clustering, myriads of methods have been developed. graph-based
-clustering methods, such as Markov Clustering (MCL) and Louvain algorithm,
+On sequence clustering, myriads of methods have been developed. Graph-based
+clustering methods, such as Markov Clustering
+(MCL)~\cite{shih2012identifying} and
+Louvain~\cite{rahiminejad2019topological} algorithm,
 have gained popularity. These methods model sequences as nodes in a graph
 and use edge weights to represent similarities, allowing for the detection
 of densely connected clusters within the graph. Density-based methods like
-DBSCAN (Density-Based Spatial Clustering of Applications with Noise) have
-been applied in bioinformatics. These algorithms group sequences based on
+DBSCAN~\cite{ester1996density} (Density-Based Spatial Clustering of
+Applications with Noise) have
+seen applications in bioinformatics~\cite{karim2021deep}. These algorithms
+group sequences based on
 the density of data points, enabling the discovery of clusters with varying
 shapes and sizes. Traditional distance-based clustering algorithms, such as
-hierarchical clustering and k-means, have been adapted and optimized for
-large biological datasets. Efficient distance metrics and clustering
-strategies have been a focus of research.
+hierarchical clustering~\cite{lafond2017new} and
+k-means~\cite{hussain2011fpga}, have been adapted and optimized for
+large biological datasets.
 \Chapter{MMseqs2}
-MMseqs (Many-against-Many sequence searching) is a software suite for fast
+MMseqs~\cite{hauser2014mmseqs} (Many-against-Many sequence searching) is a
+software suite for fast
 and deep clustering and searching of large datasets. It was published on
 January 6 \numprint{2016} by Maria Hauser, Martin Steinegger and Johannes
 S\"odding.
@@ -239,7 +248,8 @@ deprecated sequences and appending new sequences to each cluster.
 In benchmark, MMseqs showed to be 4-30 times faster than UBLAST and
 RAPsearch2. MMseqs could cluster large databases down to 30\% sequence
 identity \numprint{2000} times the speed of BLASTclust.
-An improved, updated version MMseqs2 was published on June 7
+An improved, updated version MMseqs2~\cite{steinegger2017mmseqs2} was
+published on June 7
 \numprint{2017} . It
 boasts dramatic improvements in both efficiency and sensitivity by
 introducing several novel ideas. It revamped the prefiltering stage by
@@ -268,7 +278,7 @@ further.
 \begin{center}
 \includegraphics[scale=0.3]{graphics/MMseqs_prefilter.png}
 \end{center}
-\caption{Prefiltering stage in MMseqs}
+\caption{Prefiltering stage in MMseqs~\cite{hauser2014mmseqs}}
 \label{fig:prefilterMMseqs}
 \end{figure}
 In MMseqs2, the prefiltering stage was reengineered (See
@@ -281,7 +291,7 @@ match for the ungapped alignment stage.
 \begin{center}
 \includegraphics[scale=0.7]{graphics/MMseqs2_prefilter.png}
 \end{center}
-\caption{Prefiltering stage in MMseqs2}
+\caption{Prefiltering stage in MMseqs2~\cite{steinegger2017mmseqs2}}
 \label{fig:prefilterMMseqs2}
 \end{figure}
 \section{Ungapped alignment and Smith-Waterman alignment stage}
@@ -319,7 +329,8 @@ the previous \Qgram{q} and append the next character in the sequence.
 Assuming these operations are of constant time complexity, the whole
 process would require only $O(n+q)$ time.
 This family of hashing algorithms allows efficiently enumerate hash values
-of all \Qgram{q}s of a sequence. In order to achieve independence between
+of all \Qgram{q}s of a sequence~\cite{cohen1997recursive}. In order to
+achieve independence between
 hash values, the characters are usually assigned a weight, which might be
 expressed as $r^{q-1-i}$, where $r$, the radix, is a constant integer and
 $i$ is the position of the character in the \Qgram{q}. The calculation of a
@@ -527,7 +538,8 @@ distance=-0.15mm]
 node [position label,yshift=-1ex] {\(m=3\)} (N1.south east);
 \end{scope}
 \end{tikzpicture}
-\caption{Example of sorted \Qgram{q} enumerating\label{fig:enumerate}}
+\caption{Example of sorted \Qgram{q}
+enumerating\label{fig:enumerate}~\cite{pfn}}
 \end{center}
 \end{figure}
 \begin{algorithm}[t]
@@ -935,7 +947,8 @@ instruction to not shuffle and to simply pad the resulted vector with 0.
 \section{Merging target and query data}
 After being collected, the hashed data from the target and query sequences
 are packaged as byte units, prioritizing hash values. They then get sorted
-individually using radix sort (see GTTL), resulting in two data vectors
+individually using radix sort (see GTTL~\cite{gttl}), resulting in two data
+vectors
 sorted by hash values which would then be merged value by value, skipping
 through unmatching blocks.
 \begin{algorithm}[t]
@@ -1223,12 +1236,10 @@ be a major improvement, other than in edge cases of low block numbers. A
 new method of estimating threshold for better estimation of number of
 generated \Qgram{q}s was implemented and showed to be a better estimation
 approach, both in low and high sensitivity. Finally, an optimized
-branch-and-bound algorithm was introduced and presented both a better run
-time and lower memory consumption, allowing future expansion into larger
-seed size.
-\AVTcomment{Missing references. Will be added over the weekend.}
+branch-and-bound algorithm was introduced and presented a lower memory 
+consumption in tradeoff for marginal increase in run time, allowing future
+expansion into larger seed size.
 %%%%<
-
 %bibliography
 \newpage
 \small
@@ -1236,28 +1247,25 @@ seed size.
 \bibliographystyle{unsrt}
 \bibliography{template}
 \normalsize
-
+%%%%END{fold}
 %%%%>
 % appendix
-
 \appendix
 \noappendicestocpagenum
 \addappheadtotoc
-
 \Chapter{Some additional method descriptions}
-
 \begin{table}
 \begin{center}
 \begin{tabular}{c|c|c|c}
-Dataset & Number of sequences & Maximum Sequence Length & Minimum Sequence Length\\
+Dataset & Number of sequences & Maximum Sequence Length & Minimum Sequence
+Length\\
 \hline
 QUERY\_DIFF & 426 & \numprint{4291} & 8\\
-TARGET     & \numprint{20000} & \numprint{8081} & 7\\
+TARGET & \numprint{20000} & \numprint{8081} & 7\\
 \end{tabular}
 \caption{Datasets used in testing the modules\label{tab:datasets}}
 \end{center}
 \end{table}
-
 \begin{table}
 \begin{center}
 \begin{tabular}{c|c|c|c|c}
@@ -1275,11 +1283,7 @@ Nr & Seed & Span & Weight & Number of Blocks\\
 \caption{Seeds used in testing\label{tab:seeds}}
 \end{center}
 \end{table}
-
 \Chapter{Some Additional Data}
-
-\lipsum[9]
 %%%%<
-
 \Assertion
 \end{document}
