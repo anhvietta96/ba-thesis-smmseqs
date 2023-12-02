@@ -124,7 +124,7 @@
 \newcommand{\EndFormal}{\par\addvspace{\Skiptheorem}}
 %\newenvironment{Lemma}{\begin{myLemma}\AfterNumber}{\end{myLemma}}
 \newenvironment{Proof}{\StartFormal{Proof:}}{\EndFormal}
-\def\FirstMultisetSymbol{\(a_0\)} 
+\def\FirstMultisetSymbol{\(a_0\)}
 \def\SecondMultisetSymbol{\(a_1\)}
 \def\ThirdMultisetSymbol{\(a_2\)}
 
@@ -156,6 +156,8 @@
 %\date{1.4.2016}
 \Maketitle
 
+\SKcomment{Please provide a longer abstract}
+
 % if you write in German, maybe change this to "Zusammenfassung".
 \addchap*{Abstract}
 \small
@@ -164,9 +166,11 @@
 The software suite MMseqs2 and its predecessor MMseqs are the new standard
 of both sensitive biological sequence searching and sequence clustering.
 The prefiltering module in MMseqs2 is of particular importance, since it
-serves to rapidly reduce possibility space. This paper looks at the first
-\Qgram{q} generation stage of the module and proposes some possible
-optimization approaches.
+serves to rapidly reduce possibility space. This thesis focusses on the
+first phase of the filtering approach, i.e.\ the construction of the
+\(k\)-environment and shows how to systematically improve its runtime and
+space requirement.
+
 %%%%<
 \normalsize
 
@@ -182,10 +186,14 @@ optimization approaches.
 
 \Chapter{Recent developments of bioinformatic sequence searching and
 clustering}
+
+\SKcomment{Use the chapter heading 'Introduction' and the current heading
+as section heading. Also MMseqs is not an own chapter, but a section of the
+introduction.}
 % reset to arabic page numbers will start with 1
 \pagenumbering{arabic}
 With the advent of high-throughput sequencing technologies, the cost of
-genome sequencing has come down sgnificantly. Sequence databases, such as
+sequencing DNA has dramatically be reduced. Sequence databases, such as
 UniProt have been growing by a factor of two every two years, which leads
 to a significant focus on developing searching and clustering methods that
 can handle large-scale datasets efficiently. Algorithms and software that
@@ -193,6 +201,10 @@ can scale horizontally (across multiple machines) have gained importance.
 On sequence searching, new algorithms and heuristics have been developed to
 improve sensitivity without sacrificing speed. Tools like
 DIAMOND~\cite{buchfink2015fast} and
+
+\SKcomment{Please  also cite \cite{BUC:REU:DRO:2021} which I added to the
+bib file.}
+
 MMseqs2~\cite{steinegger2017mmseqs2} provide fast and sensitive sequence
 searching capabilities,
 especially in metagenomics and large-scale sequencing projects. Hidden
@@ -212,7 +224,7 @@ environmental samples and enable the identification of novel organisms and
 genes within complex microbial communities.
 On sequence clustering, myriads of methods have been developed. Graph-based
 clustering methods, such as Markov Clustering
-(MCL)~\cite{shih2012identifying} and
+(MCL)~\cite{shih2012identifying} and the
 Louvain~\cite{rahiminejad2019topological} algorithm,
 have gained popularity. These methods model sequences as nodes in a graph
 and use edge weights to represent similarities, allowing for the detection
@@ -229,34 +241,58 @@ large biological datasets.
 \Chapter{MMseqs2}
 MMseqs~\cite{hauser2014mmseqs} (Many-against-Many sequence searching) is a
 software suite for fast
-and deep clustering and searching of large datasets. It was published on
-January 6 \numprint{2016} by Maria Hauser, Martin Steinegger and Johannes
-S\"odding.
-It contains three core modules: a fast and sensitive preﬁltering module
-that eliminates most non-homologous sequences, an local alignment module
-based on the striped Gotoh algorithm, and a clustering module based on
-similary graph. Due to the modularity of the structure, it allows user to
+and deep clustering and searching of large datasets.
+It consists of three core modules:
+\begin{itemize}
+\item a fast and sensitive preﬁltering module
+that eliminates most non-homologous sequences,
+\item a local alignment module based on the Smith-Waterman algorithm
+using the ideas and implementation techniques described
+in~\cite{Farrar:2007hs,ZHA:LEE:GAR:MAR:2013},
+
+\SKcomment{Please check if this is already true for MMseqs.}
+\item and a clustering module based on a
+similary graph.
+\end{itemize}
+Due to the modularity of the structure, it allows users to
 create workflows tailored to specific clustering and searching needs. The
 default workflow utilizes the UniProt databases to create predefined
 parameters and resembles the average use case. The second, cascaded
 clustering, clusters the input database in multiple steps, increasing the
 sensitivity between each steps and therefore enables finding
-best-hit-searches 4-10 times faster. The third workflow simply compares
+best-hit-searches 4-10 times faster.
+
+\SKcomment{faster compared to what?}
+
+The third workflow simply compares
 databases using only prefiltering and aligning modules. The last workflow
 updates clustering between new and old clustered database by deleting
 deprecated sequences and appending new sequences to each cluster.
-In benchmark, MMseqs showed to be 4-30 times faster than UBLAST and
-RAPsearch2. MMseqs could cluster large databases down to 30\% sequence
-identity \numprint{2000} times the speed of BLASTclust.
+In benchmarks, MMseqs showed to be 4-30 times faster than UBLAST and
+RAPsearch2.
+
+\SKcomment{Add citation for UBLAST and RAPsearch2.}
+
+MMseqs could cluster large databases down to 30\% sequence
+identity \numprint{2000} times faster than BLASTclust.
 An improved, updated version MMseqs2~\cite{steinegger2017mmseqs2} was
-published on June 7
-\numprint{2017} . It
-boasts dramatic improvements in both efficiency and sensitivity by
+published in 2017.
+
+\SKcomment{Do not use \textbackslash{numprint} for years.}
+
+It provides dramatic improvements in both efficiency and sensitivity by
 introducing several novel ideas. It revamped the prefiltering stage by
-introducing algorithm to find two consecutive, inexact \Qgram{q} matches
+introducing an algorithm to find two consecutive, spaced-seed \Qgram{q} matches
 and optimizing memory access. It also allowed the use of \Qgram{7} due to
 the speedup of the algorithm. %Need more
+
+\SKcomment{You can just add an item list to mention the most important
+improvements.}
+
 An in-depth look into the three core modules is presented below.
+
+\SKcomment{I will skip reading the next section.}
+
 \section{Fast \Qgram{q} prefiltering stage}
 In MMseqs, the prefiltering stage is the first step to process all
 sequences and serves to reduce the search space significantly, therefore
@@ -308,6 +344,8 @@ with affine gap penalties. This module utilizes a highly vectorized
 algorithm
 equipped with new SIMD instructions and adapted for sequence profiles.
 \Chapter{Theoretical background}
+
+\SKcomment{This chapter should be named Methods.}
 Since for every alphabet \(\Alpha\), a transformer function \(f:\Alpha
 \rightarrow \mathcal{N}\) can be defined, mapping every character in
 \(\Alpha\) to a integer rank, the following sections will discuss the
@@ -1236,7 +1274,7 @@ be a major improvement, other than in edge cases of low block numbers. A
 new method of estimating threshold for better estimation of number of
 generated \Qgram{q}s was implemented and showed to be a better estimation
 approach, both in low and high sensitivity. Finally, an optimized
-branch-and-bound algorithm was introduced and presented a lower memory 
+branch-and-bound algorithm was introduced and presented a lower memory
 consumption in tradeoff for marginal increase in run time, allowing future
 expansion into larger seed size.
 %%%%<
