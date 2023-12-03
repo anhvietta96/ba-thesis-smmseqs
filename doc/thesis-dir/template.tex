@@ -113,6 +113,8 @@
 \newcommand{\Permnameinverse}[1]{\varphi_{#1}^{-1}}
 \newcommand{\Perminverse}[2]{\Permnameinverse{#1}(#2)}
 \newcommand{\Alpha}[0]{\mathcal{A}}
+\newcommand{\Nats}{\mathbb{N}}
+\newcommand{\Qsplit}{\mathsf{QS}_{q}}
 
 \theorembodyfont{\rmfamily}
 \theoremheaderfont{\rmfamily\bfseries}
@@ -135,7 +137,6 @@
 {\colorbox{orange}{\mbox{}\\\fbox{\parbox{\textwidth}{\textbf{Todo: #1}}}}\\}
 % it uses one argument which is referred to by #1
 
-\newcommand{\Alphabet}{\mathcal{A}\xspace}
 \begin{document}
 
 % use roman page numbers before the real document starts.
@@ -188,7 +189,7 @@ space requirement.
 clustering}
 
 \SKcomment{Use the chapter heading 'Introduction' and the current heading
-as section heading. Also MMseqs is not an own chapter, but a section of the
+as section heading. Also MMseqs2 is not an own chapter, but a section of the
 introduction.}
 % reset to arabic page numbers will start with 1
 \pagenumbering{arabic}
@@ -346,27 +347,36 @@ equipped with new SIMD instructions and adapted for sequence profiles.
 \Chapter{Theoretical background}
 
 \SKcomment{This chapter should be named Methods.}
-Since for every alphabet \(\Alpha\), a transformer function \(f:\Alpha
-\rightarrow \mathcal{N}\) can be defined, mapping every character in
-\(\Alpha\) to a integer rank, the following sections will discuss the
-biological sequences not as sequences of residues, but as of transformed,
-coded integers. The alphabet will also be interpreted mostly as an integer
-subset \([0,|\mathcal{A}|)\cap \mathcal{N}\).
+For every alphabet \(\Alpha\), we can define a bijective mapping to a subset
+of \(\Nats\) of size \(|\Alpha|\). Therefore, in the
+following sections we consider sequences over  \(\Alpha\) as sequences of
+integers, where each integer encodes a different character of \(\Alpha\).
+That is, the alphabet will be interpreted mostly as an integer
+subset \([0,|\mathcal{A}|)\cap \Nats\).
 \section{Optimizing target data processing}
 Since the target database can be very large, a precise and efficient
 evaluation must be prioritized. In MMseqs2, at every residue position,
 relevant characters based on the user-chosen spaced seed are individually
-extracted from the target sequence to create a \Qgram{q}s and then process
-these \Qgram{q}s as independent strings. This approach would incur a time
-complexity of \(O(q)\) to compute a hash value for each \Qgram{q} and for
-the complete sequence of length \(n\) this would sum up to
-$O((n-q+1)q)=O(nq)$.
+extracted from the target sequence to create \Qgram{q}s and then process
+these \Qgram{q}s as independent strings. This approach requires to compute
+a hash value for each \Qgram{q} using \(O(q)\) time. For a sequence of length
+\(n\), this would sum up to \(O((n-q+1)q)=O(nq)\).
+
 But the \Qgram{q}s are in fact not independent from each other. To create
 the next \Qgram{q}, one would only have to remove the first character of
 the previous \Qgram{q} and append the next character in the sequence.
+
+\SKcomment{But this previous statement only holds for consecutive
+\(q\)-grams, not for those \(q\)-grams extracted by using spaced-seeds.
+But the context suggests that you are referring to the latter. So please
+be more precise.}
+
 Assuming these operations are of constant time complexity, the whole
 process would require only $O(n+q)$ time.
 This family of hashing algorithms allows efficiently enumerate hash values
+
+\SKcomment{Unclear what you by this 'family of hash functions'? You likely mean incremental/recursive hash functions?}
+
 of all \Qgram{q}s of a sequence~\cite{cohen1997recursive}. In order to
 achieve independence between
 hash values, the characters are usually assigned a weight, which might be
@@ -393,8 +403,10 @@ The hash value of \(xc\) is then calculated as follows:
 \begin{align}
 H(xc) = (H(ax)-r^{n-1}\cdot a)\cdot r+c\label{IncrementallyComputeH}
 \end{align}
+
+
 Equations (\ref{DefineHfunction}) and (\ref{IncrementallyComputeH})
-provide the basic schema of recursive hashing. In implementation, the most
+provide the basic schema of recursive hashing. In an implementation, the most
 basic form of the algorithm, called invertible integer encoding, is used,
 where \(r=|\Alpha|\). The pseudocode for this schema is
 outlined in Algorithm \ref{code:invint}.
@@ -421,6 +433,15 @@ outlined in Algorithm \ref{code:invint}.
 \EndFor
 \end{algorithmic}
 \end{algorithm}
+
+\SKcomment{I do not understand why you repeat this explanation and do not
+just refer to the GSA-script.}
+
+\SKcomment{While you provide a detailed description of existing methods, your
+innovation is only shortly explained. Please provide pseudocode for
+the block based computation including the calculation of the custom radix
+per block.}
+
 In order to extend the schema to allow for spaced seeds, one could divide
 the seed into shorter blocks of \Qgram{q}s, intertwined by blocks of
 "Don't Care". Each block can then be treated as individual \Qgram{q} with
@@ -428,43 +449,114 @@ custom radix, and the complexity is then \(O(nb)\), where \(b\) is the
 number of blocks. Since the number of blocks is in worst case the weight
 itself, and in best case 1, recursive hashing has a same or faster time
 complexity than normal hashing approachs.
+
+\SKcomment{You need to be more precise here. So the existing methods
+involving spaced seeds need \(O(nq)\) time, while your block based method needs
+\(O(nb)\) time, where \(b\leq q\). So your method reduces the runtime by
+a factor of \(\frac{q}{b}\). If \(b=q\), there would be no speedup. The case
+\(b=1\) would be the case of consecutive \(q\)-grams with a speedup
+of \(O(q)\), i.e.\ result in a runtime of \(O(n)\). So your method would
+generalize the method explained above.}
+
+\SKcomment{Do you have a table with the spaced seeds, including the number of
+blocks. This would directly allow to calculate the speedup for each
+spaced-seed.}
+
 \section{Optimizing query data processing}
-In order to quantify the similarity between sequences, a scoring function
-is often used. They provide quantitative measures for comparing biological
+In order to quantify the similarity between sequences, one uses a scoring
+function. This provides quantitative measures for comparing biological
 sequences, structures, and interactions, facilitating a deeper
 understanding of biological processes and aiding in drug discovery,
-evolutionary analysis, and functional genomics research. In sequence
+evolutionary analysis, and functional genomics research.
+
+\SKcomment{Omit the part beginning with structures. This is general bla bla,
+not relevant here.}
+
+In sequence
 alignment context, these functions often compare pairwise the biological
 residues (often nucleotide bases or proteinogenic amino acids). The most
 common scoring function is the substitution matrix, often represented as a
 matrix of scores indicating the likelihood of one amino acid (or
 nucleotide) being replaced by another. The BLOSUM (Blocks Substitution
 Matrix) and PAM (Point Accepted Mutation) matrices are examples of
-substitution matrices widely used in bioinformatics. The two families of
-score matrices can be summarized as a mathematical function:
+substitution matrices widely used in bioinformatics.
+
+\SKcomment{You need to mention that BLOSUM and PAM are for amino acids.}
+
+The two families of
+matrices can be summarized as a mathematical function:
 \begin{align}
-\sigma: \mathcal{A} \times \mathcal{A} \rightarrow \mathcal{R}
+\sigma: \mathcal{A} \times \mathcal{A} \rightarrow \Reals
 \end{align}
 A positive score between two residues often denotes similarity between them
-and a negative score indicates dissimilarity. The score of between two
-sequences \(u,v\in \mathcal{A}^q\) can then be defined as follow:
+and a negative score indicates dissimilarity. The score between two
+sequences \(u,v\in \Alpha^q\) can then be defined as follow:
 \begin{align}
-\sigma(u,v)=\sum_{i=0}^{|u|-1}\sigma(\Subchar{u}{i},\Subchar{v}{i})\label{equation:sequenceScore}
+\sigma(u,v)=\sum_{i=0}^{q-1}\sigma(\Subchar{u}{i},\Subchar{v}{i})\label{equation:sequenceScore}
 \end{align}
+
+\SKcomment{You should first refer to the notion of \(k\)-environments
+in the GSA-lecture notes. Based on this, you explain the the branch-and-bound
+algorithm for single characters. This will then be generalized to the
+block-based method.}
+
 In order to compute the \(k\)-environment for a \Qgram{q} \(u\)
 efficiently, MMseqs2 utilizes a branch-and-bound algorithm, where it
-decomposes \(u\) to groups of \Qgram{2}s and \Qgram{3}s \(u_i\),
+decomposes \(u\) into groups of \Qgram{2}s and \Qgram{3}s \(u_i\),
 prioritizing \Qgram{3}. For \(q\in \{2,3\}\), a score matrix
+
+\SKcomment{Do not reuse the identifier \(u\) below, as it was introduced
+as \(q\)-gram above. Also use \(q'\in\{2,3]\), as otherwise you cannot refer to the original \(q\)-gram.}
+
+\SKcomment{Why prioritize \(q'=3\)? Does this mean that for \(q=4\) you split
+it into a single character and a \(3\)-gram? You likely are only referring to
+the method for \(q\geq 5\).}
+
 \(\Scoretable{q}{u}=\lbrack (v,\sigma(u,v))\mid v\in\Alpha^{q}\rbrack\) is
-computed and sorted after the subscores \(\sigma(u,v))\).
-The full $k$-environment of a \Qgram{q} \(u\) can then be iterated as a
+computed and sorted by the the scores \(\sigma(u,v))\).
+The full $k$-environment of a \Qgram{q} \(u\) can then be constructed from a
 subset of the cartesian product \(\bigtimes \Scoretable{|u_i|}{u_i}\):
 \begin{align}
 \text{Env}_k(u) = \{(v,\sigma(u,v))|(v,\sigma(u,v))\in \bigtimes
 \Scoretable{|u_i|}{u_i},\sigma(u,v)\geq k\}\label{ScoreTablesCartesian}
 \end{align}
+
+\SKcomment{In the above, the notation \(u_{i}\) is not defined. What you
+actually need to define first is the splitting of \(q\in\{4,\ldots,7\}\) into
+a sequence \(\Qsplit\) of ordered values from the set
+\(\{2,3\}\), such that \(q=\sum_{q'\in\Qsplit}q'\). This gives the
+following splitting dependent on \(q\in \{4,\ldots,7\):
+\(4\mapsto [2,2]\),
+\(5\mapsto [2,3]\),
+\(6\mapsto [3,3]\),
+\(7\mapsto [2,2,3]\).
+On each \(q\)-gram
+\(u\), \(\Qsplit\) induces an ordered splitting into substrings of the
+lengths specified in \(\Qsplit\). Lets denote this splitting
+as \(\Qsplit(u)\). Then state that the score table
+\(\mathsf{ST}(q')\) is precomputed for all \(q'\in\Qsplit\). That is,
+for an arbitrary but fixed \(q'\) and
+for all \(u'\in\Alpha^{q'}\), \(\Scoretable{q'}{u'}\) is the sequence of pairs
+\((v,\sigma(u',v))\) for all \(v\in\Alpha^{q'}\) stored in
+descending order of the score-values. Then one can compute
+\(\text{Env}_k(u)\) as follows:
+For all \(u'\in\Qsplit(u)\) in the given order one enumerates
+the cartesian product of all
+\((v,\sigma(u',v))\in\mathsf{ST}(q')\),
+such that the sum of the scores of each
+tuple is at least \(k\).}
+
+\SKcomment{You should now provide an example with numbers of the size of the
+scoretables for \(q'\in\{2,3\}\) which need to be precomputed. I assume that
+you compute them without considering the score threshold \(k\) which only has
+an effect when enumerating the cartesian product.}
+
+\SKcomment{Also provide an example showing that the score of two \(q\)-grams
+does not change if the same permutation is applied to both.}
+
 The iteration over score matrix row can be prematurely terminated, as soon
 as it's no longer feasible to reach the threshold \(k\).
+
 The key to improve over the method outlined in MMseqs2, is the following:
 Given a bijective mapping \(\varphi:\{0,1,\ldots,q-1\}\to
 \{0,1,\ldots,q-1\}\). For any sequence of length \(q\), we define a
@@ -525,10 +617,10 @@ where elements can occur more than once. Applying an order on these
 multisets, we can formalize a notion of sorted \Qgram{q}s:
 Given an alphabet \(\Alpha\) and a natural number \(q > 0\), a sorted
 \Qgram{q} over \(\Alpha\) is a multiset \(M=a_0a_1...a_{q-1}\),
-\(a_i\in\mathcal{A}\forall 0\leq i<q\) and \(a_i \leq a_j\forall 0\leq i <
+\(a_i\in\Alpha\forall 0\leq i<q\) and \(a_i \leq a_j\forall 0\leq i <
 j < q\).
 %The number of possible sorted \Qgram{q}s for a given \(\mathcal(A)\) and
-\(q\) can be computed as the binomial \(\binom{q+|\mathcal{A}|-1}{q}\). The
+\(q\) can be computed as the binomial \(\binom{q+|\Alpha|-1}{q}\). The
 proof can be shown with induction:
 An index table of sorted \Qgram{q}s can be computed recursively.
 Figure~\ref{fig:enumerate} showcases a model of the problem where \(q=5\)
@@ -538,7 +630,7 @@ fixed, say \(a_0a_1\), the last 3 characters can be iterated as a sorted
 could be broken down further and generalized.
 Given a sorted \Qgram{q} \(u\) where the prefix of \(m\) characters is
 sorted and fixed, and \(u[m-1]\) has a rank of \(a_i\) then the task is to
-enumerate every \Qgram{q-m}s of alphabet size (\(|\mathcal{A}|-a_i\)).
+enumerate every \Qgram{q-m}s of alphabet size (\(|\Alpha|-a_i\)).
 The induction base case is then sorted unigrams over alphabet \(\Alpha_i =
 \{a_j| a_j\in\Alpha \land j\geq i\}\), where there are \(|\Alpha|-i\)
 unigrams indexed from \(a_i\) to \(|\Alpha|-1\).
@@ -558,12 +650,12 @@ overbrace/.style={decoration={brace},decorate},
 underbrace/.style={decoration={brace,mirror},decorate}
 ]
 \begin{scope}[start chain=1 going right,node distance=-0.5mm]
-\node [alphanode,on chain=1] {\(\mathcal{A}:\)};
+\node [alphanode,on chain=1] {\(\Alpha:\)};
 \node [alphanode,on chain=1] {\FirstMultisetSymbol};
 \node [alphanode,on chain=1] (A0) {\SecondMultisetSymbol};
 \node [alphanode,on chain=1] (A1) {\ThirdMultisetSymbol};
 \draw [overbrace,decoration={raise=-1ex}] (A0.north west) --
-node [position label,yshift=2.5ex] {\(\mathcal{A}_1\)} (A1.north east);
+node [position label,yshift=2.5ex] {\(\Alpha_1\)} (A1.north east);
 \end{scope}
 \begin{scope}[shift={(0cm,-17pt)},start chain=2 going right,node
 distance=-0.15mm]
@@ -630,8 +722,9 @@ encodes exactly \(u\) to its index in table IT.
 \begin{Proof}
 \textbf{Base case:} In case of \(q=1\), \(|\Alpha|\) unigrams can be
 clearly encoded with \(w(0,a) = a \forall a \in \Alpha\).
-\textbf{Inductive step:} Given the above scheme is valid up until \(q-1,
-q\in \mathcal{N},q\geq 2\), it needs to be shown \(w(q,a)\) is unique for
+\textbf{Inductive step:} Given the above scheme is valid up until
+\(q-1\), \(q\in \Nats\), \(q\geq 2\), it needs to be shown that
+\(w(q,a)\) is unique for
 all \(a\in \Alpha\). Assuming the weight isn't unique, therefore there
 exist two different weights \(w_a\neq w_a'\) so that \(c(au) = w_a + c(u)\)
 and \(c(av) = w_a' + c(v)\) encode \Qgram{q}s \(au\) and \(av\)
@@ -746,7 +839,7 @@ be generally quantified to:
 The average \Qgram{q} list length \(l\) could be normalized to
 probability:
 \begin{align}
-p = \frac{l}{|\mathcal{A}|^q}
+p = \frac{l}{|\Alpha|^q}
 \end{align}
 Therefore the approximation would be ideally in continuous distribution an
 exact value:
@@ -779,7 +872,7 @@ approach could then be hashing the target sequences to collect \Qgram{q}
 distribution, which is convenient since the work is done in the
 preprocessing of target dabase. This approach is but often complicated by
 large \(q\), since a \(q\times q\) score matrix must be computed, which
-incur an additional penalty of \(O(|\mathcal{A}|^{2q})\), which is often
+incur an additional penalty of \(O(|\Alpha|^{2q})\), which is often
 not feasible when \(q>4\). A middle ground is to divide the \Qgram{q}s
 into two or three sub-\Qgram{q}s and collect their distribution
 separately. These distributions can then in the end be convoluted together
@@ -875,7 +968,7 @@ regions can lead to biases in the prefiltering result. This correction of
 the threshold can be summarized as follow:
 \begin{align}
 \Delta \sigma_i(u[i]) =
-\sum_{a=1}^{|\mathcal{A}|}f(a)\sigma(a,u[i])-\frac{1}{2d}\sum_{j=i-d,j\neq
+\sum_{a=1}^{|\Alpha|}f(a)\sigma(a,u[i])-\frac{1}{2d}\sum_{j=i-d,j\neq
 i}^{i+d}\sigma (u[i],u[j])
 \end{align}
 where \(u\) is the query sequence, \(i\) the current residue on the
