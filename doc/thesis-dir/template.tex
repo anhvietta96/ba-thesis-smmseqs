@@ -557,58 +557,70 @@ does not change if the same permutation is applied to both.}
 The iteration over score matrix row can be prematurely terminated, as soon
 as it's no longer feasible to reach the threshold \(k\).
 
-The key to improve over the method outlined in MMseqs2, is the following:
-Given a bijective mapping \(\varphi:\{0,1,\ldots,q-1\}\to
-\{0,1,\ldots,q-1\}\). For any sequence of length \(q\), we define a
-function
+The key-idea to improve the construction of the \(k\)-environment
+is to reorder the characters of the \(q\)-grams. Let
+\(\varphi:\{0,1,\ldots,q-1\}\to\{0,1,\ldots,q-1\}\) be a bijective mapping and
+define
 \begin{align}
 \varphi(u)=\Subchar{u}{\varphi(0)}\Subchar{u}{\varphi(1)}\ldots\Subchar{u}{\varphi(q-1)}
 \end{align}
-in that, \ \(\varphi\) permutate the residue in \(u\).
+for any \(u\in\Alpha^{q}\). That is, \(\varphi\) permutes the
+characters in \(u\). As it permutes \(q\) characters, we call it a
+\(q\)-permutation. The following lemma
+states that the score for a pair of \(q\)-grams does not change if both are
+permuted in the same way.
+
 \begin{Lemma}
 \label{permutationProof}
-Given a special permutation \(\Permname{u}\), so that it orders the
-characters in \(u\):
+For all \(q\)-permutations \(\varphi\) and all \(u,v\in\Alpha^{q}\) it holds:
 \begin{align}
-\Subchar{u}{\Perm{u}{i}}\leq\Subchar{u}{\Perm{u}{i+1}}\forall i, 0\leq
-i\leq q-2
-\end{align}
-The resulted \Qgram{q} \(u_s\) from the permutation is called sorted
-\Qgram{q} and could be rearranged using the inverse function:
-\begin{align}
-\Perminverse{u}{\Perm{u}{i}}=i \forall i, 0\leq i\leq q-1 \Leftrightarrow
-\Perminverse{u}{\Perm{u}{u}}=u
-\end{align}
-Then the following property is valid:
-Given a \Qgram{q} \(u\), its sorting permutation \(\varphi_u\) and the
-mapping \(u[i] = (\varphi_u (u))[j]\):
-\begin{align}
-\sigma(\Perm{u}{u},\Perm{u}{v}) = \sigma(u,v)
+\sigma(\varphi(u),\varphi(v))=\sigma(u,v)
 \end{align}
 \begin{Proof}
 \begin{align}
-\sigma(\Perm{u}{u},\Perm{u}{v}) &= \sum_{j=0}^{q-1} \sigma ((\varphi_u
-(u))[j], (\varphi_u (v))[j])\label{eq:jPerm}\\
-&= \sum_{i=0}^{q-1} \sigma (u[i],v[i])\label{eq:iPerm} \\
-&= \sigma(u,v)
+\sigma(\varphi(u),\varphi(v))
+  &= \sum_{j=0}^{q-1} \sigma (\Subchar{\varphi(u)}{j},
+                              \Subchar{\varphi(v)}{j})\\
+  &= \sum_{j=0}^{q-1} \sigma (\Subchar{u}{\varphi(j)},\Subchar{v}{\varphi(j)})\label{eq:jPerm}\\
+  &= \sum_{i=0}^{q-1} \sigma (\Subchar{u}{i},\Subchar{v}{i})\label{eq:iPerm}\\
+  &= \sigma(u,v)
 \end{align}
-The exchange of variable from Equation~\ref{eq:jPerm} to
-Equation~\ref{eq:iPerm} is allowed due to the bijective nature of function
-\(\sigma\) and the fact that its domain and codomain are identical.
+The expressions in (\ref{eq:jPerm}) and (\ref{eq:iPerm}) are equal,
+as \(\sigma\) is applied to the same pairs of characters in
+a possibly different order.
 \end{Proof}
 \end{Lemma}
-The above proof shows that a permutation function applied on both sequences
-\(u\) and \(v\)
-permutates the characters in the same way and the score between the
-unpermutated sequences is equal to the score between the permutated. This
-means that the score matrix ST can be computed only for the sorted
-\Qgram{q}s, and it would hold all information needed to compute the full
-$k$-environment.
+
+The sorting \(q\)-permutation \(\varphi_{u}\) is of special interest.
+It sorts the characters in \(u\), i.e.\ it satisfies
+\begin{align}
+\Subchar{u}{\Perm{u}{i}}\leq\Subchar{u}{\Perm{u}{i+1}}\text{ for all }i, 0\leq
+i\leq q-2
+\end{align}
+
+The resulting \Qgram{q} \(u_s=\varphi_{u}(u)\) is called sorted \Qgram{q}.
+The inverse of \(\varphi_{u}\) is \(\varphi_{u}^{-1}\), defined by
+\begin{align}
+\Perminverse{u}{\Perm{u}{i}}=i\text{ for all }i, 0\leq i\leq q-1
+\end{align}
+
+As a consequence \(\Perminverse{u}{\Perm{u}{u}}=u\).
+
+From the Lemma we can deduce, that it suffices to precompute the
+the score tables \(\mathsf{ST}_{q'}\) for \(q'\in\{2,3\}\)
+only for the sorted \(q'\)-grams. From these one can compute
+the \(k\)-environment of a sorted \(q\)-gram whose members are finally
+transformed by the inverse of the sorting permutation.
+
 The advantage of this approach is the smaller number of sorted \Qgram{q}s
 compared to unsorted, leading to a more efficient memory usage and a more
 compacted computation of the score matrix. Any overhead caused by the
 rearragement of the sorted \Qgram{q}s could be reduced by SIMD
 (Single-Instruction Multiple-Data) instructions.
+
+\SKcomment{I would not mention SIMD here, as this is an implementation issue,
+and the SIMD-based method does not improve the running time as far as I
+remember.}
 \section{Working with sorted \Qgram{q}s}
 \subsubsection{Enumeration}
 In mathematics, a set is defined as a collection of items, where every
@@ -617,8 +629,8 @@ where elements can occur more than once. Applying an order on these
 multisets, we can formalize a notion of sorted \Qgram{q}s:
 Given an alphabet \(\Alpha\) and a natural number \(q > 0\), a sorted
 \Qgram{q} over \(\Alpha\) is a multiset \(M=a_0a_1...a_{q-1}\),
-\(a_i\in\Alpha\forall 0\leq i<q\) and \(a_i \leq a_j\forall 0\leq i <
-j < q\).
+\(a_i\in\Alpha\) for all \(i\), \(0\leq i<q\) and
+\(a_i\leq a_{i+1}\) for all \(i\), \(0\leq i < q-1\).
 %The number of possible sorted \Qgram{q}s for a given \(\mathcal(A)\) and
 \(q\) can be computed as the binomial \(\binom{q+|\Alpha|-1}{q}\). The
 proof can be shown with induction:
@@ -721,7 +733,7 @@ c(u)=\sum_{p=0}^{q-1} w(p,u[p])\label{Equation:linearenc}
 encodes exactly \(u\) to its index in table IT.
 \begin{Proof}
 \textbf{Base case:} In case of \(q=1\), \(|\Alpha|\) unigrams can be
-clearly encoded with \(w(0,a) = a \forall a \in \Alpha\).
+clearly encoded with \(w(0,a) = a\) for all \(a \in \Alpha\).
 \textbf{Inductive step:} Given the above scheme is valid up until
 \(q-1\), \(q\in \Nats\), \(q\geq 2\), it needs to be shown that
 \(w(q,a)\) is unique for
@@ -753,7 +765,7 @@ Algorithm~\ref{code:linearEncodingTable}.
 \begin{tabular}{@{}l@{~}l}
 \textbf{Input:}&sequence length \(q\)\\
 &alphabet \(\Alpha\)\\
-&index tables \(\text{IT}_{q_i,\Alpha}\forall q_i \in [1,q]\)\\
+&index tables \(\text{IT}_{q_i,\Alpha}\text{ for all }q_i \in [1,q]\)\\
 \end{tabular}
 \begin{algorithmic}
 \State \(\LE{q}{\Alpha}\) \(\gets []\)
