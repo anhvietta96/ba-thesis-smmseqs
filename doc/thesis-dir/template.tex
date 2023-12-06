@@ -209,11 +209,6 @@ this
 \Chapter{Introduction}
 \section{Recent developments of bioinformatic sequence searching and
 clustering}
-\SKcomment{Use the chapter heading 'Introduction' and the current heading
-as section heading. Also MMseqs2 is not an own chapter, but a section of
-the
-introduction.}
-\AVTcomment{Fixed}
 % reset to arabic page numbers will start with 1
 \pagenumbering{arabic}
 With the advent of high-throughput sequencing technologies, the cost of
@@ -224,13 +219,12 @@ can handle large-scale datasets efficiently. Algorithms and software that
 can scale horizontally (across multiple machines) have gained importance.
 On sequence searching, new algorithms and heuristics have been developed to
 improve sensitivity without sacrificing speed. Tools like
-DIAMOND~\cite{buchfink2015fast},\cite{BUC:REU:DRO:2021} and
-\SKcomment{Please also cite \cite{BUC:REU:DRO:2021} which I added to the
-bib file.}
-\AVTcomment{Added}
+DIAMOND~\cite{buchfink2015fast,BUC:REU:DRO:2021} and
 MMseqs2~\cite{steinegger2017mmseqs2} provide fast and sensitive sequence
 searching capabilities,
-especially in metagenomics and large-scale sequencing projects. Hidden
+especially in metagenomics and large-scale sequencing projects.
+
+Hidden
 Markov Model based
 methods, such as the HMMER~\cite{finn2011hmmer} software, have been
 enhanced to improve their
@@ -272,8 +266,6 @@ that eliminates most non-homologous sequences,
 \item a local alignment module based on the Smith-Waterman algorithm
 using the ideas and implementation techniques described
 in~\cite{Farrar:2007hs,ZHA:LEE:GAR:MAR:2013},
-\SKcomment{Please check if this is already true for MMseqs.}
-\AVTcomment{I found it in MMseqs paper.}
 \item and a clustering module based on a
 similary graph.
 \end{itemize}
@@ -284,16 +276,12 @@ parameters and resembles the average use case. The second, cascaded
 clustering, clusters the input database in multiple steps, increasing the
 sensitivity between each steps and therefore enables finding
 best-hit-searches 4-10 times faster compared to default workflow.
-\SKcomment{faster compared to what?}
-\AVTcomment{default workflow. Added.}
 The third workflow simply compares
 databases using only prefiltering and aligning modules. The last workflow
 updates clustering between new and old clustered database by deleting
 deprecated sequences and appending new sequences to each cluster.
 In benchmarks, MMseqs showed to be 4-30 times faster than
 UBLAST~\cite{edgar2010search} and RAPsearch2~\cite{zhao2012rapsearch2}.
-\SKcomment{Add citation for UBLAST and RAPsearch2.}
-\AVTcomment{Added.}
 MMseqs could cluster large databases down to 30\% sequence
 identity \numprint{2000} times faster than BLASTclust.
 An improved, updated version MMseqs2~\cite{steinegger2017mmseqs2} was
@@ -308,14 +296,11 @@ matches
 and optimizing memory access.
 \item Extension to allow the usage of \Qgram{7} due to
 the speedup of the algorithm.
-\item Integration of MPI (Message-Passing-Interface) allows the 
-distribution of jobs on computer clusters. 
+\item Integration of MPI (Message-Passing-Interface) allows the
+distribution of jobs on computer clusters.
 \item Iterative profile search increases sensitivity far greater
 than sensitivity of BLAST.
 \end{itemize}
-\SKcomment{You can just add an item list to mention the most important
-improvements.}
-\AVTcomment{Added.}
 An in-depth look into the three core modules is presented below.
 \SKcomment{I will skip reading the next section.}
 \section{Fast \Qgram{q} prefiltering stage}
