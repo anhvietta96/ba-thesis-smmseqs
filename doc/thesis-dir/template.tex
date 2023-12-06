@@ -84,6 +84,17 @@
 
 %%% Other macros
 \newcommand{\Qgram}[1]{\(#1\)-gram}
+\newcommand{\Seed}[0]{\mathsf{seed}}
+\newcommand{\InBlock}[0]{\mathsf{inBlock}}
+\newcommand{\True}[0]{\mathsf{true}}
+\newcommand{\False}[0]{\mathsf{false}}
+\newcommand{\Rank}[0]{\mathsf{rank}}
+\newcommand{\Blocks}[0]{\mathsf{blocks}}
+\newcommand{\Block}[0]{\mathsf{block}}
+\newcommand{\CharToAdd}[0]{\mathsf{CharToAdd}}
+\newcommand{\CharToRmv}[0]{\mathsf{CharToRmv}}
+\newcommand{\RankToAdd}[0]{\mathsf{RankToAdd}}
+\newcommand{\RankToRmv}[0]{\mathsf{RankToRmv}}
 \newcommand{\Query}[0]{\mathsf{Query}}
 \newcommand{\Target}[0]{\mathsf{Target}}
 \newcommand{\Append}[0]{\mathsf{append}}
@@ -163,7 +174,20 @@
 \addchap*{Abstract}
 \small
 %%%%>
-
+In analysis of protein and DNA sequences, the concept of homology is
+central. It
+may suggest that organisms share a common evolutionary ancestor when two
+sequences or structures share more similarity than expected by chance. But
+in
+reality, homologous sequences do not always share significant sequence
+similarity but instead their resemblances are based on statistically
+significant
+structure likeness or a connection to a intermediate sequence. There rises
+a
+need for algorithms not only to find exact matches in sequences, but also
+to
+find local similarities (sensitive searching) and cluster them into groups
+(sequence clustering).
 The software suite MMseqs2 and its predecessor MMseqs are the new standard
 of both sensitive biological sequence searching and sequence clustering.
 The prefiltering module in MMseqs2 is of particular importance, since it
@@ -171,41 +195,39 @@ serves to rapidly reduce possibility space. This thesis focusses on the
 first phase of the filtering approach, i.e.\ the construction of the
 \(k\)-environment and shows how to systematically improve its runtime and
 space requirement.
-
 %%%%<
 \normalsize
-
 % The first sets the depth of the TOC, the second produces it. Change the
 % number if you need a ``deeper'' TOC.
 \setcounter{tocdepth}{1}
 \tableofcontents
-
 %%%%>
 % include chapters from subfolders
-% change if you need more chapters or if you want to call them different, this
+% change if you need more chapters or if you want to call them different,
+this
 % is just an example
-
-\Chapter{Recent developments of bioinformatic sequence searching and
+\Chapter{Introduction}
+\section{Recent developments of bioinformatic sequence searching and
 clustering}
-
 \SKcomment{Use the chapter heading 'Introduction' and the current heading
-as section heading. Also MMseqs2 is not an own chapter, but a section of the
+as section heading. Also MMseqs2 is not an own chapter, but a section of
+the
 introduction.}
+\AVTcomment{Fixed}
 % reset to arabic page numbers will start with 1
 \pagenumbering{arabic}
 With the advent of high-throughput sequencing technologies, the cost of
 sequencing DNA has dramatically be reduced. Sequence databases, such as
-UniProt have been growing by a factor of two every two years, which leads
+UniProt have been growing by a factor of two every two years , which leads
 to a significant focus on developing searching and clustering methods that
 can handle large-scale datasets efficiently. Algorithms and software that
 can scale horizontally (across multiple machines) have gained importance.
 On sequence searching, new algorithms and heuristics have been developed to
 improve sensitivity without sacrificing speed. Tools like
-DIAMOND~\cite{buchfink2015fast} and
-
-\SKcomment{Please  also cite \cite{BUC:REU:DRO:2021} which I added to the
+DIAMOND~\cite{buchfink2015fast},\cite{BUC:REU:DRO:2021} and
+\SKcomment{Please also cite \cite{BUC:REU:DRO:2021} which I added to the
 bib file.}
-
+\AVTcomment{Added}
 MMseqs2~\cite{steinegger2017mmseqs2} provide fast and sensitive sequence
 searching capabilities,
 especially in metagenomics and large-scale sequencing projects. Hidden
@@ -250,8 +272,8 @@ that eliminates most non-homologous sequences,
 \item a local alignment module based on the Smith-Waterman algorithm
 using the ideas and implementation techniques described
 in~\cite{Farrar:2007hs,ZHA:LEE:GAR:MAR:2013},
-
 \SKcomment{Please check if this is already true for MMseqs.}
+\AVTcomment{I found it in MMseqs paper.}
 \item and a clustering module based on a
 similary graph.
 \end{itemize}
@@ -261,39 +283,41 @@ default workflow utilizes the UniProt databases to create predefined
 parameters and resembles the average use case. The second, cascaded
 clustering, clusters the input database in multiple steps, increasing the
 sensitivity between each steps and therefore enables finding
-best-hit-searches 4-10 times faster.
-
+best-hit-searches 4-10 times faster compared to default workflow.
 \SKcomment{faster compared to what?}
-
+\AVTcomment{default workflow. Added.}
 The third workflow simply compares
 databases using only prefiltering and aligning modules. The last workflow
 updates clustering between new and old clustered database by deleting
 deprecated sequences and appending new sequences to each cluster.
-In benchmarks, MMseqs showed to be 4-30 times faster than UBLAST and
-RAPsearch2.
-
+In benchmarks, MMseqs showed to be 4-30 times faster than
+UBLAST~\cite{edgar2010search} and RAPsearch2~\cite{zhao2012rapsearch2}.
 \SKcomment{Add citation for UBLAST and RAPsearch2.}
-
+\AVTcomment{Added.}
 MMseqs could cluster large databases down to 30\% sequence
 identity \numprint{2000} times faster than BLASTclust.
 An improved, updated version MMseqs2~\cite{steinegger2017mmseqs2} was
 published in 2017.
-
 \SKcomment{Do not use \textbackslash{numprint} for years.}
-
 It provides dramatic improvements in both efficiency and sensitivity by
-introducing several novel ideas. It revamped the prefiltering stage by
-introducing an algorithm to find two consecutive, spaced-seed \Qgram{q} matches
-and optimizing memory access. It also allowed the use of \Qgram{7} due to
-the speedup of the algorithm. %Need more
-
+introducing several novel ideas:
+\begin{itemize}
+\item The prefiltering stage was revamped by
+introducing an algorithm to find two consecutive, spaced-seed \Qgram{q}
+matches
+and optimizing memory access.
+\item Extension to allow the usage of \Qgram{7} due to
+the speedup of the algorithm.
+\item Integration of MPI (Message-Passing-Interface) allows the 
+distribution of jobs on computer clusters. 
+\item Iterative profile search increases sensitivity far greater
+than sensitivity of BLAST.
+\end{itemize}
 \SKcomment{You can just add an item list to mention the most important
 improvements.}
-
+\AVTcomment{Added.}
 An in-depth look into the three core modules is presented below.
-
 \SKcomment{I will skip reading the next section.}
-
 \section{Fast \Qgram{q} prefiltering stage}
 In MMseqs, the prefiltering stage is the first step to process all
 sequences and serves to reduce the search space significantly, therefore
@@ -344,12 +368,13 @@ query-target sequence pairs an exact, unbounded Smith-Waterman alignments
 with affine gap penalties. This module utilizes a highly vectorized
 algorithm
 equipped with new SIMD instructions and adapted for sequence profiles.
-\Chapter{Theoretical background}
-
+\Chapter{Methods}
 \SKcomment{This chapter should be named Methods.}
-For every alphabet \(\Alpha\), we can define a bijective mapping to a subset
+\AVTcomment{Fixed.}
+For every alphabet \(\Alpha\), we can define a bijective mapping to a
+subset
 of \(\Nats\) of size \(|\Alpha|\). Therefore, in the
-following sections we consider sequences over  \(\Alpha\) as sequences of
+following sections we consider sequences over \(\Alpha\) as sequences of
 integers, where each integer encodes a different character of \(\Alpha\).
 That is, the alphabet will be interpreted mostly as an integer
 subset \([0,|\mathcal{A}|)\cap \Nats\).
@@ -359,30 +384,87 @@ evaluation must be prioritized. In MMseqs2, at every residue position,
 relevant characters based on the user-chosen spaced seed are individually
 extracted from the target sequence to create \Qgram{q}s and then process
 these \Qgram{q}s as independent strings. This approach requires to compute
-a hash value for each \Qgram{q} using \(O(q)\) time. For a sequence of length
-\(n\), this would sum up to \(O((n-q+1)q)=O(nq)\).
-
-But the \Qgram{q}s are in fact not independent from each other. To create
-the next \Qgram{q}, one would only have to remove the first character of
-the previous \Qgram{q} and append the next character in the sequence.
-
+a hash value for each \Qgram{q} using \(O(q)\) time. For a sequence of
+length
+\(n\), this would sum up to \(O((n-q+1)q)=O(nq)\). This process is detailed
+in
+Algorithm~\ref{mmseqshash}.
+\begin{algorithm}[t]
+\caption{Invertible Integer Hashing using spaced seeds}
+\label{code:mmseqshash}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}
+&spaced seed \(\Seed\)\\
+&Encoded sequence \(s\) of length \(n\)\\
+&radix \(r = |\Alpha|\)
+\end{tabular}
+\begin{algorithmic}
+\State \(\HashValVec\gets []\)
+\State \(\HashValue \gets 0\)
+\For{\(j\) \textbf{from} 0 to $n-k$}\Comment{Iterate over sequence}
+\For{\(i \in [0,\Seed.\mathsf{span})\)}\Comment{Iterate over seed}
+\If{\(\Seed[i]\)}
+\State \(\HashValue *= r\)
+\State \(\HashValue += s[i]\)
+\EndIf
+\EndFor
+\State \(\HashValVec .\Append(\HashValue)\)
+\EndFor
+\State return \(\HashValVec\)
+\end{algorithmic}
+\end{algorithm}
+In order to optimize this process, a recursive hashing
+algorithm~\cite{cohen1997recursive} could be implemented, where the spaced
+seeds
+are considered as a shifting hash window. To gather the next hash value,
+the
+window can be shifted by one, resulting in the removal and addition of old
+and
+new characters respectively, which are both determined by the spaced seed.
+In
+fact, the old characters can be characterized as the start of a block of
+consecutive \Qgram{q}, and the new character respectively as a the
+character
+directly after the end of the block. This schema is visualized in
+Figure~\ref{fig:recursive}.
+\begin{figure}[t]
+\begin{center}
+\includegraphics[scale=0.6]{graphics/recursive.png}
+\end{center}
+\caption{a) Schema of invertible integer hashing and b) decomposition of
+spaced
+seed into blocks of consecutive \Qgram{q}}
+\label{fig:recursive}
+\end{figure}
 \SKcomment{But this previous statement only holds for consecutive
 \(q\)-grams, not for those \(q\)-grams extracted by using spaced-seeds.
 But the context suggests that you are referring to the latter. So please
 be more precise.}
-
-Assuming these operations are of constant time complexity, the whole
-process would require only $O(n+q)$ time.
-This family of hashing algorithms allows efficiently enumerate hash values
-
-\SKcomment{Unclear what you by this 'family of hash functions'? You likely mean incremental/recursive hash functions?}
-
-of all \Qgram{q}s of a sequence~\cite{cohen1997recursive}. In order to
-achieve independence between
-hash values, the characters are usually assigned a weight, which might be
-expressed as $r^{q-1-i}$, where $r$, the radix, is a constant integer and
-$i$ is the position of the character in the \Qgram{q}. The calculation of a
-hash value from a \Qgram{q} \(w\) could then be expressed as follows:
+\SKcomment{Unclear what you by this 'family of hash functions'? You likely
+mean incremental/recursive hash functions?}
+\AVTcomment{Fixed.}
+Assuming the removal and addition operations on characters are of constant
+time
+complexity, the algorithm would run in \(O(nb)\) time, where \(b\) is the
+number
+of consecutive \Qgram{q} blocks. The simplest case of the algorithm, where
+the
+spaced seed itself is a consecutive \Qgram{q} (\(b=1\)), is called
+invertible
+integer hashing~\ref{gsa}, and it employs two fundamental equations.
+In order to achieve independence between hash values, the characters are
+usually
+assigned a weight, which might be expressed as \(r^{q-1-i}\), where \(r\)
+is
+called the radix and \(i\) is the position of the character in the
+\Qgram{q}.
+Since the weight of every character must be unique in every position in the
+\Qgram{q}, the radix must be large enough to discern every character in
+the alphabet and usually assigned as the alphabet size itself
+(\(r=|\Alpha|\)).
+The calculation of a hash value from a \Qgram{q} \(w\) could then be
+expressed
+as follows:
 \begin{align}
 H(w) = \sum_{i=0}^{q-1}r^{q-1-i}w[i]\label{DefineHfunction}
 \end{align}
@@ -403,13 +485,7 @@ The hash value of \(xc\) is then calculated as follows:
 \begin{align}
 H(xc) = (H(ax)-r^{n-1}\cdot a)\cdot r+c\label{IncrementallyComputeH}
 \end{align}
-
-
-Equations (\ref{DefineHfunction}) and (\ref{IncrementallyComputeH})
-provide the basic schema of recursive hashing. In an implementation, the most
-basic form of the algorithm, called invertible integer encoding, is used,
-where \(r=|\Alpha|\). The pseudocode for this schema is
-outlined in Algorithm \ref{code:invint}.
+The pseudocode for this schema is outlined in Algorithm \ref{code:invint}.
 \begin{algorithm}[t]
 \caption{Invertible Integer Encoding}
 \label{code:invint}
@@ -431,47 +507,167 @@ outlined in Algorithm \ref{code:invint}.
 \State \(\HashValue \gets \HashValue + s[j+k]\)\
 \State \(\HashValVec .\Append(\HashValue)\)
 \EndFor
+\State return \(\HashValVec\)
 \end{algorithmic}
 \end{algorithm}
-
 \SKcomment{I do not understand why you repeat this explanation and do not
 just refer to the GSA-script.}
-
-\SKcomment{While you provide a detailed description of existing methods, your
+\SKcomment{While you provide a detailed description of existing methods,
+your
 innovation is only shortly explained. Please provide pseudocode for
 the block based computation including the calculation of the custom radix
 per block.}
-
 In order to extend the schema to allow for spaced seeds, one could divide
 the seed into shorter blocks of \Qgram{q}s, intertwined by blocks of
 "Don't Care". Each block can then be treated as individual \Qgram{q} with
 custom radix, and the complexity is then \(O(nb)\), where \(b\) is the
-number of blocks. Since the number of blocks is in worst case the weight
-itself, and in best case 1, recursive hashing has a same or faster time
-complexity than normal hashing approachs.
-
+number of blocks. The division schematic is illustrated in
+Algorithm~\ref{code:hashblock}.
+\begin{algorithm}[t]
+\caption{Divide spaced seed into blocks of consecutive \Qgram{q}}
+\label{code:hashblock}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}&Spaced seed as bit vector \(\Seed\)\\
+\end{tabular}
+\begin{algorithmic}
+\State \(\InBlock \gets \False\)
+\State \(\Start \gets 0\)
+\State \(\Blocks \gets []\)
+\State \(\Rank \gets \Seed.\mathsf{weight} - 1\)
+\For{\(i \in [0,\Seed.\mathsf{span})\)}\Comment{Iterate over seed}
+\If{\(\Seed[i] \land !\InBlock\)}\Comment{Start new block}
+\State \(\InBlock \gets \True\)
+\State \(Start \gets i\)
+\Else
+\If{\(!\Seed[i] \land \InBlock\)} \Comment{End current block}
+\State \(\InBlock \gets \False\)
+\State \(\Blocks.\mathsf{append}(\{\begin{tabular}{c}
+\(\CharToRmv:\Start\),\\
+\(\RankToRmv:r^{\Rank+i-1-\Start}\),\\
+\(\CharToRmv:i\),\\
+\(\RankToRmv:r^{\Rank}\)\end{tabular}\})\)
+\EndIf
+\EndIf
+\If{\(\Seed[i]\)}
+\State \(\Rank-=1\)
+\EndIf
+\EndFor
+\If{\(\InBlock\)}
+\State \(\Blocks.\mathsf{append}(\{\begin{tabular}{c}
+\(\CharToRmv:\Start\),\\
+\(\RankToRmv:r^{\Rank+\Seed.\mathsf{span}-1-\Start}\),\\
+\(\CharToAdd:\Seed.\mathsf{span}\),\\
+\(\RankToAdd:r^\Rank\)\end{tabular}\})\)
+\EndIf
+\State return \(\Blocks\)
+\end{algorithmic}
+\end{algorithm}
+The output of the dividing algorithm is a vector of blocks, represented
+internally as quartet of character to remove, rank to remove, character to
+add
+and rank to add. This preprocessing of spaced seeds runs in linear time
+\(O(\Seed.\mathsf{span})\), same as the computation of first hash.
+After the blocks are created, the recursive hashing step, detailed in
+Algorithm~\ref{invintseed} can proceed. Here the blocks are firstly
+iterated one
+by one to subtract the hash component of every character to be removed. The
+hashing window can then be shifted by 1 character, same as multiplying with
+the
+radix \(|\Alpha|\). Then the blocks are iterated once again to add the hash
+component of new characters.
+\begin{algorithm}[t]
+\caption{Invertible Integer Hashing using spaced seeds}
+\label{code:invintseed}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}
+&spaced seed \(\Seed\)\\
+&Blocks of consecutive \Qgram{q}s in spaced seed \(\Blocks\)\\
+&Encoded sequence \(s\) of length \(n\)\\
+&radix \(r = |\Alpha|\)
+\end{tabular}
+\begin{algorithmic}
+\State \(\HashValVec\gets []\)
+\State \(\HashValue \gets 0\)
+\For{\(i \in [0,\Seed.\mathsf{span})\)}\Comment{Iterate over seed}
+\If{\(\Seed[i]\)}
+\State \(\HashValue *= r\)
+\State \(\HashValue += s[i]\)
+\EndIf
+\EndFor
+\State \(\HashValVec .\Append(\HashValue)\)
+\For{\(j\) \textbf{from} 1 to $n-k$}\Comment{Compute other hash values}
+\For{\(\Block \in \Blocks\)}
+\State \(\HashValue -= \Block.\RankToRmv \cdot s[\Block.\CharToRmv + j]\)
+\EndFor
+\State \(\HashValue *= r\)
+\For{\(\Block \in \Blocks\)}
+\State \(\HashValue += \Block.\RankToAdd \cdot s[\Block.\CharToAdd + j]\)
+\EndFor
+\State \(\HashValVec.\Append(\HashValue)\)
+\EndFor
+\State return \(\HashValVec\)
+\end{algorithmic}
+\end{algorithm}
+A closer look into the algorithm shows that for every block, two operations
+must
+be performed, a subtraction and an addition, which means that the expected
+run
+time of the algorithm should be proportional to \(2nb\). Compared to the
+method
+of direct extraction and hashing in MMseqs2, which scales linearly with
+\(nq\),
+this approach presents in the worst case of \(q=b\) double the run time.
+The run
+time is then expected to be equal when \(q=2b\) and \(\forall b <
+\frac{q}{2},\)
+recursive hashing is expected to present a better run time than the current
+hashing approach. In Table~\ref{tab:seeds}, the default seeds used in
+MMseqs2
+are listed, along with their theoretical hashing speedup using recursive
+hashing.
+\begin{table}
+\begin{center}
+\begin{tabular}{c|c|c|c|c|c}
+Nr & Seed & Span & Weight \(q\) & Number of Blocks \(b\) & Speedup in
+hashing
+\(=\frac{q}{2b}\)\\
+\hline
+1& \numprint{11101} & 5 & 4 & 2 & 1 \\
+2& \numprint{111011} & 6 & 5 & 2 & 1.25\\
+3& \numprint{1101011} & 7 & 5 & 3 & 0.83 \\
+4& \numprint{110010000101} & 12 & 5 & 4 & 0.625\\
+5& \numprint{11101101} & 8 & 6 & 3 & 1\\
+6& \numprint{1101010011} & 10 & 6 & 4 & 0.75\\
+7& \numprint{1111010101} & 10 & 7 & 5 & 0.7\\
+8& \numprint{11010110011} & 11 & 7 & 4 & 0.875\\
+\end{tabular}
+\caption{Seeds used in MMseqs2 with their span, weight, number of blocks
+and
+theoretical hashing speedup using recursive hashing\label{tab:seeds}}
+\end{center}
+\end{table}
 \SKcomment{You need to be more precise here. So the existing methods
-involving spaced seeds need \(O(nq)\) time, while your block based method needs
+involving spaced seeds need \(O(nq)\) time, while your block based method
+needs
 \(O(nb)\) time, where \(b\leq q\). So your method reduces the runtime by
-a factor of \(\frac{q}{b}\). If \(b=q\), there would be no speedup. The case
+a factor of \(\frac{q}{b}\). If \(b=q\), there would be no speedup. The
+case
 \(b=1\) would be the case of consecutive \(q\)-grams with a speedup
 of \(O(q)\), i.e.\ result in a runtime of \(O(n)\). So your method would
 generalize the method explained above.}
-
-\SKcomment{Do you have a table with the spaced seeds, including the number of
+\SKcomment{Do you have a table with the spaced seeds, including the number
+of
 blocks. This would directly allow to calculate the speedup for each
 spaced-seed.}
-
 \section{Optimizing query data processing}
 In order to quantify the similarity between sequences, one uses a scoring
 function. This provides quantitative measures for comparing biological
 sequences, structures, and interactions, facilitating a deeper
 understanding of biological processes and aiding in drug discovery,
 evolutionary analysis, and functional genomics research.
-
-\SKcomment{Omit the part beginning with structures. This is general bla bla,
+\SKcomment{Omit the part beginning with structures. This is general bla
+bla,
 not relevant here.}
-
 In sequence
 alignment context, these functions often compare pairwise the biological
 residues (often nucleotide bases or proteinogenic amino acids). The most
@@ -479,10 +675,10 @@ common scoring function is the substitution matrix, often represented as a
 matrix of scores indicating the likelihood of one amino acid (or
 nucleotide) being replaced by another. The BLOSUM (Blocks Substitution
 Matrix) and PAM (Point Accepted Mutation) matrices are examples of
-substitution matrices widely used in bioinformatics.
-
+substitution matrices widely used in bioinformatics for quantifying
+similarity
+between amino acid sequences.
 \SKcomment{You need to mention that BLOSUM and PAM are for amino acids.}
-
 The two families of
 matrices can be summarized as a mathematical function:
 \begin{align}
@@ -494,35 +690,103 @@ sequences \(u,v\in \Alpha^q\) can then be defined as follow:
 \begin{align}
 \sigma(u,v)=\sum_{i=0}^{q-1}\sigma(\Subchar{u}{i},\Subchar{v}{i})\label{equation:sequenceScore}
 \end{align}
-
+The \(k\)-environment of a \Qgram{q} \(u\) is then defined as~\cite{gsa}:
+\begin{align}
+\text{Env}_{k,\sigma}[u] = \{(v,\sigma(u,v))|v\in \Alpha^q,\sigma(u,v)\geq
+k\}
+\end{align}
+In order to enumerate the \(k\)-environment, the most direct computation
+method
+would be to calculate a score table
+\begin{align}
+\Scoretable{q}{u}=\lbrack (v,\sigma(u,v))\mid v\in\Alpha^{q}\rbrack
+\end{align}
+where the score \Qgram{q} pairs are sorted after the score. The
+\(k\)-enviroment
+can then be extracted as the portion of \(\Scoretable{q}{u}\) where
+\(\sigma\geq k\).
+This approach is often infeasible for large \(q\) due to the exponential
+complexity \(O(\Alpha^{2q})\) in both time and space. An alternative
+approach
+is a branch-and-bound algorithm~\cite{land2010automatic}, where the
+\Qgram{q} is
+decomposed into smaller sub-\Qgram{q}. In its most simplistic form, the
+algorithm considers only single character \(u[i],0\leq i<q\) and
+construction a
+score table for each character \(\Scoretable{1}{u[i]}\). Then the
+\(k\)-environment is contructed as a subset of the cartesian product
+\(\bigtimes \Scoretable{|u_i|}{u_i}\):
+\begin{align}
+\text{Env}_k(u) = \{(v,\sigma(u,v))|(v,\sigma(u,v))\in \bigtimes
+\Scoretable{|u_i|}{u_i},\sigma(u,v)\geq k\}\label{eq:singleCharCartesian}
+\end{align}
 \SKcomment{You should first refer to the notion of \(k\)-environments
-in the GSA-lecture notes. Based on this, you explain the the branch-and-bound
+in the GSA-lecture notes. Based on this, you explain the the
+branch-and-bound
 algorithm for single characters. This will then be generalized to the
 block-based method.}
+The approach presented in MMseqs2 utilizes both approaches, where instead
+of
+single characters, it decomposes \(u\) into groups of \Qgram{2}s and
+\Qgram{3}s
+using a splitting function \(\Qsplit\). For every integer \(q\), the output
+of
+\(\Qsplit\) would have the following properties:
+\begin{itemize}
+\item The output is an array, which length is \(\frac{q}{3}+
+\begin{cases}
+1, \text{if } (q \text{ mod } 3 = 0)\\
+0, \text{else}
+\end{cases}
+\)
+\item \(\forall q_i \in \Qsplit(q), q_i \in \{2,3\}\)
+\item \(q = \sum_{q_i \in \Qsplit(q)}\)
+\item \(\Qsplit(q)\) is sorted in descending order.
+\end{itemize}
+The examplary output of \(\Qsplit\) for \(q\in \{4,5,6,7\}\) is outlined in
+Table~\ref{tab:splitting}.
 
-In order to compute the \(k\)-environment for a \Qgram{q} \(u\)
-efficiently, MMseqs2 utilizes a branch-and-bound algorithm, where it
-decomposes \(u\) into groups of \Qgram{2}s and \Qgram{3}s \(u_i\),
-prioritizing \Qgram{3}. For \(q\in \{2,3\}\), a score matrix
+\begin{table}
+\begin{center}
+\begin{tabular}{c|c}
+\(q\) & \(\Qsplit(q)\)\\
+\hline
+\(4\) & \([2,2]\)\\
+\(5\) & \([3,2]\)\\
+\(6\) & \([3,3]\)\\
+\(7\) & \([3,2,2]\)\\
+\end{tabular}
+\caption{Examples of application of splitting function \(\Qsplit\) on different
+\Qgram{q} length}\label{tab:splitting}
+\end{center}
+\end{table}
 
-\SKcomment{Do not reuse the identifier \(u\) below, as it was introduced
-as \(q\)-gram above. Also use \(q'\in\{2,3]\), as otherwise you cannot refer to the original \(q\)-gram.}
-
-\SKcomment{Why prioritize \(q'=3\)? Does this mean that for \(q=4\) you split
-it into a single character and a \(3\)-gram? You likely are only referring to
-the method for \(q\geq 5\).}
-
-\(\Scoretable{q}{u}=\lbrack (v,\sigma(u,v))\mid v\in\Alpha^{q}\rbrack\) is
-computed and sorted by the the scores \(\sigma(u,v))\).
-The full $k$-environment of a \Qgram{q} \(u\) can then be constructed from a
-subset of the cartesian product \(\bigtimes \Scoretable{|u_i|}{u_i}\):
+Upon applying the splitting function \(\Qsplit\), the original \Qgram{q}
+\(u\)
+gets divided into non-overlapping \Qgram{q_i'}s \(u_i\) where \(q_i' \in
+\{2,3\}\).
+For each of these segments, a score table \(\Scoretable{q_i'}{u_i}\) is
+computed
+and the \(k\)-environment can then be enumerated similarly to
+Equation~\ref{eq:singleCharCartesian}
 \begin{align}
 \text{Env}_k(u) = \{(v,\sigma(u,v))|(v,\sigma(u,v))\in \bigtimes
 \Scoretable{|u_i|}{u_i},\sigma(u,v)\geq k\}\label{ScoreTablesCartesian}
 \end{align}
-
+\SKcomment{Do not reuse the identifier \(u\) below, as it was introduced
+as \(q\)-gram above. Also use \(q'\in\{2,3]\), as otherwise you cannot
+refer to the original \(q\)-gram.}
+\SKcomment{Why prioritize \(q'=3\)? Does this mean that for \(q=4\) you
+split
+it into a single character and a \(3\)-gram? You likely are only referring
+to
+the method for \(q\geq 5\).}
+\AVTcomment{I meant that a 6-gram would get decomposed to 2 3-grams instead
+of 3
+2-grams. The wording is changed.}
 \SKcomment{In the above, the notation \(u_{i}\) is not defined. What you
-actually need to define first is the splitting of \(q\in\{4,\ldots,7\}\) into
+actually need to define first is the splitting of \(q\in\{4,\ldots,7\}\)
+into
 a sequence \(\Qsplit\) of ordered values from the set
 \(\{2,3\}\), such that \(q=\sum_{q'\in\Qsplit}q'\). This gives the
 following splitting dependent on \(q\in \{4,\ldots,7\):
@@ -536,7 +800,8 @@ lengths specified in \(\Qsplit\). Lets denote this splitting
 as \(\Qsplit(u)\). Then state that the score table
 \(\mathsf{ST}(q')\) is precomputed for all \(q'\in\Qsplit\). That is,
 for an arbitrary but fixed \(q'\) and
-for all \(u'\in\Alpha^{q'}\), \(\Scoretable{q'}{u'}\) is the sequence of pairs
+for all \(u'\in\Alpha^{q'}\), \(\Scoretable{q'}{u'}\) is the sequence of
+pairs
 \((v,\sigma(u',v))\) for all \(v\in\Alpha^{q'}\) stored in
 descending order of the score-values. Then one can compute
 \(\text{Env}_k(u)\) as follows:
@@ -545,21 +810,24 @@ the cartesian product of all
 \((v,\sigma(u',v))\in\mathsf{ST}(q')\),
 such that the sum of the scores of each
 tuple is at least \(k\).}
-
-\SKcomment{You should now provide an example with numbers of the size of the
-scoretables for \(q'\in\{2,3\}\) which need to be precomputed. I assume that
-you compute them without considering the score threshold \(k\) which only has
+\SKcomment{You should now provide an example with numbers of the size of
+the
+scoretables for \(q'\in\{2,3\}\) which need to be precomputed. I assume
+that
+you compute them without considering the score threshold \(k\) which only
+has
 an effect when enumerating the cartesian product.}
-
-\SKcomment{Also provide an example showing that the score of two \(q\)-grams
+\AVTcomment{The table is added below to also support sorting method}
+\SKcomment{Also provide an example showing that the score of two
+\(q\)-grams
 does not change if the same permutation is applied to both.}
-
+\AVTcomment{Below.}
 The iteration over score matrix row can be prematurely terminated, as soon
 as it's no longer feasible to reach the threshold \(k\).
-
 The key-idea to improve the construction of the \(k\)-environment
 is to reorder the characters of the \(q\)-grams. Let
-\(\varphi:\{0,1,\ldots,q-1\}\to\{0,1,\ldots,q-1\}\) be a bijective mapping and
+\(\varphi:\{0,1,\ldots,q-1\}\to\{0,1,\ldots,q-1\}\) be a bijective mapping
+and
 define
 \begin{align}
 \varphi(u)=\Subchar{u}{\varphi(0)}\Subchar{u}{\varphi(1)}\ldots\Subchar{u}{\varphi(q-1)}
@@ -569,58 +837,97 @@ characters in \(u\). As it permutes \(q\) characters, we call it a
 \(q\)-permutation. The following lemma
 states that the score for a pair of \(q\)-grams does not change if both are
 permuted in the same way.
-
 \begin{Lemma}
 \label{permutationProof}
-For all \(q\)-permutations \(\varphi\) and all \(u,v\in\Alpha^{q}\) it holds:
+For all \(q\)-permutations \(\varphi\) and all \(u,v\in\Alpha^{q}\) it
+holds:
 \begin{align}
 \sigma(\varphi(u),\varphi(v))=\sigma(u,v)
 \end{align}
 \begin{Proof}
 \begin{align}
 \sigma(\varphi(u),\varphi(v))
-  &= \sum_{j=0}^{q-1} \sigma (\Subchar{\varphi(u)}{j},
-                              \Subchar{\varphi(v)}{j})\\
-  &= \sum_{j=0}^{q-1} \sigma (\Subchar{u}{\varphi(j)},\Subchar{v}{\varphi(j)})\label{eq:jPerm}\\
-  &= \sum_{i=0}^{q-1} \sigma (\Subchar{u}{i},\Subchar{v}{i})\label{eq:iPerm}\\
-  &= \sigma(u,v)
+&= \sum_{j=0}^{q-1} \sigma (\Subchar{\varphi(u)}{j},
+\Subchar{\varphi(v)}{j})\\
+&= \sum_{j=0}^{q-1} \sigma
+(\Subchar{u}{\varphi(j)},\Subchar{v}{\varphi(j)})\label{eq:jPerm}\\
+&= \sum_{i=0}^{q-1} \sigma
+(\Subchar{u}{i},\Subchar{v}{i})\label{eq:iPerm}\\
+&= \sigma(u,v)
 \end{align}
 The expressions in (\ref{eq:jPerm}) and (\ref{eq:iPerm}) are equal,
 as \(\sigma\) is applied to the same pairs of characters in
 a possibly different order.
 \end{Proof}
 \end{Lemma}
-
+An example of this scoring characteristic under permutation is illustrated
+in
+Figure~\ref{shuffle}. The premutation function is internally represented as
+an
+array \(p\) of the same length as the seed weight. Upon applying the
+permutation
+function, the \(i\)-th character gets shuffled to \(p[i]\).
+\begin{figure}[t]
+\begin{center}
+\includegraphics[scale=0.6]{graphics/shuffle.png}
+\end{center}
+\caption{Example of a permutation function and a graphical presentation of
+the
+sequence score invariance under permutation on both sequences.}
+\label{fig:shuffle}
+\end{figure}
+\AVTcomment{The notation here is slightly different. I'll try to redo so
+that
+they are similar to text. Placeholder only.}
 The sorting \(q\)-permutation \(\varphi_{u}\) is of special interest.
 It sorts the characters in \(u\), i.e.\ it satisfies
 \begin{align}
-\Subchar{u}{\Perm{u}{i}}\leq\Subchar{u}{\Perm{u}{i+1}}\text{ for all }i, 0\leq
+\Subchar{u}{\Perm{u}{i}}\leq\Subchar{u}{\Perm{u}{i+1}}\text{ for all }i,
+0\leq
 i\leq q-2
 \end{align}
-
 The resulting \Qgram{q} \(u_s=\varphi_{u}(u)\) is called sorted \Qgram{q}.
 The inverse of \(\varphi_{u}\) is \(\varphi_{u}^{-1}\), defined by
 \begin{align}
 \Perminverse{u}{\Perm{u}{i}}=i\text{ for all }i, 0\leq i\leq q-1
 \end{align}
-
 As a consequence \(\Perminverse{u}{\Perm{u}{u}}=u\).
-
 From the Lemma we can deduce, that it suffices to precompute the
 the score tables \(\mathsf{ST}_{q'}\) for \(q'\in\{2,3\}\)
 only for the sorted \(q'\)-grams. From these one can compute
 the \(k\)-environment of a sorted \(q\)-gram whose members are finally
 transformed by the inverse of the sorting permutation.
-
 The advantage of this approach is the smaller number of sorted \Qgram{q}s
 compared to unsorted, leading to a more efficient memory usage and a more
-compacted computation of the score matrix. Any overhead caused by the
-rearragement of the sorted \Qgram{q}s could be reduced by SIMD
-(Single-Instruction Multiple-Data) instructions.
-
-\SKcomment{I would not mention SIMD here, as this is an implementation issue,
+compacted computation of the score matrix. Table~\ref{tab:numdiff} outlines
+the
+difference in number of \Qgram{q}s to be enumerated and the size of the
+resulted
+score matrices.
+\begin{table}
+\begin{center}
+\begin{tabular}{c|c|c|c}
+\Qgram{q} type & \(q\) & Number of \Qgram{q} & Score matrix size\\
+\hline
+Sorted & 2 & 210 & \numprint{44100}\\
+& 3 & \numprint{1540} & \numprint{2371600}\\
+\hline
+Unsorted & 2 & 400 & \numprint{160000}\\
+& 3 & \numprint{8000} & \numprint{6400000}\\
+\end{tabular}
+\caption{Number of \Qgram{q}s, \(q\in\{2,3\}\), to be enumerated using 20
+amino
+acids and the resulted score matrix size}\label{tab:numdiff}
+\end{center}
+\end{table}
+\SKcomment{I would not mention SIMD here, as this is an implementation
+issue,
 and the SIMD-based method does not improve the running time as far as I
 remember.}
+\AVTcomment{Removed. I would then assume that the SIMD benchmarks are also
+to be
+removed. Should I write a short discussion about this in discussion
+section?}
 \section{Working with sorted \Qgram{q}s}
 \subsubsection{Enumeration}
 In mathematics, a set is defined as a collection of items, where every
@@ -827,6 +1134,7 @@ sensitivity parameter \(s\), labeled internally as the average length of
 to compute for \(S_{qt}\). This approach is shown to be lacking in control
 for \(s\) and therefore the goal is to streamline the process and to allow
 for a more fine-grained control of the length of \Qgram{q} list.
+
 \textbf{A context-free approach:} The average \Qgram{q} list \(l\) and the
 threshold \(k\) of the environment can be related through the right tail
 portion of a discrete distribution of
@@ -874,15 +1182,16 @@ through convolution:
 h_{q}(x) = \sum_{y\in\mathcal{Z}} h_{q-1}(y)h_1(x-y)
 \label{equation:convolution}
 \end{align}
-It is important to note that \(h_1\), the unigram score distribution,
+It is important to note that \(h_1\), the 1-gram score distribution,
 depends on both character distribution collected from target sequence and
 uniform character distribution, since the characters appeared in the
 environment are independent from each other.
+
 \textbf{Integrating context:} The above strategy treats single character as
 independent and therefore loses its context in \Qgram{q}s. Another
 approach could then be hashing the target sequences to collect \Qgram{q}
 distribution, which is convenient since the work is done in the
-preprocessing of target dabase. This approach is but often complicated by
+preprocessing of target dabase. This approach is but often complicated in
 large \(q\), since a \(q\times q\) score matrix must be computed, which
 incur an additional penalty of \(O(|\Alpha|^{2q})\), which is often
 not feasible when \(q>4\). A middle ground is to divide the \Qgram{q}s
@@ -944,18 +1253,17 @@ weight can be calculated by counting 1s.
 At run time the program takes in two sequence databases in FASTA format.
 Any data error, for example empty file or wrong data format will
 automatically lead to termination of the program and an error message will
-be logged. Additionally, the sensitivity of the program can be adjusted.
-To further assist in expansion, some fixed parameters, e.g.\ maximum
-sub-\Qgram{q} length are defined as preprocessor constants.
+be logged~\cite{gttl}. Additionally, the sensitivity of the program can be
+adjusted as a command line argument.
 \section{Compile time computation}
 Figure~\ref{fig:classes} shows that some classes/tables can be evaluated at
 compile time. Each seed gets transcoded and its weight and span can be
 precomputed and therefore, the two seed readers and their schematics can be
-predetermined. The two index tables for sorted/unsorted digrams/trigrams
+predetermined. The two index tables for sorted/unsorted 2-grams/3-grams
 take in only scoring function as parameter and therefore, can be wholely
 precomputed. Since the linear encoding table LE (see
 Algorithm~\ref{code:linearEncodingTable}) based solely on the sorted
-digrams/trigrams index table, it also can be evaluated at compilation.
+2-grams/3-grams index table, it also can be evaluated at compilation.
 \section{Run time computation}
 At run time, firstly the target and query database gets encoded using the
 transformer function. Using the target seed reader, the target sequences
@@ -978,11 +1286,13 @@ environment in response to regions where local composition varies
 considerably from the background distribution. Without adjusting, these low
 regions can lead to biases in the prefiltering result. This correction of
 the threshold can be summarized as follow:
+
 \begin{align}
 \Delta \sigma_i(u[i]) =
 \sum_{a=1}^{|\Alpha|}f(a)\sigma(a,u[i])-\frac{1}{2d}\sum_{j=i-d,j\neq
 i}^{i+d}\sigma (u[i],u[j])
 \end{align}
+
 where \(u\) is the query sequence, \(i\) the current residue on the
 sequence and \(f(a)\) the background frequency of residue \(a\).
 The minuend is a representation of the expected score resulting from the
@@ -993,16 +1303,20 @@ MMseqs2 as a constant 20.
 The corrected score between a query \Qgram{q} \(u\) and its generated
 \Qgram{q} \(v\) can then be computed as the sum of the pairwise amino acid
 score and the score correction.
+
 \begin{align}
 \sigma_c(u,v) = \sigma (u,v) + \sum_{i=0}^{q-1} \sigma_i(u[i])
 \end{align}
+
 In the implementation, this correction is instead subtracted from the
 threshold at the beginning of the computation.
+
 \begin{align}
 \sigma_c(u,v) = \sigma (u,v) + \sum_{i=0}^{q-1} \sigma_i(u[i]) \geq k
 \Leftrightarrow \sigma (u,v) \geq k - \sum_{i=0}^{q-1} \sigma_i(u[i]) =
 k_{c}
 \end{align}
+
 \subsubsection{Turning Wheel Mechanism}
 An issue in enumerating the Cartesian product is the possible difference in
 number of loops (e.g.\ 2 loops for seed weight 4-6, 3 loops for seed weight
@@ -1060,6 +1374,7 @@ Termination.}
 \EndWhile
 \end{algorithmic}
 \end{algorithm}
+\begin{comment}
 \subsubsection{SIMD}
 SIMD (Single-Instruction Multiple-Data) is a group of instructions allowing
 vectorized, parallel data processing. Instead of processing data
@@ -1087,13 +1402,14 @@ shuffled, in this case the inverse permutation.
 A schematic is visualized in Figure~\ref{fig:simd}. The right padded
 section of the inverse permutation is filled with integer 128 to signal the
 instruction to not shuffle and to simply pad the resulted vector with 0.
+\end{comment}
 \section{Merging target and query data}
 After being collected, the hashed data from the target and query sequences
 are packaged as byte units, prioritizing hash values. They then get sorted
-individually using radix sort (see GTTL~\cite{gttl}), resulting in two data
-vectors
-sorted by hash values which would then be merged value by value, skipping
-through unmatching blocks.
+individually using radix sort, resulting in two data vectors sorted by hash
+values which would then be merged value by value, skipping through
+unmatching
+blocks.
 \begin{algorithm}[t]
 \caption{Merging query and target data}
 \label{code:merging_data}
@@ -1146,20 +1462,25 @@ stage.
 Separate modular benchmarks were carried out for the processing of target
 sequences, threshold estimation and similar \Qgram{q} generation. All
 measurements were performed using C++ on an Intel CPU i5-\numprint{10300}H
-2.5~GHz
-with 8~GB DDR4 running Ubuntu on a SSD. The program was compiled with g++
-11.3.0.
+2.5~GHz with 8~GB DDR4 running Ubuntu on a SSD. The program was compiled
+with
+g++ 11.3.0.
 The test dataset composed of a target database from MMseqs2 and a query
 database created as a difference set from MMseqs2 queryset against the
 target database. Some statistics on these datasets are summarized below in
-Table~\ref{tab:datasets}. Table~\ref{tab:seeds} outlines the spaced seeds
-used in testing, which are taken from MMseqs2.
+Table~\ref{tab:datasets}. The scoring function used in testing is the
+BLOSUM62
+score matrix.
 \section{Processing target sequences}
 Testing from Figure~\ref{fig:target_hashing} showed that the direct
-extraction of \Qgram{q}s generally has a better run time. Recursive hashing
-only presented better performance when the spaced seeds have no block or
-with 1 block with high weight. The reason could be repeated lookup of
-character to remove/add causing cache-miss, slowing the computation.
+extraction of \Qgram{q}s generally has a better run time, as expected from
+Table~\ref{tab:seeds}. Even the hashing using seed \numprint{111011}, which
+was
+predicted to have performance speedup, failed to show improvement. The
+reason
+could be repeated lookup of character to remove/add causing cache-miss,
+slowing
+the computation.
 \begin{figure}[t]
 \begin{center}
 \includegraphics[scale=0.45]{graphics/target_hashing.png}
@@ -1178,11 +1499,15 @@ vs. expected}
 \label{fig:mmseqssens}
 \end{figure}
 The test shows that MMseqs2 often overgenerated \Qgram{q}s, with the worst
-case creating 231.11~\% more than expected. Both of the approaches,
-context-free and context-sensitive, were tested with the dividing scheme in
-context-sensitive approach reused from the \Qgram{q} generation algorithm.
-For each test, the total number of \Qgram{q}s generated is averaged and
-then compared to the expected list length per position and MMseqs2 result.
+case creating 231.11 times more than expected.
+Both of the approaches, context-free and context-sensitive, were tested
+with the
+dividing scheme in context-sensitive approach reused from the \Qgram{q}
+generation algorithm. For each test, the total number of \Qgram{q}s
+generated is
+averaged and then compared to the expected list length per position and
+MMseqs2
+result.
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/threshold_contextfree.png}
@@ -1205,7 +1530,16 @@ to be a good upper bounds for the \(k\)-environment in lower \(q\), where
 only sensitivity of 1 in the seed weight 6 crosses the expected ammount. In
 higher seed weight, both approaches serve well as an approximation, where
 only a maximum of 15~\% more \Qgram{q}s were generated compared to
-expected value. In order to discern the usage of each approach,the run time
+expected value.
+It's also noticeable that both approaches result in the same
+threshold, which could be due to the relatively short sub-\Qgram{q} length.
+Since the dividing schema in the branch-and-bound algorithm is reused,
+histograms
+of \Qgram{2} and \Qgram{3} were created and due to their small length, they
+are
+not sufficient to diverge from the character distribution used in
+context-free
+approach. In order to discern the usage of each approach,the run time
 of each method is investigated further in Figure~\ref{fig:sens_runtime}:
 \begin{figure}
 \centering
@@ -1214,12 +1548,8 @@ of each method is investigated further in Figure~\ref{fig:sens_runtime}:
 approach}
 \label{fig:sens_runtime}
 \end{figure}
-\AVTcomment{I'm looking to make a stacked bar chart with annotation on each
-bar as legend for each smaller step, e.g.\ for context-sensitive it would
-be
-extracting frequency of sub-\Qgram{q} and creating histogram.}
 The context-free approach shows to take very little time, almost
-instanteneous.
+instantaneous.
 Coupled with the very good estimation of the threshold it proves to be an
 universal on-the-fly solution. The context-sensitive approach takes a lot
 more
@@ -1228,8 +1558,7 @@ of
 unsorted-unsorted \Qgram{q} score matrices, see
 Section~\ref{section:scorematrix}),since it incurs a \(O(|\Alpha|^{2q})\)
 time to build histogram. Therefore this approach should be used only on
-high
-sensitivity, where long computation time is expected, or cached in the
+high sensitivity, where long computation time is expected, or cached in the
 preprocessing of target sequences.
 It is important to note that since the approximation of the threshold \(k\)
 doesn't take local score correction into account, all of the above
@@ -1280,17 +1609,33 @@ different sensitivities using seed \numprint{1111010101}}
 The tests showed that the new algorithm has generally a 10~\% to 15~\%
 performance loss compared to the MMseqs2 method. This is the overhead
 caused by the sorting and reshuffled of \Qgram{q}. The tradeoff is the low
-initial memory consumption, where only 36~MB of memory is consumed for the
-score matrices instead of 200~MB. The SIMD function unfortunately shows to
-have an negative impact on performance, which could be due to the SIMD
-instruction not optimized for the large padded section. On average, the
+initial memory consumption, where only 340~MB of memory is consumed for the
+score matrices instead of 1.80~GB (see Table~\ref{tab:memdiff}).
+\begin{table}
+\begin{center}
+\begin{tabular}{c|c|}
+\Qgram{q} type & Memory Allocated in Bytes\\
+\hline
+Using sorted \Qgram{q}s & 340704000\\
+Using sorted \Qgram{q}s & 1811500000\\
+\end{tabular}
+\caption{Comparison of initial memory footprints in creation of score
+matrices
+between two approaches. Data collected using Intel
+V-Tune.\label{tab:memdiff}}
+\end{center}
+\end{table}
+On average, the
 program spends 18.2~ns to generate a \Qgram{5}, 18.3~ns to generate a
 \Qgram{6} and 20.1~ns to generate a \Qgram{7}. This shows that the
 \Qgram{q}
 generation scales generally well with \(q\), where an additional loop in
-creation of \Qgram{7} causing an increase of 10~\%. It could be reasoned
-that the generation of \Qgram{8} and \Qgram{9} may follow the same trend,
-which coupled with the new approach in estimating threshold could lead to
+creation of \Qgram{7} causing an increase of 10~\% in run time. It could
+then
+be reasoned that the generation of \Qgram{8} and \Qgram{9} may follow the
+same
+trend, which coupled with the new approach in estimating threshold could
+lead to
 an expansion of seed weight (see Section~\ref{section:expand}).
 \section{General Performance}
 In this section, the overall run time of the whole program is profiled to
@@ -1314,7 +1659,6 @@ miliseconds,
 using seed \numprint{1111010101}, sensitivity 10, 100 and \numprint{1000}}
 \label{fig:program_w7}
 \end{figure}
-\AVTcomment{Same as last comment}
 The test showed that the run time of processing target data is generally
 negligible. The processing of match data could be more significant,
 reaching
@@ -1325,8 +1669,53 @@ phase, specifically in the Cartesian product formation and in lesser
 manner,
 the radix sort of \Qgram{q} data. In the most heavy measurement, the
 \Qgram{q}
-generation phase still takes twice as long as the sorting after.
+generation phase still takes 1.5~-~2 times as long as the sorting after,
+see
+Figure~\ref{fig:hotspot_w6} and \ref{fig:hotspot_w7}.
+\begin{figure}
+\centering
+\includegraphics[scale=0.6]{graphics/hotspot_w6.png}
+\caption{Run time of \Qgram{q} generation and radix sort, measured in
+miliseconds,
+using seed \numprint{11101101}, sensitivity 10, 100 and \numprint{1000}}
+\label{fig:hotspot_w6}
+\end{figure}
+\begin{figure}
+\centering
+\includegraphics[scale=0.6]{graphics/hotspot_w7.png}
+\caption{Run time of \Qgram{q} generation and radix sort, measured in
+miliseconds,
+using seed \numprint{1111010101}, sensitivity 10, 100 and \numprint{1000}}
+\label{fig:hotspot_w7}
+\end{figure}
 \Chapter{Discussion \& Future improvements}
+\section{Performance}
+The performance of the implementation using both sorted and unsorted
+\Qgram{q}s
+is compared to MMseqs2 in Figure~\ref{fig:mmseqs2comp}.
+\begin{figure}
+\centering
+\includegraphics[scale=0.6]{graphics/mmseqs2comp.png}
+\caption{Run time of the program using both sorted and unsorted \Qgram{q}s,
+measured in ms, is compared to MMseqs2, in generation of 10, 100 and 1000
+\Qgram{q} per sequence position}
+\label{fig:mmseqs2comp}
+\end{figure}
+Compared to the MMseqs2 program, the implementation using unsorted
+\Qgram{q}s
+shows generally worse performance, with ... more time taken. On the other
+hand,
+the approach using sorted \Qgram{q}s presents better run time, especially
+in
+lower sensitivity. This shows that using optimization methods implemented
+in
+MMseqs2 could improve the run time even further.
+Two further possible optimization methods are usage of SIMD intructions and
+multithreadsing. Both of these methods were tried in the implementation
+using
+SIMD instruction \(\mathsf{\_\_mm\_shuffle\_epi8}\) and OpenMP library, but
+unfortunately both showed little to no improvement on run time. Reasons for
+these behaviors remains to be investigated.
 \section{Features}
 The new workflow was created with expandability in mind, therefore a lot of
 the calculation allows for greater seed size and even greater sub-\Qgram{q}
@@ -1364,12 +1753,6 @@ computation.
 matrix}
 \label{fig:scorematrix}
 \end{figure}
-\section{Performance}
-Even though the new workflow shows general improvements on performance, the
-implementation still falls short compared to original MMseqs2 program,
-especially in large \Qgram{q} list length.This shows that there is still
-possible future optimization, particularly in loops. Another important
-further improvent would be the ability to process the data in multithreads.
 \Chapter{Conclusion}
 In this paper, the prefiltering module of the MMseqs2 software suite was
 examined and alternative optimization methods were tried and tested. A
@@ -1390,7 +1773,7 @@ expansion into larger seed size.
 \bibliographystyle{unsrt}
 \bibliography{template}
 \normalsize
-%%%%END{fold}
+
 %%%%>
 % appendix
 \appendix
@@ -1409,23 +1792,7 @@ TARGET & \numprint{20000} & \numprint{8081} & 7\\
 \caption{Datasets used in testing the modules\label{tab:datasets}}
 \end{center}
 \end{table}
-\begin{table}
-\begin{center}
-\begin{tabular}{c|c|c|c|c}
-Nr & Seed & Span & Weight & Number of Blocks\\
-\hline
-1& \numprint{11101} & 5 & 4 & 2\\
-2& \numprint{111011} & 6 & 5 & 2\\
-3& \numprint{1101011} & 7 & 5 & 3\\
-4& \numprint{110010000101} & 12 & 5 & 4\\
-5& \numprint{11101101} & 8 & 6 & 3\\
-6& \numprint{1101010011} & 10 & 6 & 4\\
-7& \numprint{1111010101} & 10 & 7 & 5\\
-8& \numprint{11010110011} & 11 & 7 & 4\\
-\end{tabular}
-\caption{Seeds used in testing\label{tab:seeds}}
-\end{center}
-\end{table}
+
 \Chapter{Some Additional Data}
 %%%%<
 \Assertion
