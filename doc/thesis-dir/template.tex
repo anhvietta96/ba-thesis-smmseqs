@@ -92,7 +92,9 @@
 \newcommand{\Blocks}[0]{\mathsf{blocks}}
 \newcommand{\Block}[0]{\mathsf{block}}
 \newcommand{\CharToAdd}[0]{\mathsf{CharToAdd}}
+\newcommand{\PosToAdd}[0]{\mathsf{PosToAdd}}
 \newcommand{\CharToRmv}[0]{\mathsf{CharToRmv}}
+\newcommand{\PosToRmv}[0]{\mathsf{PosToRmv}}
 \newcommand{\RankToAdd}[0]{\mathsf{RankToAdd}}
 \newcommand{\RankToRmv}[0]{\mathsf{RankToRmv}}
 \newcommand{\Query}[0]{\mathsf{Query}}
@@ -170,6 +172,9 @@
 
 \SKcomment{Please provide a longer abstract}
 
+\SKcomment{There are again some unresolved reference.
+I am tired to always remind you that you need to resolve these before pushing.}
+
 % if you write in German, maybe change this to "Zusammenfassung".
 \addchap*{Abstract}
 \small
@@ -209,11 +214,6 @@ this
 \Chapter{Introduction}
 \section{Recent developments of bioinformatic sequence searching and
 clustering}
-\SKcomment{Use the chapter heading 'Introduction' and the current heading
-as section heading. Also MMseqs2 is not an own chapter, but a section of
-the
-introduction.}
-\AVTcomment{Fixed}
 % reset to arabic page numbers will start with 1
 \pagenumbering{arabic}
 With the advent of high-throughput sequencing technologies, the cost of
@@ -224,13 +224,12 @@ can handle large-scale datasets efficiently. Algorithms and software that
 can scale horizontally (across multiple machines) have gained importance.
 On sequence searching, new algorithms and heuristics have been developed to
 improve sensitivity without sacrificing speed. Tools like
-DIAMOND~\cite{buchfink2015fast},\cite{BUC:REU:DRO:2021} and
-\SKcomment{Please also cite \cite{BUC:REU:DRO:2021} which I added to the
-bib file.}
-\AVTcomment{Added}
+DIAMOND~\cite{buchfink2015fast,BUC:REU:DRO:2021} and
 MMseqs2~\cite{steinegger2017mmseqs2} provide fast and sensitive sequence
 searching capabilities,
-especially in metagenomics and large-scale sequencing projects. Hidden
+especially in metagenomics and large-scale sequencing projects.
+
+Hidden
 Markov Model based
 methods, such as the HMMER~\cite{finn2011hmmer} software, have been
 enhanced to improve their
@@ -272,8 +271,6 @@ that eliminates most non-homologous sequences,
 \item a local alignment module based on the Smith-Waterman algorithm
 using the ideas and implementation techniques described
 in~\cite{Farrar:2007hs,ZHA:LEE:GAR:MAR:2013},
-\SKcomment{Please check if this is already true for MMseqs.}
-\AVTcomment{I found it in MMseqs paper.}
 \item and a clustering module based on a
 similary graph.
 \end{itemize}
@@ -284,16 +281,12 @@ parameters and resembles the average use case. The second, cascaded
 clustering, clusters the input database in multiple steps, increasing the
 sensitivity between each steps and therefore enables finding
 best-hit-searches 4-10 times faster compared to default workflow.
-\SKcomment{faster compared to what?}
-\AVTcomment{default workflow. Added.}
 The third workflow simply compares
 databases using only prefiltering and aligning modules. The last workflow
 updates clustering between new and old clustered database by deleting
 deprecated sequences and appending new sequences to each cluster.
 In benchmarks, MMseqs showed to be 4-30 times faster than
 UBLAST~\cite{edgar2010search} and RAPsearch2~\cite{zhao2012rapsearch2}.
-\SKcomment{Add citation for UBLAST and RAPsearch2.}
-\AVTcomment{Added.}
 MMseqs could cluster large databases down to 30\% sequence
 identity \numprint{2000} times faster than BLASTclust.
 An improved, updated version MMseqs2~\cite{steinegger2017mmseqs2} was
@@ -308,14 +301,11 @@ matches
 and optimizing memory access.
 \item Extension to allow the usage of \Qgram{7} due to
 the speedup of the algorithm.
-\item Integration of MPI (Message-Passing-Interface) allows the 
-distribution of jobs on computer clusters. 
+\item Integration of MPI (Message-Passing-Interface) allows the
+distribution of jobs on computer clusters.
 \item Iterative profile search increases sensitivity far greater
 than sensitivity of BLAST.
 \end{itemize}
-\SKcomment{You can just add an item list to mention the most important
-improvements.}
-\AVTcomment{Added.}
 An in-depth look into the three core modules is presented below.
 \SKcomment{I will skip reading the next section.}
 \section{Fast \Qgram{q} prefiltering stage}
@@ -379,12 +369,22 @@ integers, where each integer encodes a different character of \(\Alpha\).
 That is, the alphabet will be interpreted mostly as an integer
 subset \([0,|\mathcal{A}|)\cap \Nats\).
 \section{Optimizing target data processing}
+
+\SKcomment{Actually the use of spaced seeds is not restricted to the target
+data base. You also extract the \(q\)-grams from the query sequence and from these you generate the \(k\)-environment. This should be explained. As a
+consequence, the header of this section should be more general, like
+Efficient sequence encoding for spaced  seeds}
 Since the target database can be very large, a precise and efficient
 evaluation must be prioritized. In MMseqs2, at every residue position,
 relevant characters based on the user-chosen spaced seed are individually
 extracted from the target sequence to create \Qgram{q}s and then process
 these \Qgram{q}s as independent strings. This approach requires to compute
-a hash value for each \Qgram{q} using \(O(q)\) time. For a sequence of
+a hash value for each \Qgram{q} using \(O(q)\) time.
+
+\SKcomment{Where was \(q\) introduced? It should be the weight of the
+spaced seeds. This should be made explicit.}
+
+For a sequence of
 length
 \(n\), this would sum up to \(O((n-q+1)q)=O(nq)\). This process is detailed
 in
@@ -404,8 +404,7 @@ Algorithm~\ref{mmseqshash}.
 \For{\(j\) \textbf{from} 0 to $n-k$}\Comment{Iterate over sequence}
 \For{\(i \in [0,\Seed.\mathsf{span})\)}\Comment{Iterate over seed}
 \If{\(\Seed[i]\)}
-\State \(\HashValue *= r\)
-\State \(\HashValue += s[i]\)
+\State \(\HashValue\text{ = }\HashValue\cdot r\text{ + }s[i]\)
 \EndIf
 \EndFor
 \State \(\HashValVec .\Append(\HashValue)\)
@@ -423,10 +422,14 @@ and
 new characters respectively, which are both determined by the spaced seed.
 In
 fact, the old characters can be characterized as the start of a block of
-consecutive \Qgram{q}, and the new character respectively as a the
+consecutive \Qgram{q}s, and the new character respectively as the
 character
 directly after the end of the block. This schema is visualized in
 Figure~\ref{fig:recursive}.
+
+\SKcomment{I assume that you have defined a block as a maximum sequence of
+1-bits of a spaced seed. But then the new character directly after the end of the block would correspond to a 0 bit in the spaced seed, i.e.\ it is irrelevant
+for the. Deducing this, This does not make sense.}
 \begin{figure}[t]
 \begin{center}
 \includegraphics[scale=0.6]{graphics/recursive.png}
@@ -436,6 +439,12 @@ spaced
 seed into blocks of consecutive \Qgram{q}}
 \label{fig:recursive}
 \end{figure}
+
+\SKcomment{You need to give more explanation for Figure 3.1. Also the figure
+suggests that the prefix of length \(q-1\) corresponds to the initial
+block 1-bits. But \(q\) is the total number of 1-bits in the spaced seed.
+As a consequence, the figure is misleading.}
+
 \SKcomment{But this previous statement only holds for consecutive
 \(q\)-grams, not for those \(q\)-grams extracted by using spaced-seeds.
 But the context suggests that you are referring to the latter. So please
@@ -443,6 +452,7 @@ be more precise.}
 \SKcomment{Unclear what you by this 'family of hash functions'? You likely
 mean incremental/recursive hash functions?}
 \AVTcomment{Fixed.}
+\SKcomment{Please explain how you have fixed this.}
 Assuming the removal and addition operations on characters are of constant
 time
 complexity, the algorithm would run in \(O(nb)\) time, where \(b\) is the
@@ -456,7 +466,8 @@ In order to achieve independence between hash values, the characters are
 usually
 assigned a weight, which might be expressed as \(r^{q-1-i}\), where \(r\)
 is
-called the radix and \(i\) is the position of the character in the
+called the radix
+and \(i\) is the position of the character in the
 \Qgram{q}.
 Since the weight of every character must be unique in every position in the
 \Qgram{q}, the radix must be large enough to discern every character in
@@ -510,18 +521,17 @@ The pseudocode for this schema is outlined in Algorithm \ref{code:invint}.
 \State return \(\HashValVec\)
 \end{algorithmic}
 \end{algorithm}
-\SKcomment{I do not understand why you repeat this explanation and do not
-just refer to the GSA-script.}
-\SKcomment{While you provide a detailed description of existing methods,
-your
-innovation is only shortly explained. Please provide pseudocode for
-the block based computation including the calculation of the custom radix
-per block.}
+
 In order to extend the schema to allow for spaced seeds, one could divide
 the seed into shorter blocks of \Qgram{q}s, intertwined by blocks of
+
+\SKcomment{Please do not use the notion of \(q\)-grams here, as, in general, the
+blocks are different length and only the sum of the length of the blocks is
+\(q\) (the weight) I suppose.}
+
 "Don't Care". Each block can then be treated as individual \Qgram{q} with
 custom radix, and the complexity is then \(O(nb)\), where \(b\) is the
-number of blocks. The division schematic is illustrated in
+number of blocks. The division of a seed into blocks is computed by
 Algorithm~\ref{code:hashblock}.
 \begin{algorithm}[t]
 \caption{Divide spaced seed into blocks of consecutive \Qgram{q}}
@@ -535,17 +545,17 @@ Algorithm~\ref{code:hashblock}.
 \State \(\Blocks \gets []\)
 \State \(\Rank \gets \Seed.\mathsf{weight} - 1\)
 \For{\(i \in [0,\Seed.\mathsf{span})\)}\Comment{Iterate over seed}
-\If{\(\Seed[i] \land !\InBlock\)}\Comment{Start new block}
+\If{\(\Seed[i] \text{ and } \text{not }\InBlock\)}\Comment{Start new block}
 \State \(\InBlock \gets \True\)
 \State \(Start \gets i\)
 \Else
-\If{\(!\Seed[i] \land \InBlock\)} \Comment{End current block}
+\If{\(\text{not }\Seed[i] \text{ and } \InBlock\)} \Comment{End current block}
 \State \(\InBlock \gets \False\)
 \State \(\Blocks.\mathsf{append}(\{\begin{tabular}{c}
 \(\CharToRmv:\Start\),\\
 \(\RankToRmv:r^{\Rank+i-1-\Start}\),\\
-\(\CharToRmv:i\),\\
-\(\RankToRmv:r^{\Rank}\)\end{tabular}\})\)
+\(\CharToAdd:i\),\\
+\(\RankToAdd:r^{\Rank}\)\end{tabular}\})\)
 \EndIf
 \EndIf
 \If{\(\Seed[i]\)}
@@ -553,11 +563,11 @@ Algorithm~\ref{code:hashblock}.
 \EndIf
 \EndFor
 \If{\(\InBlock\)}
-\State \(\Blocks.\mathsf{append}(\{\begin{tabular}{c}
+\State \(\Blocks.\mathsf{append}(\left(\begin{tabular}{c}
 \(\CharToRmv:\Start\),\\
 \(\RankToRmv:r^{\Rank+\Seed.\mathsf{span}-1-\Start}\),\\
 \(\CharToAdd:\Seed.\mathsf{span}\),\\
-\(\RankToAdd:r^\Rank\)\end{tabular}\})\)
+\(\RankToAdd:r^\Rank\)\end{tabular}\right))\)
 \EndIf
 \State return \(\Blocks\)
 \end{algorithmic}
@@ -565,8 +575,23 @@ Algorithm~\ref{code:hashblock}.
 The output of the dividing algorithm is a vector of blocks, represented
 internally as quartet of character to remove, rank to remove, character to
 add
-and rank to add. This preprocessing of spaced seeds runs in linear time
-\(O(\Seed.\mathsf{span})\), same as the computation of first hash.
+and rank to add.
+
+\SKcomment{The notation reminds of a dictionary, but you have not explained
+your notation and the keys of the dictionary, which are abbreviations of what
+you just stated. Actually, \(\CharToRmv\) and \(\CharToAdd\) do not denote
+characters, but the positions of character to remove/add and you actually
+use these as positions. So use \(\PosToRmv\) and \(\PosToAdd\).
+The other values are simply
+powers of \(r\) depending in the current rank value.
+Also in the case after the for-loop, rank should be 0, as all 1-bits have been
+processed. This allows to simplify the quartet value. Note also the bit
+brackets for the second 4-tuple. This should be used for the first 4-tuple too.}
+
+\SKcomment{When using operator like assign and add plese typeset them as text, like in \(\text{ += }\)}.
+
+This preprocessing of spaced seeds runs in linear time
+\(O(\Seed.\mathsf{span})\), same as the computation of the first hash.
 After the blocks are created, the recursive hashing step, detailed in
 Algorithm~\ref{invintseed} can proceed. Here the blocks are firstly
 iterated one
@@ -575,6 +600,9 @@ hashing window can then be shifted by 1 character, same as multiplying with
 the
 radix \(|\Alpha|\). Then the blocks are iterated once again to add the hash
 component of new characters.
+
+\SKcomment{It is not clear to me, why the rank values you computed are
+correct. Please add an explanation (which I do not see).}
 \begin{algorithm}[t]
 \caption{Invertible Integer Hashing using spaced seeds}
 \label{code:invintseed}
@@ -608,18 +636,30 @@ component of new characters.
 \State return \(\HashValVec\)
 \end{algorithmic}
 \end{algorithm}
-A closer look into the algorithm shows that for every block, two operations
+
+\SKcomment{The algorithm uses a value \(k\) which is not defined. You likely means the space of the seed.}
+
+In Algorithm \ref{code:invintseed},
+for each block, two operations
 must
 be performed, a subtraction and an addition, which means that the expected
 run
-time of the algorithm should be proportional to \(2nb\). Compared to the
-method
+time of the algorithm should be proportional to \(2nb\).
+
+\SKcomment{But you also have an addition of positions, a table lookup
+and a multiplication. All these occur twice. Furthermore there is one
+multiplication. So the number of operation is \(8nb\). Now determine the
+number \(X\) of operations per 1-bit in the space seed. There are
+\(nXq\) operations you need. So you can no calculate the factor
+\(Xq/8b\). For an asymptotic consideration you can ignore X and 8, but for
+calculating the speedup they are relevant.}
+
+Compared to the method
 of direct extraction and hashing in MMseqs2, which scales linearly with
 \(nq\),
 this approach presents in the worst case of \(q=b\) double the run time.
-The run
-time is then expected to be equal when \(q=2b\) and \(\forall b <
-\frac{q}{2},\)
+The runtime is then expected to be equal when \(q=2b\) and for all
+\(b < \frac{q}{2},\)
 recursive hashing is expected to present a better run time than the current
 hashing approach. In Table~\ref{tab:seeds}, the default seeds used in
 MMseqs2
@@ -627,8 +667,8 @@ are listed, along with their theoretical hashing speedup using recursive
 hashing.
 \begin{table}
 \begin{center}
-\begin{tabular}{c|c|c|c|c|c}
-Nr & Seed & Span & Weight \(q\) & Number of Blocks \(b\) & Speedup in
+\begin{tabular}{c|c|r|c|c|c}
+No & Seed & Span & Weight \(q\) & Number of Blocks \(b\) & Speedup in
 hashing
 \(=\frac{q}{2b}\)\\
 \hline
@@ -690,9 +730,9 @@ sequences \(u,v\in \Alpha^q\) can then be defined as follow:
 \begin{align}
 \sigma(u,v)=\sum_{i=0}^{q-1}\sigma(\Subchar{u}{i},\Subchar{v}{i})\label{equation:sequenceScore}
 \end{align}
-The \(k\)-environment of a \Qgram{q} \(u\) is then defined as~\cite{gsa}:
+The \(k\)-environment of a \Qgram{q} \(u\) is then defined as in~\cite{gsa}:
 \begin{align}
-\text{Env}_{k,\sigma}[u] = \{(v,\sigma(u,v))|v\in \Alpha^q,\sigma(u,v)\geq
+\text{Env}_{k,\sigma}[u] = \{(v,\sigma(u,v))\mid v\in \Alpha^q,\sigma(u,v)\geq
 k\}
 \end{align}
 In order to enumerate the \(k\)-environment, the most direct computation
@@ -701,25 +741,30 @@ would be to calculate a score table
 \begin{align}
 \Scoretable{q}{u}=\lbrack (v,\sigma(u,v))\mid v\in\Alpha^{q}\rbrack
 \end{align}
-where the score \Qgram{q} pairs are sorted after the score. The
-\(k\)-enviroment
-can then be extracted as the portion of \(\Scoretable{q}{u}\) where
-\(\sigma\geq k\).
-This approach is often infeasible for large \(q\) due to the exponential
-complexity \(O(\Alpha^{2q})\) in both time and space. An alternative
+in which the pairs are sorted in descending order of the the score-value.
+The \(k\)-enviroment
+can then be extracted as the initial part of \(\Scoretable{q}{u}\) up to the
+last pair whose score is \(\geq k\).
+This approach is often infeasible for large \(q\) due to fact that there
+are \(O(|\Alpha|^{q})\) \(q\)-grams. An alternative
 approach
 is a branch-and-bound algorithm~\cite{land2010automatic}, where the
 \Qgram{q} is
 decomposed into smaller sub-\Qgram{q}. In its most simplistic form, the
-algorithm considers only single character \(u[i],0\leq i<q\) and
+algorithm considers only single character \(u[i]\) for \(0\leq i<q\)
+
+\SKcomment{Note that you have used indexing from 1 in other context. Because always use the same indexing. I would prefer from 0.}
+
+and
 construction a
 score table for each character \(\Scoretable{1}{u[i]}\). Then the
 \(k\)-environment is contructed as a subset of the cartesian product
-\(\bigtimes \Scoretable{|u_i|}{u_i}\):
+\(\bigtimes_{i=1}^{q} \Scoretable{|u_i|}{u_i}\):
 \begin{align}
-\text{Env}_k(u) = \{(v,\sigma(u,v))|(v,\sigma(u,v))\in \bigtimes
+\text{Env}_k(u) = \{(v,\sigma(u,v))\mid(v,\sigma(u,v))\in \bigtimes_{i=1}^{q}
 \Scoretable{|u_i|}{u_i},\sigma(u,v)\geq k\}\label{eq:singleCharCartesian}
 \end{align}
+
 \SKcomment{You should first refer to the notion of \(k\)-environments
 in the GSA-lecture notes. Based on this, you explain the the
 branch-and-bound
@@ -770,7 +815,7 @@ computed
 and the \(k\)-environment can then be enumerated similarly to
 Equation~\ref{eq:singleCharCartesian}
 \begin{align}
-\text{Env}_k(u) = \{(v,\sigma(u,v))|(v,\sigma(u,v))\in \bigtimes
+\text{Env}_k(u) = \{(v,\sigma(u,v))\mid (v,\sigma(u,v))\in \bigtimes
 \Scoretable{|u_i|}{u_i},\sigma(u,v)\geq k\}\label{ScoreTablesCartesian}
 \end{align}
 \SKcomment{Do not reuse the identifier \(u\) below, as it was introduced
@@ -951,7 +996,7 @@ Given a sorted \Qgram{q} \(u\) where the prefix of \(m\) characters is
 sorted and fixed, and \(u[m-1]\) has a rank of \(a_i\) then the task is to
 enumerate every \Qgram{q-m}s of alphabet size (\(|\Alpha|-a_i\)).
 The induction base case is then sorted unigrams over alphabet \(\Alpha_i =
-\{a_j| a_j\in\Alpha \land j\geq i\}\), where there are \(|\Alpha|-i\)
+\{a_j| a_j\in\Alpha \text{ and } j\geq i\}\), where there are \(|\Alpha|-i\)
 unigrams indexed from \(a_i\) to \(|\Alpha|-1\).
 \begin{figure}[t]
 \begin{center}
@@ -1421,7 +1466,7 @@ blocks.
 \begin{algorithmic}
 \State \(\TargetIdx \gets 0\)
 \State \(\QueryIdx \gets 0\)
-\While{\(\TargetIdx \neq \Target.\End\) \(\land\) \(\QueryIdx \neq
+\While{\(\TargetIdx \neq \Target.\End\) \(\text{ and }\) \(\QueryIdx \neq
 \Query.\End\)}
 \State \(\HashValue_t \gets \Target[\TargetIdx].\HashValue\)
 \State \(\HashValue_q \gets \Query[\QueryIdx].\HashValue\)
