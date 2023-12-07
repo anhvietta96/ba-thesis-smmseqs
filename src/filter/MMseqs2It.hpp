@@ -32,6 +32,7 @@ class MMseqs2 {
     while(target_idx < target_vec.size() and query_idx < query_vec.size()){
       const auto target_code = target_vec[target_idx].template decode_at<0>(target_packer);
       const auto query_code = query_vec[query_idx].template decode_at<0>(query_packer);
+      //std::cout << target_code << '\t' << query_code << std::endl;
       
       if(target_code < query_code){
         //skip ahead on target
@@ -225,7 +226,7 @@ class MMseqs2 {
     const size_t target_seq_len_bits = target->sequences_length_bits_get();
     const size_t target_seq_num_bits = target->sequences_number_bits_get();
     const size_t query_seq_len_bits = query->sequences_length_bits_get();
-    const size_t query_seq_num_bits = target->sequences_number_bits_get();
+    const size_t query_seq_num_bits = query->sequences_number_bits_get();
     const size_t hashbits = multiseq_hash.hashbits_get();
 
     const auto sizeof_target_unit = sizeof_unit_get(hashbits+target_seq_num_bits+target_seq_len_bits);
@@ -242,8 +243,6 @@ class MMseqs2 {
     std::cout << "Target_seqpos_bits: " << (int) target_seq_len_bits << std::endl; 
     std::cout << "Query_seqnum_bits: " << (int) query_seq_num_bits << std::endl;
     std::cout << "Query_seqpos_bits: " << (int) query_seq_len_bits << std::endl;
-
-
 
     if(sizeof_match_unit > max_unit_size or sizeof_query_unit > max_unit_size
     or sizeof_target_unit > max_unit_size){
