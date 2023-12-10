@@ -1311,22 +1311,49 @@ needs to be rewritten, as to allow to understand it.}
 
 \subsection{A context-free approach}
 
-\SKcomment{Unclear of what context you refer to.}
+\SKcomment{Unclear to what context you refer.}
 
 The average \Qgram{q} list \(l\) and the
-threshold \(k\) of the environment can be related through the right tail
-portion of a discrete distribution of
-unsorted-\Qgram{q}-vs-unsorted-\Qgram{q} score \(h_q\).
+
+\SKcomment{Do not use the identifier \(l\), as this can hardly be distinguished from \(1\). Use \(\ell\) instead.}
+
+threshold \(k\) of the environment can be related based on the tail
+of a discrete distribution of scores for pairs of \(q\)-grams. So let
+\(h_{q}(x)\) be the number of pairs
+\((u,u')\in\Alpha^{q}\times\Alpha^{q}\) such that \(\sigma(u,u')=x\).
+
+\SKcomment{Please check that this the correct definition of
+\(h_{q}\). But you actually have plotted this only for a sample, but I assumed
+that the definition makes sense for the entire set of all \(q\)-grams.}
+
+\SKcomment{Just as a possible point for a discussion: The frequencies for
+pairs of \(q\)-grams should be similar to the frequencies for sorted
+\(q\)-grams.}
+
+\SKcomment{Another possible point for a discussion: It should be possible
+to calculate the exact distribution of the scores using a DP-method: Assume
+integer scores. If one knows the distribution for all pairs of
+\((q-1)\)-mers, then one can compute the distribution for all pairs of
+\(q\)-grams. This would be an interesting GSA-exercise. I have just
+added a Python-script \texttt{bin/pair\_score\_distrib.py}. Results look okay,
+but I have  not verified them.}
+
 \begin{figure}[t]
 \begin{center}
 \includegraphics[scale=0.6]{graphics/distribution.png}
 \end{center}
 \caption{Example of score distribution \(h_7\) between uniformly
-distributed \Qgram{7}. Blue denotes portion of the distribution where
-\(\sigma < 0\). Red denotes portion of the distribution where \(\sigma \geq
-0\).}
+distributed \Qgram{7}. The blue bars show the frequencies for events with
+score \(<0\). The red bars show the frequencies for events with
+score \(\geq 0\).}
 \label{fig:distrbution}
 \end{figure}
+
+\SKcomment{You likely mean 'uniformly
+distributed pairs of \(q\)-grams. It is not an example. You likely have
+determine sample \(Q\) of \(q\)-grams for \(q=7\) and then computed the score
+for each \((u,u')\in Q\times Q\), \(u<u'\)? How large was \(Q\)? Did you specify which score function you use?}
+
 Figure~\ref{fig:distrbution} visualizes an exemplary score distribution
 between uniformly distributed \Qgram{7}. The red portion in the right
 tail describes the probability \(\mathcal{P}(\sigma \geq 0)\), which could
