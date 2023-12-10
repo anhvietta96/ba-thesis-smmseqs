@@ -31,7 +31,7 @@
 %%%%>
 % the following package is only needed to produce dummy text.
 % You do not need it for your thesis.
-\usepackage{lipsum}
+%\usepackage{lipsum}
 % This package is not included in the class, because it is not needed, but we
 % recommend to use it. It only works with pdfLaTeX.
 \usepackage[kerning,spacing]{microtype}
@@ -53,6 +53,7 @@
 \usepackage{theorem}
 \usepackage{tikz}
 \usepackage{amssymb}
+\usepackage{dcolumn}
 
 \usetikzlibrary{chains}
 \usetikzlibrary{decorations.pathmorphing}
@@ -127,7 +128,7 @@
 \newcommand{\Perminverse}[2]{\Permnameinverse{#1}(#2)}
 \newcommand{\Alpha}[0]{\mathcal{A}}
 \newcommand{\Nats}{\mathbb{N}}
-\newcommand{\Qsplit}{\mathsf{QS}_{q}}
+\newcommand{\Qsplit}{\mathsf{QS}}
 
 \theorembodyfont{\rmfamily}
 \theoremheaderfont{\rmfamily\bfseries}
@@ -637,7 +638,8 @@ correct. Please add an explanation (which I do not see).}
 \end{algorithmic}
 \end{algorithm}
 
-\SKcomment{The algorithm uses a value \(k\) which is not defined. You likely means the space of the seed.}
+\SKcomment{The algorithm uses a value \(k\) which is not defined.
+You likely means the span of the seed.}
 
 In Algorithm \ref{code:invintseed},
 for each block, two operations
@@ -668,22 +670,21 @@ hashing.
 \begin{table}
 \begin{center}
 \begin{tabular}{c|c|r|c|c|c}
-No & Seed & Span & Weight \(q\) & Number of Blocks \(b\) & Speedup in
-hashing
-\(=\frac{q}{2b}\)\\
+No & Seed & Span & Weight \(q\) & Number of & Speedup \\
+   &      &      &              & Blocks \(b\) & factor \\
 \hline
-1& \numprint{11101} & 5 & 4 & 2 & 1 \\
-2& \numprint{111011} & 6 & 5 & 2 & 1.25\\
-3& \numprint{1101011} & 7 & 5 & 3 & 0.83 \\
+1& \numprint{11101} & 5 & 4 & 2 & 1.000 \\
+2& \numprint{111011} & 6 & 5 & 2 & 1.250\\
+3& \numprint{1101011} & 7 & 5 & 3 & 0.830 \\
 4& \numprint{110010000101} & 12 & 5 & 4 & 0.625\\
-5& \numprint{11101101} & 8 & 6 & 3 & 1\\
-6& \numprint{1101010011} & 10 & 6 & 4 & 0.75\\
-7& \numprint{1111010101} & 10 & 7 & 5 & 0.7\\
+5& \numprint{11101101} & 8 & 6 & 3 & 1.000\\
+6& \numprint{1101010011} & 10 & 6 & 4 & 0.750\\
+7& \numprint{1111010101} & 10 & 7 & 5 & 0.700\\
 8& \numprint{11010110011} & 11 & 7 & 4 & 0.875\\
 \end{tabular}
 \caption{Seeds used in MMseqs2 with their span, weight, number of blocks
-and
-theoretical hashing speedup using recursive hashing\label{tab:seeds}}
+and theoretical hashing speedup factor $\frac{q}{2b}$
+using recursive hashing\label{tab:seeds}}
 \end{center}
 \end{table}
 \SKcomment{You need to be more precise here. So the existing methods
@@ -735,9 +736,8 @@ The \(k\)-environment of a \Qgram{q} \(u\) is then defined as in~\cite{gsa}:
 \text{Env}_{k,\sigma}[u] = \{(v,\sigma(u,v))\mid v\in \Alpha^q,\sigma(u,v)\geq
 k\}
 \end{align}
-In order to enumerate the \(k\)-environment, the most direct computation
-method
-would be to calculate a score table
+In order to enumerate the \(k\)-environment, the most direct
+method is to calculate a score table
 \begin{align}
 \Scoretable{q}{u}=\lbrack (v,\sigma(u,v))\mid v\in\Alpha^{q}\rbrack
 \end{align}
@@ -751,49 +751,45 @@ approach
 is a branch-and-bound algorithm~\cite{land2010automatic}, where the
 \Qgram{q} is
 decomposed into smaller sub-\Qgram{q}. In its most simplistic form, the
-algorithm considers only single character \(u[i]\) for \(0\leq i<q\)
+algorithm constructs a score table \(\Scoretable{1}{a}\) for all \(a\in\Alpha\).
+Then the
 
-\SKcomment{Note that you have used indexing from 1 in other context. Because always use the same indexing. I would prefer from 0.}
+\SKcomment{Note that you have used indexing from 1 in other context.
+Always use the same indexing. I would prefer from 0.}
 
-and
-construction a
-score table for each character \(\Scoretable{1}{u[i]}\). Then the
 \(k\)-environment is contructed as a subset of the cartesian product
-\(\bigtimes_{i=1}^{q} \Scoretable{|u_i|}{u_i}\):
+\(\bigtimes_{i=0}^{q-1} \Scoretable{1}{\Subchar{u}{i}}\):
 \begin{align}
-\text{Env}_k(u) = \{(v,\sigma(u,v))\mid(v,\sigma(u,v))\in \bigtimes_{i=1}^{q}
-\Scoretable{|u_i|}{u_i},\sigma(u,v)\geq k\}\label{eq:singleCharCartesian}
+\text{Env}_k(u) = \{(v_{0}v_{1}\ldots v_{q-1},s) \mid
+& ~((v_{0},s_{0}),(v_{1},s_{1}),\ldots (v_{q-1},s_{q-1}))\in\bigtimes\nolimits_{i=0}^{q-1}\Scoretable{1}{\Subchar{u}{i}},\nonumber\\
+& ~s:=\sum\nolimits_{i=0}^{q-1}s_{i}\geq k\}
+\label{eq:singleCharCartesian}
 \end{align}
 
-\SKcomment{You should first refer to the notion of \(k\)-environments
-in the GSA-lecture notes. Based on this, you explain the the
-branch-and-bound
-algorithm for single characters. This will then be generalized to the
-block-based method.}
-The approach presented in MMseqs2 utilizes both approaches, where instead
-of
+Here \(s:=\) means assignment to the local variable \(s\), to simplify the
+expression.
+
+The approach presented in MMseqs2 utilizes both approaches, where instead of
+
+\SKcomment{What is the second approach you refer to?}
+
 single characters, it decomposes \(u\) into groups of \Qgram{2}s and
-\Qgram{3}s
-using a splitting function \(\Qsplit\). For every integer \(q\), the output
-of
-\(\Qsplit\) would have the following properties:
+\Qgram{3}s using a splitting function \(\Qsplit\). For every
+integer \(q\), the function delivers a list \(\Qsplit(q)\)  such that
+
 \begin{itemize}
-\item The output is an array, which length is \(\frac{q}{3}+
-\begin{cases}
-1, \text{if } (q \text{ mod } 3 = 0)\\
-0, \text{else}
-\end{cases}
-\)
-\item \(\forall q_i \in \Qsplit(q), q_i \in \{2,3\}\)
-\item \(q = \sum_{q_i \in \Qsplit(q)}\)
+\item the output is a list of length
+\(\left\lfloor\frac{q}{3}\right\rfloor+(1\text{ if } (q\text{ mod } 3 \neq 0)\text{ else }0)\),
+\item \(q'\in\{2,3\}\) for all \(q'\in\Qsplit(q)\),
+\item \(q = \sum_{q'\in\Qsplit(q)}q'\),
 \item \(\Qsplit(q)\) is sorted in descending order.
 \end{itemize}
-The examplary output of \(\Qsplit\) for \(q\in \{4,5,6,7\}\) is outlined in
-Table~\ref{tab:splitting}.
+Table~\ref{tab:splitting} shows \(\Qsplit(q)\) for
+\(q\in\{4,5,6,7\}\).
 
 \begin{table}
 \begin{center}
-\begin{tabular}{c|c}
+\begin{tabular}{c|l}
 \(q\) & \(\Qsplit(q)\)\\
 \hline
 \(4\) & \([2,2]\)\\
@@ -806,74 +802,29 @@ Table~\ref{tab:splitting}.
 \end{center}
 \end{table}
 
-Upon applying the splitting function \(\Qsplit\), the original \Qgram{q}
-\(u\)
-gets divided into non-overlapping \Qgram{q_i'}s \(u_i\) where \(q_i' \in
-\{2,3\}\).
-For each of these segments, a score table \(\Scoretable{q_i'}{u_i}\) is
-computed
-and the \(k\)-environment can then be enumerated similarly to
+For any \(q\)-gram \(u\),
+let \(\Qsplit(q,u)\) denote the splitting of \(u\) into non-overlapping
+substrings \(u_{i}\) of length according to \(\Qsplit(q)\).
+
+For each of these substrings, a score table \(\Scoretable{|u_{i}|}{u_i}\) is
+precomputed and the \(k\)-environment can then be enumerated similarly to
 Equation~\ref{eq:singleCharCartesian}
+
+\SKcomment{I had corrected Equation~\ref{eq:singleCharCartesian}. Please
+apply analoguous corrections to the following equation.}
+
 \begin{align}
 \text{Env}_k(u) = \{(v,\sigma(u,v))\mid (v,\sigma(u,v))\in \bigtimes
 \Scoretable{|u_i|}{u_i},\sigma(u,v)\geq k\}\label{ScoreTablesCartesian}
 \end{align}
-\SKcomment{Do not reuse the identifier \(u\) below, as it was introduced
-as \(q\)-gram above. Also use \(q'\in\{2,3]\), as otherwise you cannot
-refer to the original \(q\)-gram.}
-\SKcomment{Why prioritize \(q'=3\)? Does this mean that for \(q=4\) you
-split
-it into a single character and a \(3\)-gram? You likely are only referring
-to
-the method for \(q\geq 5\).}
-\AVTcomment{I meant that a 6-gram would get decomposed to 2 3-grams instead
-of 3
-2-grams. The wording is changed.}
-\SKcomment{In the above, the notation \(u_{i}\) is not defined. What you
-actually need to define first is the splitting of \(q\in\{4,\ldots,7\}\)
-into
-a sequence \(\Qsplit\) of ordered values from the set
-\(\{2,3\}\), such that \(q=\sum_{q'\in\Qsplit}q'\). This gives the
-following splitting dependent on \(q\in \{4,\ldots,7\):
-\(4\mapsto [2,2]\),
-\(5\mapsto [2,3]\),
-\(6\mapsto [3,3]\),
-\(7\mapsto [2,2,3]\).
-On each \(q\)-gram
-\(u\), \(\Qsplit\) induces an ordered splitting into substrings of the
-lengths specified in \(\Qsplit\). Lets denote this splitting
-as \(\Qsplit(u)\). Then state that the score table
-\(\mathsf{ST}(q')\) is precomputed for all \(q'\in\Qsplit\). That is,
-for an arbitrary but fixed \(q'\) and
-for all \(u'\in\Alpha^{q'}\), \(\Scoretable{q'}{u'}\) is the sequence of
-pairs
-\((v,\sigma(u',v))\) for all \(v\in\Alpha^{q'}\) stored in
-descending order of the score-values. Then one can compute
-\(\text{Env}_k(u)\) as follows:
-For all \(u'\in\Qsplit(u)\) in the given order one enumerates
-the cartesian product of all
-\((v,\sigma(u',v))\in\mathsf{ST}(q')\),
-such that the sum of the scores of each
-tuple is at least \(k\).}
-\SKcomment{You should now provide an example with numbers of the size of
-the
-scoretables for \(q'\in\{2,3\}\) which need to be precomputed. I assume
-that
-you compute them without considering the score threshold \(k\) which only
-has
-an effect when enumerating the cartesian product.}
-\AVTcomment{The table is added below to also support sorting method}
-\SKcomment{Also provide an example showing that the score of two
-\(q\)-grams
-does not change if the same permutation is applied to both.}
-\AVTcomment{Below.}
+
 The iteration over score matrix row can be prematurely terminated, as soon
-as it's no longer feasible to reach the threshold \(k\).
+as it is no longer feasible to reach the threshold \(k\).
+
 The key-idea to improve the construction of the \(k\)-environment
 is to reorder the characters of the \(q\)-grams. Let
 \(\varphi:\{0,1,\ldots,q-1\}\to\{0,1,\ldots,q-1\}\) be a bijective mapping
-and
-define
+and define
 \begin{align}
 \varphi(u)=\Subchar{u}{\varphi(0)}\Subchar{u}{\varphi(1)}\ldots\Subchar{u}{\varphi(q-1)}
 \end{align}
@@ -911,7 +862,7 @@ Figure~\ref{shuffle}. The premutation function is internally represented as
 an
 array \(p\) of the same length as the seed weight. Upon applying the
 permutation
-function, the \(i\)-th character gets shuffled to \(p[i]\).
+function, the \(i\)-th character gets shuffled to \(\Subchar{p}{i}\).
 \begin{figure}[t]
 \begin{center}
 \includegraphics[scale=0.6]{graphics/shuffle.png}
@@ -949,10 +900,15 @@ the
 difference in number of \Qgram{q}s to be enumerated and the size of the
 resulted
 score matrices.
+
+\SKcomment{Please add a column with the ratio of the shown numbers in table
+\ref{tab:numdiff}.}
+
 \begin{table}
-\begin{center}
-\begin{tabular}{c|c|c|c}
-\Qgram{q} type & \(q\) & Number of \Qgram{q} & Score matrix size\\
+tab:numdiff\begin{center}
+\begin{tabular}{c|c|r|r}
+\Qgram{q} type & \(q\) & Number & Score matrix \\
+               &       & of \Qgram{q}s & size\\
 \hline
 Sorted & 2 & 210 & \numprint{44100}\\
 & 3 & \numprint{1540} & \numprint{2371600}\\
@@ -973,6 +929,8 @@ remember.}
 to be
 removed. Should I write a short discussion about this in discussion
 section?}
+\SKcomment{Yes. Put it into the discussion}
+
 \section{Working with sorted \Qgram{q}s}
 \subsubsection{Enumeration}
 In mathematics, a set is defined as a collection of items, where every
