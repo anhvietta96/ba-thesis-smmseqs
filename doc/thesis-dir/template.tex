@@ -638,7 +638,7 @@ correct. Please add an explanation (which I do not see).}
 \end{algorithmic}
 \end{algorithm}
 
-\SKcomment{The algorithm uses a value \(k\) which is not defined. 
+\SKcomment{The algorithm uses a value \(k\) which is not defined.
 You likely means the span of the seed.}
 
 In Algorithm \ref{code:invintseed},
@@ -754,27 +754,31 @@ decomposed into smaller sub-\Qgram{q}. In its most simplistic form, the
 algorithm constructs a score table \(\Scoretable{1}{a}\) for all \(a\in\Alpha\).
 Then the
 
-\SKcomment{Note that you have used indexing from 1 in other context. 
+\SKcomment{Note that you have used indexing from 1 in other context.
 Always use the same indexing. I would prefer from 0.}
 
 \(k\)-environment is contructed as a subset of the cartesian product
 \(\bigtimes_{i=0}^{q-1} \Scoretable{1}{\Subchar{u}{i}}\):
 \begin{align}
-\text{Env}_k(u) = \{(v_{0}v_{1}\ldots v_{q-1},s) \mid & ~((v_{0},s_{0}),(v_{1},s_{1}),\ldots (v_{q-1},s_{q-1}))\in\bigtimes_{i=0}^{q-1}\Scoretable{1}{\Subchar{u}{i}},\nonumber\\
-                              & ~s:=\sum\nolimits_{i=0}^{q-1}s_{i}\geq k\}
+\text{Env}_k(u) = \{(v_{0}v_{1}\ldots v_{q-1},s) \mid
+& ~((v_{0},s_{0}),(v_{1},s_{1}),\ldots (v_{q-1},s_{q-1}))\in\bigtimes\nolimits_{i=0}^{q-1}\Scoretable{1}{\Subchar{u}{i}},\nonumber\\
+& ~s:=\sum\nolimits_{i=0}^{q-1}s_{i}\geq k\}
 \label{eq:singleCharCartesian}
 \end{align}
 
-Here \(s:=\) means assignment to the local variable \(s\), to simplify the 
+Here \(s:=\) means assignment to the local variable \(s\), to simplify the
 expression.
 
 The approach presented in MMseqs2 utilizes both approaches, where instead of
+
+\SKcomment{What is the second approach you refer to?}
+
 single characters, it decomposes \(u\) into groups of \Qgram{2}s and
-\Qgram{3}s using a splitting function \(\Qsplit\). For every 
+\Qgram{3}s using a splitting function \(\Qsplit\). For every
 integer \(q\), the function delivers a list \(\Qsplit(q)\)  such that
 
 \begin{itemize}
-\item the output is an array of length 
+\item the output is a list of length
 \(\left\lfloor\frac{q}{3}\right\rfloor+(1\text{ if } (q\text{ mod } 3 \neq 0)\text{ else }0)\),
 \item \(q'\in\{2,3\}\) for all \(q'\in\Qsplit(q)\),
 \item \(q = \sum_{q'\in\Qsplit(q)}q'\),
@@ -798,60 +802,29 @@ Table~\ref{tab:splitting} shows \(\Qsplit(q)\) for
 \end{center}
 \end{table}
 
-For any \(q\)-gram \(u\), 
-let \(\Qsplit(q,u)\) denote the splitting of \(u\) into non-overlapping 
-substrings \(u_{i}\)  of length according to \(\Qsplit(q)\).
+For any \(q\)-gram \(u\),
+let \(\Qsplit(q,u)\) denote the splitting of \(u\) into non-overlapping
+substrings \(u_{i}\) of length according to \(\Qsplit(q)\).
 
-For each of these segments, a score table \(\Scoretable{q_i'}{u_i}\) is
-computed
-and the \(k\)-environment can then be enumerated similarly to
+For each of these substrings, a score table \(\Scoretable{|u_{i}|}{u_i}\) is
+precomputed and the \(k\)-environment can then be enumerated similarly to
 Equation~\ref{eq:singleCharCartesian}
+
+\SKcomment{I had corrected Equation~\ref{eq:singleCharCartesian}. Please
+apply analoguous corrections to the following equation.}
+
 \begin{align}
 \text{Env}_k(u) = \{(v,\sigma(u,v))\mid (v,\sigma(u,v))\in \bigtimes
 \Scoretable{|u_i|}{u_i},\sigma(u,v)\geq k\}\label{ScoreTablesCartesian}
 \end{align}
-\SKcomment{Do not reuse the identifier \(u\) below, as it was introduced
-as \(q\)-gram above. Also use \(q'\in\{2,3]\), as otherwise you cannot
-refer to the original \(q\)-gram.}
-\SKcomment{Why prioritize \(q'=3\)? Does this mean that for \(q=4\) you
-split
-it into a single character and a \(3\)-gram? You likely are only referring
-to
-the method for \(q\geq 5\).}
-\AVTcomment{I meant that a 6-gram would get decomposed to 2 3-grams instead
-of 3 2-grams. The wording is changed.}
 
-On each \(q\)-gram
-\(u\), \(\Qsplit\) induces an ordered splitting into substrings of the
-lengths specified in \(\Qsplit\). Lets denote this splitting
-by \(\Qsplit(u)\). Then state that the score table
-\(\mathsf{ST}(q')\) is precomputed for all \(q'\in\Qsplit\). That is,
-for an arbitrary but fixed \(q'\) and
-for all \(u'\in\Alpha^{q'}\), \(\Scoretable{q'}{u'}\) is the sequence of
-pairs
-\((v,\sigma(u',v))\) for all \(v\in\Alpha^{q'}\) stored in
-descending order of the score-values. Then one can compute
-\(\text{Env}_k(u)\) as follows:
-For all \(u'\in\Qsplit(u)\) in the given order one enumerates
-the cartesian product of all
-
-\SKcomment{Please reformulate }
-
-\((v,\sigma(u',v))\in\mathsf{ST}(q')\),
-such that the sum of the scores of each
-tuple is at least \(k\).
-
-\SKcomment{Also provide an example showing that the score of two
-\(q\)-grams
-does not change if the same permutation is applied to both.}
-\AVTcomment{Below.}
 The iteration over score matrix row can be prematurely terminated, as soon
-as it's no longer feasible to reach the threshold \(k\).
+as it is no longer feasible to reach the threshold \(k\).
+
 The key-idea to improve the construction of the \(k\)-environment
 is to reorder the characters of the \(q\)-grams. Let
 \(\varphi:\{0,1,\ldots,q-1\}\to\{0,1,\ldots,q-1\}\) be a bijective mapping
-and
-define
+and define
 \begin{align}
 \varphi(u)=\Subchar{u}{\varphi(0)}\Subchar{u}{\varphi(1)}\ldots\Subchar{u}{\varphi(q-1)}
 \end{align}
@@ -927,10 +900,15 @@ the
 difference in number of \Qgram{q}s to be enumerated and the size of the
 resulted
 score matrices.
+
+\SKcomment{Please add a column with the ratio of the shown numbers in table
+\ref{tab:numdiff}.}
+
 \begin{table}
-\begin{center}
-\begin{tabular}{c|c|c|c}
-\Qgram{q} type & \(q\) & Number of \Qgram{q} & Score matrix size\\
+tab:numdiff\begin{center}
+\begin{tabular}{c|c|r|r}
+\Qgram{q} type & \(q\) & Number & Score matrix \\
+               &       & of \Qgram{q}s & size\\
 \hline
 Sorted & 2 & 210 & \numprint{44100}\\
 & 3 & \numprint{1540} & \numprint{2371600}\\
@@ -951,6 +929,8 @@ remember.}
 to be
 removed. Should I write a short discussion about this in discussion
 section?}
+\SKcomment{Yes. Put it into the discussion}
+
 \section{Working with sorted \Qgram{q}s}
 \subsubsection{Enumeration}
 In mathematics, a set is defined as a collection of items, where every
