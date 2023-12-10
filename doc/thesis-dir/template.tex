@@ -503,7 +503,7 @@ The pseudocode for this schema is outlined in Algorithm \ref{code:invint}.
 \label{code:invint}
 \begin{tabular}{@{}l@{~}l}
 \textbf{Input:}&Encoded sequence $s$ of length $n$\\
-&alphabet size \(r=|\mathcal{A}|\)\\
+&alphabet size \(r=|\Alpha|\)\\
 \end{tabular}
 \begin{algorithmic}
 \State \(\HashValVec\gets []\)
@@ -938,24 +938,33 @@ element occurs exactly once. This definition can be expanded to multisets,
 where elements can occur more than once. Applying an order on these
 multisets, we can formalize a notion of sorted \Qgram{q}s:
 Given an alphabet \(\Alpha\) and a natural number \(q > 0\), a sorted
-\Qgram{q} over \(\Alpha\) is a multiset \(M=a_0a_1...a_{q-1}\),
-\(a_i\in\Alpha\) for all \(i\), \(0\leq i<q\) and
-\(a_i\leq a_{i+1}\) for all \(i\), \(0\leq i < q-1\).
-%The number of possible sorted \Qgram{q}s for a given \(\mathcal(A)\) and
-\(q\) can be computed as the binomial \(\binom{q+|\Alpha|-1}{q}\). The
-proof can be shown with induction:
+\Qgram{q} over \(\Alpha\) is a string \(u\in\Alpha^{q}\) such that
+\(\Subchar{u}{i}\leq\Subchar{u}{i+1}\) for all \(i\), \(0\leq i\leq q-2\).
+
+\SKcomment{As a multiset is a string, we should use the usual notation. So
+I have rewritten the previous definition. Please apply the same scheme
+below.}
+
+The number of possible sorted \Qgram{q}s for a given \(\mathcal(A)\) and
+\(q\) can be computed as the binomial \(\binom{q+r-1}{q}\) where \(r=|\Alpha!\).
+This can be proven by induction on \(q\).
+
 An index table of sorted \Qgram{q}s can be computed recursively.
+
+\SKcomment{What do you mean by index table?}
+
 Figure~\ref{fig:enumerate} showcases a model of the problem where \(q=5\)
 and \(\Alpha=\{a_0,a_1,a_2\}\). If the prefix of length 2 of \(u\) is
-fixed, say \(a_0a_1\), the last 3 characters can be iterated as a sorted
-\Qgram{q} of size \(5-2=3\) and alphabet \(\Alpha_1 = \{a_1,a_2\}\). This
-could be broken down further and generalized.
-Given a sorted \Qgram{q} \(u\) where the prefix of \(m\) characters is
-sorted and fixed, and \(u[m-1]\) has a rank of \(a_i\) then the task is to
-enumerate every \Qgram{q-m}s of alphabet size (\(|\Alpha|-a_i\)).
-The induction base case is then sorted unigrams over alphabet \(\Alpha_i =
-\{a_j| a_j\in\Alpha \text{ and } j\geq i\}\), where there are \(|\Alpha|-i\)
-unigrams indexed from \(a_i\) to \(|\Alpha|-1\).
+fixed, say \(a_0a_1\), the last 3 characters are obtained as a sorted
+\Qgram{q'} for \(q'=5-2=3\) and for the alphabet \(\Alpha_1=\{a_1,a_2\}\).
+This idea can be generalized as follows:
+
+Consider the construction of a sorted \Qgram{q} \(u\) of which the prefix of
+\(m\leq q\) characters has been determined and \(\Subchar{u}{m-1}=a_{i}\) for
+some \(i\), \(0\leq i\leq r-1\). Then
+the task is to enumerate all sorted \Qgram{(q-m)}s over the alphabet
+\(\Alpha_{i}=\{a_{i},a_{i+1},\ldots,a_{r-1}\}\).
+
 \begin{figure}[t]
 \begin{center}
 \begin{tikzpicture}
@@ -990,10 +999,11 @@ distance=-0.15mm]
 node [position label,yshift=-1ex] {\(m=3\)} (N1.south east);
 \end{scope}
 \end{tikzpicture}
-\caption{Example of sorted \Qgram{q}
-enumerating\label{fig:enumerate}~\cite{pfn}}
 \end{center}
+\caption{Example of enumerating sorted \Qgram{q}. Adapted from~\cite{pfn}}
+\label{fig:enumerate}
 \end{figure}
+
 \begin{algorithm}[t]
 \caption{\(\mathsf{MultisetEnumerateRecursion}\)}
 \label{code:enumerateMultisetRec}
@@ -1014,6 +1024,7 @@ enumerating\label{fig:enumerate}~\cite{pfn}}
 \EndIf
 \end{algorithmic}
 \end{algorithm}
+
 \begin{algorithm}[t]
 \caption{Enumerate Multiset \(\IT{q}{\Alpha}\)}
 \label{code:enumerateMultiset}
@@ -1029,9 +1040,28 @@ enumerating\label{fig:enumerate}~\cite{pfn}}
 \EndFor
 \end{algorithmic}
 \end{algorithm}
+
+\SKcomment{You do not refer to these algorithms, but your lemma refers to
+table \(IT\) which likely stands for \(\IT{q}{\Alpha}\).}
+
+\SKcomment{In Algorithm \ref{code:enumerateMultisetRec}
+specify the recursive function using the keyword 'function' and
+with its parameters, see for example, function approxmatch in
+strees\_slides.pdf, in GIK. Do not use \(q_{i}\) and \(\Alpha_{i}\) as
+Parameters, but \(q'\) and \(\Alpha\prime\). Instead of an alphabet
+you should use an index to denote the index of the first of the remaining
+characters. Then the alphabet is a global variable, represented as a list
+of its ordered characters, and you can use the
+slice notation to denote the list of remaining characters for iterate over in the for-loop. Also the indextable can be considered a global variable. As part
+of algorithm \ref{code:enumerateMultisetRec} you specify that the initial
+call is with \(q\) and the alphabet index \(0\).
+Then Algorithm \ref{code:enumerateMultiset} becomes superfluous and
+the initial can is to complicated anyway.}
+
 \subsubsection{Linear encoding}
 Using the index table, a scheme to encode any given \Qgram{q} over
 alphabet \(\Alpha\) to its table index in \(O(q)\) can be devised.
+
 \begin{Lemma}
 \label{linearEncodingProof}
 There exists an unique integer weight for each character \(a\) in position
@@ -1041,6 +1071,7 @@ There exists an unique integer weight for each character \(a\) in position
 c(u)=\sum_{p=0}^{q-1} w(p,u[p])\label{Equation:linearenc}
 \end{align}
 encodes exactly \(u\) to its index in table IT.
+
 \begin{Proof}
 \textbf{Base case:} In case of \(q=1\), \(|\Alpha|\) unigrams can be
 clearly encoded with \(w(0,a) = a\) for all \(a \in \Alpha\).
@@ -1062,13 +1093,40 @@ which leads to \(w_a - w_a' = 0\), or \(w_a = w_a'\), which is a
 contradiction. Therefore \(w(q,a)\) must be unique.
 \end{Proof}
 \end{Lemma}
-The recursive method to compute a \(q\times |\Alpha|\) table LE is then
-deduced based on the above proof. The base case can be directly given and
-based on the index tables \(\mathsf{IT}_{q_i,\Alpha},2 \leq q_i \leq q\),
+
+\SKcomment{I think the lemma should be as below, as the main point is
+the fact that \(c\) is bijective. The fact that \(w\) is unique does not
+matter in my opionion. The proof should actually construct \(w\) and
+show the bijective property.}
+
+\begin{Lemma}
+Let \(q>0\) and let \(M\) be the set of sorted \(q\)-grams over
+alphabet \(\Alpha\). There is a function
+\(w:\{0,\ldots,q-1\}\times\Alpha\to\Nats_{0}\), such that the function
+\(c:M\to\Nats_{0}\) defined by
+\begin{align}
+c(u)=\sum_{p=0}^{q-1} w(p,\Subchar{u}{p})\label{Equation:linearenc}
+\end{align}
+satisfies
+\begin{itemize}
+\item \(c(u)\in\{0,\ldots,|M|-1\}\) for all \(u\in M\) and
+\item \(c(u)\neq c(u')\) for all \(u,u'\in M\), \(u\neq u'\).
+\end{itemize}
+\end{Lemma}
+
+The recursive method to compute a \(q\times r\)-matrix
+LE is then derived from the proof above. The base case can be directly given
+and based on the index tables \(\mathsf{IT}_{q_i,\Alpha}\) for all
+\(q_{i}\), \(2\leq q_i\leq q\).
+
+\SKcomment{As you did not explain table \(\mathsf{IT}\), it
+is impossible to follow your argumentation.}
+
 the \Qgram{q_i}s are tracked for change in prefix and the weight of the
 prefix can be calculated with Equation~\ref{Equation:linearenc}. The
-pseudocode for the construction of LE is outlined in
+pseudocode for the construction of LE is given in
 Algorithm~\ref{code:linearEncodingTable}.
+
 \begin{algorithm}[t]
 \caption{Creating linear encoding table \(\LE{q}{\Alpha}\)}
 \label{code:linearEncodingTable}
@@ -1096,7 +1154,32 @@ more significant weight at beginning}
 \EndFor
 \end{algorithmic}
 \end{algorithm}
+
+\SKcomment{You should merge the first two lines of initializing
+\(\LE{q}{\Alpha}\) with the the first element: Just assign a list with a
+single elements to \(\LE{q}{\Alpha}\).}
+
+\SKcomment{Apply all the remarks regarding naming and typesetting mentioned
+before to Algorithm \ref{code:linearEncodingTable}.}
+\SKcomment{Use \(r\) for the
+alphabet size and \(\bot\) instead of \(\mathsf{None}\).}
+\SKcomment{ Instead of the inner
+for-lop you should use a \(\sum_{j=0}^{q-1}\). Please be consistent with
+respect to indexing a sequence. You had mostly use 0-indexing before, but here
+you switch to 1-indexing.}
+
+\SKcomment{In Algorithm  \ref{code:linearEncodingTable} you only update
+\(\CurrentWeight\) at index \(\Subchar{u}{i}\), which is likely not correct.}
+
+\SKcomment{You introduce \(\CurrentWeight\) as a list of \(r\) elements
+being undefined initially. So the insert-operation then prepends the value
+of \(\CurrentWeight\) to \(\LE{q}{\Alpha}\). This should somehow be commented.}
+
+\SKcomment{I do not see why Algorithm  \ref{code:linearEncodingTable} was
+derived from the proof above. Need more explanation.}
+
 \section{Simplified approach in determining threshold}
+
 In MMseqs, in order to evaluate a proper threshold \(k\) for the
 environment, a \(z\)-score statistics was applied. For each query sequence,
 a calibration search through a subset of 100~000 randomly sampled target
