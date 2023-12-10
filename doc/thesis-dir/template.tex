@@ -907,20 +907,34 @@ score matrices.
 \begin{table}
 tab:numdiff\begin{center}
 \begin{tabular}{c|c|r|r}
-\Qgram{q} type & \(q\) & Number & Score matrix \\
-               &       & of \Qgram{q}s & size\\
+type & \(q\) & Number & Score matrix \\
+               &       & of \Qgram{q}s & entries\\
 \hline
-Sorted & 2 & 210 & \numprint{44100}\\
-& 3 & \numprint{1540} & \numprint{2371600}\\
-\hline
-Unsorted & 2 & 400 & \numprint{160000}\\
-& 3 & \numprint{8000} & \numprint{6400000}\\
+\(q\)-grams  & 2 & 400 & \numprint{160000}\\
+Sorted \(q\)-grams & 2 & 210 & \numprint{44100}\\\hline
+\(q\)-grams & 3 & \numprint{8000} & \numprint{64000000}\\
+Sorted \(q\)-grams& 3 & \numprint{1540} & \numprint{2371600}
 \end{tabular}
-\caption{Number of \Qgram{q}s, \(q\in\{2,3\}\), to be enumerated using 20
-amino
-acids and the resulted score matrix size}\label{tab:numdiff}
+\caption{Number of \Qgram{q}s versus the number of sorted \(q\)-grams for
+\(q\in\{2,3\}\) and an alphabet of size 20. The number of entries of the
+the score matrix is calculated as the square of the number of (sorted) \(q\)-grams.}
+\label{tab:numdiff}
 \end{center}
 \end{table}
+
+\SKcomment{Note that I have corrected the first number of entries for \(q=3\)
+in Table \ref{tab:numdiff}. I have also reordered the lines as one
+wants to compare the values for the same value of \(q\).}
+
+\SKcomment{Here is an implementation issue which maybe should be discussed
+in the corresponding section.
+For the 210 sorted \(2\)-grams,
+you need 8 bits to encode each, compared to 9 bits for the \(2\)-grams.
+For the 1540 sorted \(3\)-grams,
+you need 11 bits to encode each, compared to 13 bits for the \(3\)-grams.
+This should at least be discussed at later, if encoding of \(2\)-grams
+or \(3\)-grams becomes relevant in the implementation.}
+
 \SKcomment{I would not mention SIMD here, as this is an implementation
 issue,
 and the SIMD-based method does not improve the running time as far as I
@@ -932,7 +946,7 @@ section?}
 \SKcomment{Yes. Put it into the discussion}
 
 \section{Working with sorted \Qgram{q}s}
-\subsubsection{Enumeration}
+\subsection{Enumeration}
 In mathematics, a set is defined as a collection of items, where every
 element occurs exactly once. This definition can be expanded to multisets,
 where elements can occur more than once. Applying an order on these
@@ -1058,7 +1072,7 @@ call is with \(q\) and the alphabet index \(0\).
 Then Algorithm \ref{code:enumerateMultiset} becomes superfluous and
 the initial can is to complicated anyway.}
 
-\subsubsection{Linear encoding}
+\subsection{Linear encoding}
 Using the index table, a scheme to encode any given \Qgram{q} over
 alphabet \(\Alpha\) to its table index in \(O(q)\) can be devised.
 
@@ -1178,50 +1192,128 @@ of \(\CurrentWeight\) to \(\LE{q}{\Alpha}\). This should somehow be commented.}
 \SKcomment{I do not see why Algorithm  \ref{code:linearEncodingTable} was
 derived from the proof above. Need more explanation.}
 
-\section{Simplified approach in determining threshold}
+\section{Simplified approach in determining the score-threshold}
 
-In MMseqs, in order to evaluate a proper threshold \(k\) for the
-environment, a \(z\)-score statistics was applied. For each query sequence,
-a calibration search through a subset of 100~000 randomly sampled target
-sequences is performed, where the number of prefiltering operations
+In MMseqs, in order to determine a proper score threshold \(k\),
+a \(z\)-score statistics was applied. For each query sequence,
+a calibration search through a subset of \numprint{100000} randomly
+sampled target sequences
+
+\SKcomment{Sampled from what set?}
+
+\SKcomment{I recommend to not index the sequences and just denote a sample as
+a subset \(S'\) of a sequence set \(S\). And you should always make the
+value on the left depend on what it depends on,
+i.e.\ \(S'\) needs to appear on the left hand side.}
+
+is performed, where the number of prefiltering operations
 \begin{align}
 \text{sum}_L = \sum_{t=1}^{100~000} (L_t-k+1)
 \end{align}
+
+\SKcomment{Then you can simply state the
+\(L(S')=\sum_{s\in S'}(\max(0,|s|-\mathit{span}+1)\) is the total number of
+\(q\)-mers to extract using a spaced seed of the given span.}
+
 and its sum of scores
+
 \begin{align}
 \text{sum}_S = \sum_{t=1}^{100~000} S_{qt}
 \end{align}
-are recorded. \(L_t\) here denotes the length of the target sequence \(t\)
+are recorded.
+
+\SKcomment{Unclear what you mean by prefiltering score. Where was it defined?}
+\SKcomment{To perform prefiltering,
+you have to have a threshold, but this is what you want to determine here. I
+am lost.}
+\SKcomment{Also \(t\) is the index of a sequence, but you denote it as
+a target sequence. Please be more precise.}
+
+\(L_t\) here denotes the length of the target sequence \(t\)
 and \(S_{qt}\) the prefiltering score between query sequence \(s\) and
 target sequence \(t\). The expected chance prefiltering score between them
 is then
 \begin{align}
 S_0 = (L_t-k+1)\frac{\text{sum}_S}{\text{sum}_L}
 \end{align}
-Assuming the number of \Qgram{q} matches is Poisson-distributed, the
-standard deviation of the scores \(\sigma_S\) can be computed through
+
+\SKcomment{What is \(t\) here? A single target sequence? }
+
+Assuming the number of \Qgram{q} matches
+
+\SKcomment{\Qgram{q} matches of which sequences with which sequences? Do
+you mean exact \(q\)-gram matches or \(q\)-grams whose score is above the
+score threshold.}
+
+is Poisson-distributed, the
+standard deviation of the scores \(\sigma_S\)
+
+\SKcomment{Why does this assumption make sense. Please provide arguments or
+citations.}
+
+\SKcomment{What is \(\Sigma_{S}\)? Or did you want to write: the
+standard deviation \(\sigma_S\) of the score distribution.}
+
+can be computed through
 number of expected \Qgram{q} matches \(n_{\text{match}}\):
+
+\SKcomment{You likely mean the 'expected number
+\(n_{\text{match}}\) of \Qgram{q} matches'. You really need to be more
+precise with your wording.}
+
 \begin{align}
-n_{\text{match}} &\approx \frac{S_0}{S_{\text{match}}}
-\end{align}
-\begin{align}
+n_{\text{match}} &\approx \frac{S_0}{S_{\text{match}}}\\
 \sigma_S &= S_{\text{match}}\sqrt{n_{\text{match}}}\\
 &= \sqrt{(L_t-k+1)\frac{\text{sum}_S}{\text{sum}_L}S_{\text{match}}}
 \end{align}
+
 where \(S_{\text{match}}\) is the expected score per chance \Qgram{q}
-match. The significant prefiltering score \(S_{qt}\) should then fulfill
+match.  The significant prefiltering score \(S_{qt}\) should then fulfill
 the condition
+
+\SKcomment{Sorry I am lost here. What is a chance \Qgram{q} match?}
+
 \begin{align}
 S_{qt} \geq Z_{thr}\sigma_S + S_0
 \end{align}
-where \(Z_{thr}\) is the significant \(z\)-score. MMseqs2 would take in a
-sensitivity parameter \(s\), labeled internally as the average length of
-\Qgram{q} list each sequence position, from the user and using a heuristic
-to compute for \(S_{qt}\). This approach is shown to be lacking in control
-for \(s\) and therefore the goal is to streamline the process and to allow
+where \(Z_{thr}\) is the significant \(z\)-score.
+
+\SKcomment{What is the significant \(z\)-score? Please explain.}
+
+MMseqs2 would take in a
+sensitivity parameter \(s\), labeled internally as the average length of the
+\Qgram{q} list at each sequence position,
+
+\SKcomment{The \(q\)-list at each sequence position should be the size of the
+\(k\)-environment.}
+
+from the user and using a heuristic
+to compute \(S_{qt}\). This approach is shown to be lacking control
+for \(s\)
+
+\SKcomment{What is \(s\)?}
+\SKcomment{Does 'is shown' above mean that you have shown that it does not
+allow to control \(s\)? I assume since otherwise you would have written
+'will be shown'. But you actully want to gain control of the
+\(k\)-mer environment.}
+
+\SKcomment{A more direct approach would be to start with a small value for the
+score threshold, compute the \(k\)-environment and extend it until one
+has achieved an average size as defined beforehand. Even better would be
+the enumerate the elements of the environment in descending order of the score.
+This would allow to enumerate, until the appropriate size is reached.}
+
+and therefore the goal is to streamline the process and to allow
 for a more fine-grained control of the length of \Qgram{q} list.
 
-\textbf{A context-free approach:} The average \Qgram{q} list \(l\) and the
+\SKcomment{As you can see from the number of comments, I think that this section
+needs to be rewritten, as to allow to understand it.}
+
+\subsection{A context-free approach}
+
+\SKcomment{Unclear of what context you refer to.}
+
+The average \Qgram{q} list \(l\) and the
 threshold \(k\) of the environment can be related through the right tail
 portion of a discrete distribution of
 unsorted-\Qgram{q}-vs-unsorted-\Qgram{q} score \(h_q\).
@@ -1364,7 +1456,7 @@ value for further use. Thereafter, an appropriate threshold is evaluated
 using the target sequences and an user-provided sensitivity. Using the
 score matrices and the threshold, the program enters the step of \Qgram{q}
 generation using the Cartesian product.
-\subsubsection{Local composition bias correction}
+\subsection{Local composition bias correction}
 In the implementation of MMseqs2, a mechanism to evaluate the surrounding
 of current position while iterating the query sequences is introduced. The
 idea of this mechanism is to adjust the threshold of the \Qgram{q}
@@ -1403,7 +1495,7 @@ threshold at the beginning of the computation.
 k_{c}
 \end{align}
 
-\subsubsection{Turning Wheel Mechanism}
+\subsection{Turning Wheel Mechanism}
 An issue in enumerating the Cartesian product is the possible difference in
 number of loops (e.g.\ 2 loops for seed weight 4-6, 3 loops for seed weight
 7). To resolve this problem and allow easy expansion to greater seed
@@ -1461,7 +1553,7 @@ Termination.}
 \end{algorithmic}
 \end{algorithm}
 \begin{comment}
-\subsubsection{SIMD}
+\subsection{SIMD}
 SIMD (Single-Instruction Multiple-Data) is a group of instructions allowing
 vectorized, parallel data processing. Instead of processing data
 sequentially, they are capable of defining wide registers, commonly 128-bit
