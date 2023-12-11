@@ -1194,6 +1194,13 @@ derived from the proof above. Need more explanation.}
 
 \section{Simplified approach in determining the score-threshold}
 
+\SKcomment{You better use the section header 'determining the score-threshold'.
+The first subsection then describes how to derive a threshold given some
+probability. The second subsection then describes how MMseqs determines
+this probability. The subsection then describes your approach. In this latter
+subsection, you can to the first subsection after you have described your
+derivation of \(p\).}
+
 In MMseqs, in order to determine a proper score threshold \(k\),
 a \(z\)-score statistics was applied. For each query sequence,
 a calibration search through a subset of \numprint{100000} randomly
@@ -1351,8 +1358,9 @@ score \(\geq 0\).}
 
 \SKcomment{You likely mean 'uniformly
 distributed pairs of \(q\)-grams. It is not an example. You likely have
-determine sample \(Q\) of \(q\)-grams for \(q=7\) and then computed the score
-for each \((u,u')\in Q\times Q\), \(u<u'\)? How large was \(Q\)? Did you specify which score function you use?}
+determined a sample \(Q\) of all \(q\)-grams for \(q=7\) and then computed
+the score for each \((u,u')\in Q\times Q\), \(u<u'\)?
+How large was \(Q\)? Did you specify which score function you use?}
 
 Figure~\ref{fig:distrbution} visualizes an exemplary score distribution
 between uniformly distributed \Qgram{7}. The red portion in the right
@@ -1363,11 +1371,21 @@ be generally quantified to:
 \end{align}
 The average \Qgram{q} list length \(l\) could be normalized to
 probability:
+
+\SKcomment{So you assume an average size \(l\) of the \(k\)-environment and
+to caluculate probability, which is suggested by the following equation,
+as \(l\) appears on the right hand side of the equation.}
+
 \begin{align}
 p = \frac{l}{|\Alpha|^q}
 \end{align}
 Therefore the approximation would be ideally in continuous distribution an
 exact value:
+
+\SKcomment{Approximation of what? You have two equations with \(p\) on the
+left hand side. The first is based on sampling the space of \(q\)-grams and
+the second is based on an unkown probability function. Please be more precise.
+The current description is confusing.}
 \begin{align}
 p = \mathcal{P}(\sigma \geq k)
 \end{align}
@@ -1381,29 +1399,60 @@ distribution. Then the distribution can be iterated from the right tail to
 calculate \(\mathcal{P}(\sigma \geq k)\), where \(k\) is the current score
 threshold. The iteration can be stopped when Equation~\ref{eq:distribution}
 is satisfied.
+
+\SKcomment{According to my previous argumentation, you can determine
+\(P(\sigma(u,v)\geq k\mid u,v\in\Alpha^{q})\) exactly from the
+counts computed by \texttt{bin/pair\_score\_distrib.py}.}
+
 The \(q\times q\) score distribution can be approximated recursively
 through convolution:
 \begin{align}
 h_{q}(x) = \sum_{y\in\mathcal{Z}} h_{q-1}(y)h_1(x-y)
 \label{equation:convolution}
 \end{align}
+
+
+\SKcomment{So this is basically the idea which I used in
+\texttt{bin/pair\_score\_distrib.py}. But why have you mentioned uniformly
+distributed above, which refers to a sampling procedure. So you actually have
+not sampled the \(q\)-grams and computed the exact value? Actually, I cannot
+tell from you sloppy description.}
+
+\SKcomment{Please explain, why Equation \ref{equation:convolution} is based
+on convolution. Maybe a citation?}
+
 It is important to note that \(h_1\), the 1-gram score distribution,
 depends on both character distribution collected from target sequence and
 uniform character distribution, since the characters appeared in the
 environment are independent from each other.
+
+\SKcomment{characters appeared in the environment? I do not understand.
+The environment consists of \(q\)-grams. So you mean the characters in the
+\(q\)-grams of the environment?}
 
 \textbf{Integrating context:} The above strategy treats single character as
 independent and therefore loses its context in \Qgram{q}s. Another
 approach could then be hashing the target sequences to collect \Qgram{q}
 distribution, which is convenient since the work is done in the
 preprocessing of target dabase. This approach is but often complicated in
-large \(q\), since a \(q\times q\) score matrix must be computed, which
+large \(q\), since a \(q\times q\) score matrix
+
+\SKcomment{For \(q=7\) such a matrix consists of \(q^{2}=49\) elements.
+You likely refer to the \(r^{q}\times r^{q}\)-matrix which has
+\(r^{2q}\) entries.}
+
+must be computed, which
 incur an additional penalty of \(O(|\Alpha|^{2q})\), which is often
 not feasible when \(q>4\). A middle ground is to divide the \Qgram{q}s
 into two or three sub-\Qgram{q}s and collect their distribution
 separately. These distributions can then in the end be convoluted together
 to approximate the \Qgram{q} distribution. The extraction of threshold
 \(k\) then follows the same approach in the context-free variant.
+
+\SKcomment{Please be more precise: same approach as what? I assume you want
+to state, that derivation of \(k\) is as in the context dependent approach
+of section \ref{}.}
+
 \Chapter{Implementation and Design}
 \section{Design overview}
 The program consists of seven main classes:
