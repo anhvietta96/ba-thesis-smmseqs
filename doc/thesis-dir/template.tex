@@ -503,7 +503,7 @@ The pseudocode for this schema is outlined in Algorithm \ref{code:invint}.
 \label{code:invint}
 \begin{tabular}{@{}l@{~}l}
 \textbf{Input:}&Encoded sequence $s$ of length $n$\\
-&alphabet size \(r=|\mathcal{A}|\)\\
+&alphabet size \(r=|\Alpha|\)\\
 \end{tabular}
 \begin{algorithmic}
 \State \(\HashValVec\gets []\)
@@ -907,20 +907,34 @@ score matrices.
 \begin{table}
 tab:numdiff\begin{center}
 \begin{tabular}{c|c|r|r}
-\Qgram{q} type & \(q\) & Number & Score matrix \\
-               &       & of \Qgram{q}s & size\\
+type & \(q\) & Number & Score matrix \\
+               &       & of \Qgram{q}s & entries\\
 \hline
-Sorted & 2 & 210 & \numprint{44100}\\
-& 3 & \numprint{1540} & \numprint{2371600}\\
-\hline
-Unsorted & 2 & 400 & \numprint{160000}\\
-& 3 & \numprint{8000} & \numprint{6400000}\\
+\(q\)-grams  & 2 & 400 & \numprint{160000}\\
+Sorted \(q\)-grams & 2 & 210 & \numprint{44100}\\\hline
+\(q\)-grams & 3 & \numprint{8000} & \numprint{64000000}\\
+Sorted \(q\)-grams& 3 & \numprint{1540} & \numprint{2371600}
 \end{tabular}
-\caption{Number of \Qgram{q}s, \(q\in\{2,3\}\), to be enumerated using 20
-amino
-acids and the resulted score matrix size}\label{tab:numdiff}
+\caption{Number of \Qgram{q}s versus the number of sorted \(q\)-grams for
+\(q\in\{2,3\}\) and an alphabet of size 20. The number of entries of the
+the score matrix is calculated as the square of the number of (sorted) \(q\)-grams.}
+\label{tab:numdiff}
 \end{center}
 \end{table}
+
+\SKcomment{Note that I have corrected the first number of entries for \(q=3\)
+in Table \ref{tab:numdiff}. I have also reordered the lines as one
+wants to compare the values for the same value of \(q\).}
+
+\SKcomment{Here is an implementation issue which maybe should be discussed
+in the corresponding section.
+For the 210 sorted \(2\)-grams,
+you need 8 bits to encode each, compared to 9 bits for the \(2\)-grams.
+For the 1540 sorted \(3\)-grams,
+you need 11 bits to encode each, compared to 13 bits for the \(3\)-grams.
+This should at least be discussed at later, if encoding of \(2\)-grams
+or \(3\)-grams becomes relevant in the implementation.}
+
 \SKcomment{I would not mention SIMD here, as this is an implementation
 issue,
 and the SIMD-based method does not improve the running time as far as I
@@ -932,30 +946,39 @@ section?}
 \SKcomment{Yes. Put it into the discussion}
 
 \section{Working with sorted \Qgram{q}s}
-\subsubsection{Enumeration}
+\subsection{Enumeration}
 In mathematics, a set is defined as a collection of items, where every
 element occurs exactly once. This definition can be expanded to multisets,
 where elements can occur more than once. Applying an order on these
 multisets, we can formalize a notion of sorted \Qgram{q}s:
 Given an alphabet \(\Alpha\) and a natural number \(q > 0\), a sorted
-\Qgram{q} over \(\Alpha\) is a multiset \(M=a_0a_1...a_{q-1}\),
-\(a_i\in\Alpha\) for all \(i\), \(0\leq i<q\) and
-\(a_i\leq a_{i+1}\) for all \(i\), \(0\leq i < q-1\).
-%The number of possible sorted \Qgram{q}s for a given \(\mathcal(A)\) and
-\(q\) can be computed as the binomial \(\binom{q+|\Alpha|-1}{q}\). The
-proof can be shown with induction:
+\Qgram{q} over \(\Alpha\) is a string \(u\in\Alpha^{q}\) such that
+\(\Subchar{u}{i}\leq\Subchar{u}{i+1}\) for all \(i\), \(0\leq i\leq q-2\).
+
+\SKcomment{As a multiset is a string, we should use the usual notation. So
+I have rewritten the previous definition. Please apply the same scheme
+below.}
+
+The number of possible sorted \Qgram{q}s for a given \(\mathcal(A)\) and
+\(q\) can be computed as the binomial \(\binom{q+r-1}{q}\) where \(r=|\Alpha!\).
+This can be proven by induction on \(q\).
+
 An index table of sorted \Qgram{q}s can be computed recursively.
+
+\SKcomment{What do you mean by index table?}
+
 Figure~\ref{fig:enumerate} showcases a model of the problem where \(q=5\)
 and \(\Alpha=\{a_0,a_1,a_2\}\). If the prefix of length 2 of \(u\) is
-fixed, say \(a_0a_1\), the last 3 characters can be iterated as a sorted
-\Qgram{q} of size \(5-2=3\) and alphabet \(\Alpha_1 = \{a_1,a_2\}\). This
-could be broken down further and generalized.
-Given a sorted \Qgram{q} \(u\) where the prefix of \(m\) characters is
-sorted and fixed, and \(u[m-1]\) has a rank of \(a_i\) then the task is to
-enumerate every \Qgram{q-m}s of alphabet size (\(|\Alpha|-a_i\)).
-The induction base case is then sorted unigrams over alphabet \(\Alpha_i =
-\{a_j| a_j\in\Alpha \text{ and } j\geq i\}\), where there are \(|\Alpha|-i\)
-unigrams indexed from \(a_i\) to \(|\Alpha|-1\).
+fixed, say \(a_0a_1\), the last 3 characters are obtained as a sorted
+\Qgram{q'} for \(q'=5-2=3\) and for the alphabet \(\Alpha_1=\{a_1,a_2\}\).
+This idea can be generalized as follows:
+
+Consider the construction of a sorted \Qgram{q} \(u\) of which the prefix of
+\(m\leq q\) characters has been determined and \(\Subchar{u}{m-1}=a_{i}\) for
+some \(i\), \(0\leq i\leq r-1\). Then
+the task is to enumerate all sorted \Qgram{(q-m)}s over the alphabet
+\(\Alpha_{i}=\{a_{i},a_{i+1},\ldots,a_{r-1}\}\).
+
 \begin{figure}[t]
 \begin{center}
 \begin{tikzpicture}
@@ -990,10 +1013,11 @@ distance=-0.15mm]
 node [position label,yshift=-1ex] {\(m=3\)} (N1.south east);
 \end{scope}
 \end{tikzpicture}
-\caption{Example of sorted \Qgram{q}
-enumerating\label{fig:enumerate}~\cite{pfn}}
 \end{center}
+\caption{Example of enumerating sorted \Qgram{q}. Adapted from~\cite{pfn}}
+\label{fig:enumerate}
 \end{figure}
+
 \begin{algorithm}[t]
 \caption{\(\mathsf{MultisetEnumerateRecursion}\)}
 \label{code:enumerateMultisetRec}
@@ -1014,6 +1038,7 @@ enumerating\label{fig:enumerate}~\cite{pfn}}
 \EndIf
 \end{algorithmic}
 \end{algorithm}
+
 \begin{algorithm}[t]
 \caption{Enumerate Multiset \(\IT{q}{\Alpha}\)}
 \label{code:enumerateMultiset}
@@ -1029,9 +1054,28 @@ enumerating\label{fig:enumerate}~\cite{pfn}}
 \EndFor
 \end{algorithmic}
 \end{algorithm}
-\subsubsection{Linear encoding}
+
+\SKcomment{You do not refer to these algorithms, but your lemma refers to
+table \(IT\) which likely stands for \(\IT{q}{\Alpha}\).}
+
+\SKcomment{In Algorithm \ref{code:enumerateMultisetRec}
+specify the recursive function using the keyword 'function' and
+with its parameters, see for example, function approxmatch in
+strees\_slides.pdf, in GIK. Do not use \(q_{i}\) and \(\Alpha_{i}\) as
+Parameters, but \(q'\) and \(\Alpha\prime\). Instead of an alphabet
+you should use an index to denote the index of the first of the remaining
+characters. Then the alphabet is a global variable, represented as a list
+of its ordered characters, and you can use the
+slice notation to denote the list of remaining characters for iterate over in the for-loop. Also the indextable can be considered a global variable. As part
+of algorithm \ref{code:enumerateMultisetRec} you specify that the initial
+call is with \(q\) and the alphabet index \(0\).
+Then Algorithm \ref{code:enumerateMultiset} becomes superfluous and
+the initial can is to complicated anyway.}
+
+\subsection{Linear encoding}
 Using the index table, a scheme to encode any given \Qgram{q} over
 alphabet \(\Alpha\) to its table index in \(O(q)\) can be devised.
+
 \begin{Lemma}
 \label{linearEncodingProof}
 There exists an unique integer weight for each character \(a\) in position
@@ -1041,6 +1085,7 @@ There exists an unique integer weight for each character \(a\) in position
 c(u)=\sum_{p=0}^{q-1} w(p,u[p])\label{Equation:linearenc}
 \end{align}
 encodes exactly \(u\) to its index in table IT.
+
 \begin{Proof}
 \textbf{Base case:} In case of \(q=1\), \(|\Alpha|\) unigrams can be
 clearly encoded with \(w(0,a) = a\) for all \(a \in \Alpha\).
@@ -1062,13 +1107,40 @@ which leads to \(w_a - w_a' = 0\), or \(w_a = w_a'\), which is a
 contradiction. Therefore \(w(q,a)\) must be unique.
 \end{Proof}
 \end{Lemma}
-The recursive method to compute a \(q\times |\Alpha|\) table LE is then
-deduced based on the above proof. The base case can be directly given and
-based on the index tables \(\mathsf{IT}_{q_i,\Alpha},2 \leq q_i \leq q\),
+
+\SKcomment{I think the lemma should be as below, as the main point is
+the fact that \(c\) is bijective. The fact that \(w\) is unique does not
+matter in my opionion. The proof should actually construct \(w\) and
+show the bijective property.}
+
+\begin{Lemma}
+Let \(q>0\) and let \(M\) be the set of sorted \(q\)-grams over
+alphabet \(\Alpha\). There is a function
+\(w:\{0,\ldots,q-1\}\times\Alpha\to\Nats_{0}\), such that the function
+\(c:M\to\Nats_{0}\) defined by
+\begin{align}
+c(u)=\sum_{p=0}^{q-1} w(p,\Subchar{u}{p})\label{Equation:linearenc}
+\end{align}
+satisfies
+\begin{itemize}
+\item \(c(u)\in\{0,\ldots,|M|-1\}\) for all \(u\in M\) and
+\item \(c(u)\neq c(u')\) for all \(u,u'\in M\), \(u\neq u'\).
+\end{itemize}
+\end{Lemma}
+
+The recursive method to compute a \(q\times r\)-matrix
+LE is then derived from the proof above. The base case can be directly given
+and based on the index tables \(\mathsf{IT}_{q_i,\Alpha}\) for all
+\(q_{i}\), \(2\leq q_i\leq q\).
+
+\SKcomment{As you did not explain table \(\mathsf{IT}\), it
+is impossible to follow your argumentation.}
+
 the \Qgram{q_i}s are tracked for change in prefix and the weight of the
 prefix can be calculated with Equation~\ref{Equation:linearenc}. The
-pseudocode for the construction of LE is outlined in
+pseudocode for the construction of LE is given in
 Algorithm~\ref{code:linearEncodingTable}.
+
 \begin{algorithm}[t]
 \caption{Creating linear encoding table \(\LE{q}{\Alpha}\)}
 \label{code:linearEncodingTable}
@@ -1096,62 +1168,192 @@ more significant weight at beginning}
 \EndFor
 \end{algorithmic}
 \end{algorithm}
-\section{Simplified approach in determining threshold}
-In MMseqs, in order to evaluate a proper threshold \(k\) for the
-environment, a \(z\)-score statistics was applied. For each query sequence,
-a calibration search through a subset of 100~000 randomly sampled target
-sequences is performed, where the number of prefiltering operations
+
+\SKcomment{You should merge the first two lines of initializing
+\(\LE{q}{\Alpha}\) with the the first element: Just assign a list with a
+single elements to \(\LE{q}{\Alpha}\).}
+
+\SKcomment{Apply all the remarks regarding naming and typesetting mentioned
+before to Algorithm \ref{code:linearEncodingTable}.}
+\SKcomment{Use \(r\) for the
+alphabet size and \(\bot\) instead of \(\mathsf{None}\).}
+\SKcomment{ Instead of the inner
+for-lop you should use a \(\sum_{j=0}^{q-1}\). Please be consistent with
+respect to indexing a sequence. You had mostly use 0-indexing before, but here
+you switch to 1-indexing.}
+
+\SKcomment{In Algorithm  \ref{code:linearEncodingTable} you only update
+\(\CurrentWeight\) at index \(\Subchar{u}{i}\), which is likely not correct.}
+
+\SKcomment{You introduce \(\CurrentWeight\) as a list of \(r\) elements
+being undefined initially. So the insert-operation then prepends the value
+of \(\CurrentWeight\) to \(\LE{q}{\Alpha}\). This should somehow be commented.}
+
+\SKcomment{I do not see why Algorithm  \ref{code:linearEncodingTable} was
+derived from the proof above. Need more explanation.}
+
+\section{Simplified approach in determining the score-threshold}
+
+In MMseqs, in order to determine a proper score threshold \(k\),
+a \(z\)-score statistics was applied. For each query sequence,
+a calibration search through a subset of \numprint{100000} randomly
+sampled target sequences
+
+\SKcomment{Sampled from what set?}
+
+\SKcomment{I recommend to not index the sequences and just denote a sample as
+a subset \(S'\) of a sequence set \(S\). And you should always make the
+value on the left depend on what it depends on,
+i.e.\ \(S'\) needs to appear on the left hand side.}
+
+is performed, where the number of prefiltering operations
 \begin{align}
 \text{sum}_L = \sum_{t=1}^{100~000} (L_t-k+1)
 \end{align}
+
+\SKcomment{Then you can simply state the
+\(L(S')=\sum_{s\in S'}(\max(0,|s|-\mathit{span}+1)\) is the total number of
+\(q\)-mers to extract using a spaced seed of the given span.}
+
 and its sum of scores
+
 \begin{align}
 \text{sum}_S = \sum_{t=1}^{100~000} S_{qt}
 \end{align}
-are recorded. \(L_t\) here denotes the length of the target sequence \(t\)
+are recorded.
+
+\SKcomment{Unclear what you mean by prefiltering score. Where was it defined?}
+\SKcomment{To perform prefiltering,
+you have to have a threshold, but this is what you want to determine here. I
+am lost.}
+\SKcomment{Also \(t\) is the index of a sequence, but you denote it as
+a target sequence. Please be more precise.}
+
+\(L_t\) here denotes the length of the target sequence \(t\)
 and \(S_{qt}\) the prefiltering score between query sequence \(s\) and
 target sequence \(t\). The expected chance prefiltering score between them
 is then
 \begin{align}
 S_0 = (L_t-k+1)\frac{\text{sum}_S}{\text{sum}_L}
 \end{align}
-Assuming the number of \Qgram{q} matches is Poisson-distributed, the
-standard deviation of the scores \(\sigma_S\) can be computed through
+
+\SKcomment{What is \(t\) here? A single target sequence? }
+
+Assuming the number of \Qgram{q} matches
+
+\SKcomment{\Qgram{q} matches of which sequences with which sequences? Do
+you mean exact \(q\)-gram matches or \(q\)-grams whose score is above the
+score threshold.}
+
+is Poisson-distributed, the
+standard deviation of the scores \(\sigma_S\)
+
+\SKcomment{Why does this assumption make sense. Please provide arguments or
+citations.}
+
+\SKcomment{What is \(\Sigma_{S}\)? Or did you want to write: the
+standard deviation \(\sigma_S\) of the score distribution.}
+
+can be computed through
 number of expected \Qgram{q} matches \(n_{\text{match}}\):
+
+\SKcomment{You likely mean the 'expected number
+\(n_{\text{match}}\) of \Qgram{q} matches'. You really need to be more
+precise with your wording.}
+
 \begin{align}
-n_{\text{match}} &\approx \frac{S_0}{S_{\text{match}}}
-\end{align}
-\begin{align}
+n_{\text{match}} &\approx \frac{S_0}{S_{\text{match}}}\\
 \sigma_S &= S_{\text{match}}\sqrt{n_{\text{match}}}\\
 &= \sqrt{(L_t-k+1)\frac{\text{sum}_S}{\text{sum}_L}S_{\text{match}}}
 \end{align}
+
 where \(S_{\text{match}}\) is the expected score per chance \Qgram{q}
-match. The significant prefiltering score \(S_{qt}\) should then fulfill
+match.  The significant prefiltering score \(S_{qt}\) should then fulfill
 the condition
+
+\SKcomment{Sorry I am lost here. What is a chance \Qgram{q} match?}
+
 \begin{align}
 S_{qt} \geq Z_{thr}\sigma_S + S_0
 \end{align}
-where \(Z_{thr}\) is the significant \(z\)-score. MMseqs2 would take in a
-sensitivity parameter \(s\), labeled internally as the average length of
-\Qgram{q} list each sequence position, from the user and using a heuristic
-to compute for \(S_{qt}\). This approach is shown to be lacking in control
-for \(s\) and therefore the goal is to streamline the process and to allow
+where \(Z_{thr}\) is the significant \(z\)-score.
+
+\SKcomment{What is the significant \(z\)-score? Please explain.}
+
+MMseqs2 would take in a
+sensitivity parameter \(s\), labeled internally as the average length of the
+\Qgram{q} list at each sequence position,
+
+\SKcomment{The \(q\)-list at each sequence position should be the size of the
+\(k\)-environment.}
+
+from the user and using a heuristic
+to compute \(S_{qt}\). This approach is shown to be lacking control
+for \(s\)
+
+\SKcomment{What is \(s\)?}
+\SKcomment{Does 'is shown' above mean that you have shown that it does not
+allow to control \(s\)? I assume since otherwise you would have written
+'will be shown'. But you actully want to gain control of the
+\(k\)-mer environment.}
+
+\SKcomment{A more direct approach would be to start with a small value for the
+score threshold, compute the \(k\)-environment and extend it until one
+has achieved an average size as defined beforehand. Even better would be
+the enumerate the elements of the environment in descending order of the score.
+This would allow to enumerate, until the appropriate size is reached.}
+
+and therefore the goal is to streamline the process and to allow
 for a more fine-grained control of the length of \Qgram{q} list.
 
-\textbf{A context-free approach:} The average \Qgram{q} list \(l\) and the
-threshold \(k\) of the environment can be related through the right tail
-portion of a discrete distribution of
-unsorted-\Qgram{q}-vs-unsorted-\Qgram{q} score \(h_q\).
+\SKcomment{As you can see from the number of comments, I think that this section
+needs to be rewritten, as to allow to understand it.}
+
+\subsection{A context-free approach}
+
+\SKcomment{Unclear to what context you refer.}
+
+The average \Qgram{q} list \(l\) and the
+
+\SKcomment{Do not use the identifier \(l\), as this can hardly be distinguished from \(1\). Use \(\ell\) instead.}
+
+threshold \(k\) of the environment can be related based on the tail
+of a discrete distribution of scores for pairs of \(q\)-grams. So let
+\(h_{q}(x)\) be the number of pairs
+\((u,u')\in\Alpha^{q}\times\Alpha^{q}\) such that \(\sigma(u,u')=x\).
+
+\SKcomment{Please check that this the correct definition of
+\(h_{q}\). But you actually have plotted this only for a sample, but I assumed
+that the definition makes sense for the entire set of all \(q\)-grams.}
+
+\SKcomment{Just as a possible point for a discussion: The frequencies for
+pairs of \(q\)-grams should be similar to the frequencies for sorted
+\(q\)-grams.}
+
+\SKcomment{Another possible point for a discussion: It should be possible
+to calculate the exact distribution of the scores using a DP-method: Assume
+integer scores. If one knows the distribution for all pairs of
+\((q-1)\)-mers, then one can compute the distribution for all pairs of
+\(q\)-grams. This would be an interesting GSA-exercise. I have just
+added a Python-script \texttt{bin/pair\_score\_distrib.py}. Results look okay,
+but I have  not verified them.}
+
 \begin{figure}[t]
 \begin{center}
 \includegraphics[scale=0.6]{graphics/distribution.png}
 \end{center}
 \caption{Example of score distribution \(h_7\) between uniformly
-distributed \Qgram{7}. Blue denotes portion of the distribution where
-\(\sigma < 0\). Red denotes portion of the distribution where \(\sigma \geq
-0\).}
+distributed \Qgram{7}. The blue bars show the frequencies for events with
+score \(<0\). The red bars show the frequencies for events with
+score \(\geq 0\).}
 \label{fig:distrbution}
 \end{figure}
+
+\SKcomment{You likely mean 'uniformly
+distributed pairs of \(q\)-grams. It is not an example. You likely have
+determine sample \(Q\) of \(q\)-grams for \(q=7\) and then computed the score
+for each \((u,u')\in Q\times Q\), \(u<u'\)? How large was \(Q\)? Did you specify which score function you use?}
+
 Figure~\ref{fig:distrbution} visualizes an exemplary score distribution
 between uniformly distributed \Qgram{7}. The red portion in the right
 tail describes the probability \(\mathcal{P}(\sigma \geq 0)\), which could
@@ -1281,7 +1483,7 @@ value for further use. Thereafter, an appropriate threshold is evaluated
 using the target sequences and an user-provided sensitivity. Using the
 score matrices and the threshold, the program enters the step of \Qgram{q}
 generation using the Cartesian product.
-\subsubsection{Local composition bias correction}
+\subsection{Local composition bias correction}
 In the implementation of MMseqs2, a mechanism to evaluate the surrounding
 of current position while iterating the query sequences is introduced. The
 idea of this mechanism is to adjust the threshold of the \Qgram{q}
@@ -1320,7 +1522,7 @@ threshold at the beginning of the computation.
 k_{c}
 \end{align}
 
-\subsubsection{Turning Wheel Mechanism}
+\subsection{Turning Wheel Mechanism}
 An issue in enumerating the Cartesian product is the possible difference in
 number of loops (e.g.\ 2 loops for seed weight 4-6, 3 loops for seed weight
 7). To resolve this problem and allow easy expansion to greater seed
@@ -1378,7 +1580,7 @@ Termination.}
 \end{algorithmic}
 \end{algorithm}
 \begin{comment}
-\subsubsection{SIMD}
+\subsection{SIMD}
 SIMD (Single-Instruction Multiple-Data) is a group of instructions allowing
 vectorized, parallel data processing. Instead of processing data
 sequentially, they are capable of defining wide registers, commonly 128-bit
