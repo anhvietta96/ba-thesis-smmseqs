@@ -1455,16 +1455,33 @@ of section \ref{}.}
 
 \Chapter{Implementation and Design}
 \section{Design overview}
+
 The program consists of seven main classes:
+
+\SKcomment{Which program? Invent a name, say SuperMMseqs, and then start as
+follows: Most of the methods described above where implemented in a program
+SuperMMseqs. The implementation in C++ followed an object oriented approach,
+makes heavy use of Metaprogramming and is based on the following
+seven main classes:}
+
 \begin{enumerate}
 \item Seed readers convert seed into binary representation, computing its
-span and weight. To further process seed, two variants are created:
+span and weight. To further process seeds, two variants are created:
 \begin{enumerate}
 \item Target reader divides seeds into blocks of shorter \Qgram{q}s as
 input for recursive hashing function.
 \item Query reader divides seeds into blocks of short segments, sorts query
 sequences and uses sorted \Qgram{q} encoder to linearly encode the
 resulted sorted \Qgram{q}s.
+
+\SKcomment{As remarked earlier, the Query reader must also apply a
+recursive hashing function. This comes before the sorting I guess.}
+\SKcomment{Blocks of short segments is redundant. Blocks would suffice.
+Do not use the notion of segments here. When you later consider
+sorted matching seeds of two seqnum/position pairs, then the notion of
+segment becomes relevant. That is, a segment consists of all matching seeds
+for the same pair of target/query sequence.}
+
 \end{enumerate}
 \item A recursive hash engine to collect every \Qgram{q} hashes from
 target sequences and package them.
