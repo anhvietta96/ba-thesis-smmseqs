@@ -1666,27 +1666,50 @@ score matrices and the threshold, the program enters the step of \Qgram{q}
 generation using the Cartesian product.
 
 \subsection{Local composition bias correction}
-In the implementation of MMseqs2, a mechanism to evaluate the surrounding
-of current position while iterating the query sequences is introduced. The
-idea of this mechanism is to adjust the threshold of the \Qgram{q}
-environment in response to regions where local composition varies
+MMseqs2 employs a mechanism to evaluate the positional
+context of an amino acid when processing the query sequences. The
+idea of this mechanism is to adjust the score threshold \(k\)
+for regions whose local amino acid composition varies
 considerably from the background distribution. Without adjusting, these low
 regions can lead to biases in the prefiltering result. This correction of
 the threshold can be summarized as follow:
 
 \begin{align}
 \Delta \sigma_i(u[i]) =
-\sum_{a=1}^{|\Alpha|}f(a)\sigma(a,u[i])-\frac{1}{2d}\sum_{j=i-d,j\neq
-i}^{i+d}\sigma (u[i],u[j])
+\underbrace{\sum_{a\in \Alpha}f(a)\sigma(a,\Subchar{u}{i})}_{\text{expected score}}-
+\underbrace{\frac{1}{2d}\sum_{j=i-d,j\neq i}^{i+d}\sigma (u[i],u[j])}_{\text{average local score}}
 \end{align}
 
-where \(u\) is the query sequence, \(i\) the current residue on the
-sequence and \(f(a)\) the background frequency of residue \(a\).
-The minuend is a representation of the expected score resulting from the
-background distribution, which can be precomputed when the target data is
-read. The subtrahend involves the current region in the query sequence and
+\SKcomment{The bias depends on the position, so that the amino acid is
+implicitely given. This should be reflected in the notation and one
+should define it as \(\Delta(i)\) or \(\Delta(\sigma,u,i)\).}
+
+where \(u\) is the query sequence, \(i\) is the current position in the
+sequence, \(d\) is a positive integer (explained below)
+and \(f(a)\) is the background frequency of residue \(a\).
+
+\SKcomment{\(d\) is not defined and I assume that \(i\geq d\) and
+\(i+d\leq |u|-1\) must hold. You define it later, but it should be mentioned
+here (which I did.)}
+
+The minuend is a representation of
+
+\SKcomment{I do not like the notion of minuend, as to me it is not clear what
+it means. From the context one can deduce that it is
+the first sum. So better write. The expression
+\(\sum_{a\in \Alpha}f(a)\sigma(a,\Subchar{u}{i})\) is
+the expected score resulting from the
+background distribution of the amino acids. For each \(b\in\Alpha\) one can
+precompute \(\sum_{a\in \Alpha}f(a)\sigma(a,b)\) given \(f\).}
+
+The subtrahend involves the current region in the query sequence and
 introduces a parameter \(d\) for the radius of the region, defined in
 MMseqs2 as a constant 20.
+
+\SKcomment{Do not use the notion subtrahend. Use 'the term which is
+subtracted' is an average local score at position \(i\) involving \(d\)
+amino acids on the left and on the right.}
+
 The corrected score between a query \Qgram{q} \(u\) and its generated
 \Qgram{q} \(v\) can then be computed as the sum of the pairwise amino acid
 score and the score correction.
@@ -1695,8 +1718,17 @@ score and the score correction.
 \sigma_c(u,v) = \sigma (u,v) + \sum_{i=0}^{q-1} \sigma_i(u[i])
 \end{align}
 
+\SKcomment{Replace \(\sigma_i(u[i])\) using the notation as suggested above.}
+
 In the implementation, this correction is instead subtracted from the
-threshold at the beginning of the computation.
+threshold at the beginning of the computation
+
+\SKcomment{beginning of the computation of what? Like of \(\sigma(u,v\).
+One should be more specific about the context in which this computation
+occurs. You only state that it is applied when processing the query sequence.
+But one should be more precise, as the evaluation becomes relevant
+when the \(k\)-environment is constructed for the \(q\)-gram at position
+\(i\). So actually becomes a \(k_{c}\)-environment is constructed.}
 
 \begin{align}
 \sigma_c(u,v) = \sigma (u,v) + \sum_{i=0}^{q-1} \sigma_i(u[i]) \geq k
