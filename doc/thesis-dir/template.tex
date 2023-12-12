@@ -1641,18 +1641,30 @@ score matrices \(\Scoretablename\) can be evaluated using the index tables
 
 \SKcomment{Please do not write 'can be evaluated'. Use 'are evaluated'}
 
-\SKcomment{Why are the \Qgram{2} and \Qgram{3} matrices are evaluated.
+\SKcomment{Why are the \Qgram{2} and \Qgram{3} matrices \underline{evaluated}?
 They have been computed at compile time, i.e.\ for each \(2\)-gram and
-\(3\)-gram \(u\) one can obtain the \(q\)-gram/score-pairs \((v,\sigma(u,v))\)
+\(3\)-gram \(u\) one can enumerate \(2/3\)-gram/score-pairs \((v,\sigma(u,v))\)
 in sorted order.}
 
 from sorted and unsorted \Qgram{q}s according to
-Equation~\ref{equation:sequenceScore}. The result then can then be stored
+Equation~\ref{equation:sequenceScore}.
+
+\SKcomment{Why from sorted to unsorted \(q\)-grams? The evaluation was
+defined for \(q\)-grams. So it applies to sorted \(q\)-grams as well.}
+
+The result then can then be stored
 as a pair of score and unsorted \Qgram{q} code and sorted after score
-value for further use. Thereafter, an appropriate threshold is evaluated
+value for further use.
+
+\SKcomment{So you mean the \(k\)-environment for a single \(q\)-gram
+can be stored and sorted? But that does not make sense since on below
+you explain how to determine the score-threshold. I am lost.}
+
+Thereafter, an appropriate threshold is evaluated
 using the target sequences and an user-provided sensitivity. Using the
 score matrices and the threshold, the program enters the step of \Qgram{q}
 generation using the Cartesian product.
+
 \subsection{Local composition bias correction}
 In the implementation of MMseqs2, a mechanism to evaluate the surrounding
 of current position while iterating the query sequences is introduced. The
