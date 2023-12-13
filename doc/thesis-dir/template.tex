@@ -374,12 +374,12 @@ integers, where each integer encodes a different character of \(\Alpha\).
 That is, the alphabet will be interpreted mostly as an integer
 subset \([0,|\mathcal{A}|)\cap \Nats\).
 \section{Efficient enumeration of hash values}
-Representing \Qgram{q}s as a sequence of characters is very costly, since it 
-takes \(O(q)\) operations to compare and they also demand \(O(q)\) space of 
+Representing \Qgram{q}s as a sequence of characters is very costly, since it
+takes \(O(q)\) operations to compare and they also demand \(O(q)\) space of
 memory. Therefore, they are often firstly hashed to integer to be processed
-further. The standard hashing algorithm for \Qgram{q}s is called invertible 
-integer encoding, the characters are assigned a weight, which is expressed as 
-\(r^{q-1-i}\), where \(r\) is called the radix and \(i\) is the position of the 
+further. The standard hashing algorithm for \Qgram{q}s is called invertible
+integer encoding, the characters are assigned a weight, which is expressed as
+\(r^{q-1-i}\), where \(r\) is called the radix and \(i\) is the position of the
 character in the \Qgram{q}.
 
 Since the weight of every character must be unique in every position in the
@@ -393,7 +393,7 @@ H(w) = \sum_{i=0}^{q-1}r^{q-1-i}w[i]\label{DefineHfunction}
 \end{align}
 where \(w\in\Alpha^q\) and \(w[i]\) is the \(i\)-th character in \(w\).
 
-In MMseqs2, at every residue, relevant characters based on the user-chosen 
+In MMseqs2, at every residue, relevant characters based on the user-chosen
 spaced seed, which weight is denoted by \(q\), are individually
 extracted from the target sequence to create \Qgram{q}s and then process
 these \Qgram{q}s as independent strings. This approach requires to compute
@@ -427,10 +427,10 @@ Algorithm~\ref{code:mmseqshash}.
 \end{algorithm}
 
 Since the database can be very large, a precise and efficient enumeration
-of hash values in every sequence position must be prioritized. In order to 
-optimize this process, a recursive hashing algorithm~\cite{cohen1997recursive} 
-could be implemented, where the spaced seeds are considered as a shifting hash 
-window. To gather the next hash value, the window can be shifted by one, 
+of hash values in every sequence position must be prioritized. In order to
+optimize this process, a recursive hashing algorithm~\cite{cohen1997recursive}
+could be implemented, where the spaced seeds are considered as a shifting hash
+window. To gather the next hash value, the window can be shifted by one,
 resulting in the removal and addition of old and
 new characters respectively, which are both determined by the spaced seed.
 If the spaced seed can be maximally divided into \(b\) blocks of consecutive
@@ -470,7 +470,7 @@ functions. I fixed it by rewording the section, naming recursive hash
 function
 at beginning of paragraph.}
 
-The algorithm for the simplest case, where the spaced seed is a single block of 
+The algorithm for the simplest case, where the spaced seed is a single block of
 1s, also \(b=1\), can be described as follows:
 
 As a base case of the recursive algorithm, the hash value for the
@@ -699,7 +699,6 @@ and theoretical hashing speedup factor $\frac{q}{2b}$
 using recursive hashing\label{tab:seeds}}
 \end{center}
 \end{table}
-\section{Optimizing query data processing}
 \section{Optimizing query data processing\label{section:qgramgen}}
 In order to quantify the similarity between sequences, one uses a scoring
 function. This provides quantitative measures for comparing biological
@@ -1526,7 +1525,7 @@ times}
 to state, that derivation of \(k\) is as in the context dependent approach
 of section.}
 \AVTcomment{I have renamed the approach to not mention context. I'll still need
-a name to refer to each approach in Result section. Can you recommend me how to 
+a name to refer to each approach in Result section. Can you recommend me how to
 call them?}
 
 \Chapter{Implementation and Design}
@@ -1668,7 +1667,7 @@ transcoded into a bitset. The span of the seed can then be computed
 according to the position of the first {1 in} the bitset and also the seed
 weight \(q\) is the number of 1 bits.
 
-At run time the program takes in two set of sequences in FASTA format.
+At runtime the program takes in two set of sequences in FASTA format.
 Any data error, for example empty file or corrupt data format will
 automatically lead to termination of the program and an error message will
 be logged~\cite{gttl}. Additionally, the sensitivity of the program can be
@@ -1705,7 +1704,7 @@ the scoring function. They are based on the scoring function. Please be more
 precise.}
 
 \section{Run time computation}
-At run time, at first the target and query database gets encoded using the
+At runtime, at first the target and query database gets encoded using the
 transformer function. Using the target seed reader, the target sequences
 are then hashed in \(O(nb)\) time and the hashes are packaged as
 byte units and saved in a contiguous container (i.e.\ array or vector).
@@ -1926,9 +1925,9 @@ section of the inverse permutation is filled with integer 128 to signal the
 instruction to not shuffle and to simply pad the resulted vector with 0.
 \end{comment}
 \section{Merging target and query data}
-After being collected, the hashed data containing the hash values, sequence 
+After being collected, the hashed data containing the hash values, sequence
 number and sequence position from all target and query sequences
-is packaged as byte units, where the hash values are stored in the most 
+is packaged as byte units, where the hash values are stored in the most
 significant bits.
 
 \SKcomment{Unclear what prioritizing means here. You basically store the
@@ -1942,8 +1941,8 @@ Using radix sort only on the hash value bits, each vector then get sorted
 \SKcomment{What does sorted individually mean here?}
 \AVTcomment{Fixed}
 
-resulting in two data vectors sorted by hash values which would then be merged 
-value by value, skipping through unmatching blocks. This merging algorithm is 
+resulting in two data vectors sorted by hash values which would then be merged
+value by value, skipping through unmatching blocks. This merging algorithm is
 outlined in Algorithm~\ref{code:mergingdata}.
 \begin{algorithm}[t]
 \caption{Merging query and target data}
@@ -1992,8 +1991,8 @@ The merging process results in a vector of matches, represented again as
 byte units, containing respectively the sequence number of the match on the
 target, on the query, the diagonal number (difference between the target
 and query sequence position), and the query sequence position. These
-quartets are again sorted with radix sort on the first three values: target 
-sequence number, query sequence number and diagonal number. From these match 
+quartets are again sorted with radix sort on the first three values: target
+sequence number, query sequence number and diagonal number. From these match
 data, only the diagonals where there are two or more matches are selected for
 the ungapped alignment stage.
 
@@ -2002,26 +2001,66 @@ Only if a segment contains a diagonal with at least two matches, it is
 processed further with the ungapped alignment algorithm.}
 \AVTcomment{Fixed}
 
-\Chapter{Benchmark and Performance}
+\Chapter{Results}
 Separate modular benchmarks were carried out for the processing of target
-sequences, threshold estimation and similar \Qgram{q} generation. All
-measurements were performed using C++ on an Intel CPU i5-\numprint{10300}H
-2.5~GHz with 8~GB DDR4 running Ubuntu on a SSD. The program was compiled
-with
-g++ 11.3.0.
-The test dataset composed of a target database from MMseqs2 and a query
-database created as a difference set from MMseqs2 queryset against the
-target database. Some statistics on these datasets are summarized below in
-Table~\ref{tab:datasets}. The scoring function used in testing is the
-BLOSUM62
-score matrix.
+sequences, threshold estimation and similar \Qgram{q} generation.
+
+\SKcomment{What do you mean by similar \Qgram{q} generation? Is this the
+construction of the \(k\)-environments?}
+
+All programs considered here were compiled with
+\mbox{g++ 11.3.0}. The measurement were performed on an Intel CPU
+i5-\numprint{10300}H at 2.5~GHz clock rate with 8~GB DDR4 RAM
+running Ubuntu on an SSD.
+
+\SKcomment{The fact that all programs considered here were written in C++
+needs to be mentioned in the implementation section. I had suggested some
+wording in a comment. To remove redundancies, I modified the previous
+sentence.}
+
+The test dataset consists of two files:
+\begin{itemize}
+\item the file \texttt{DB.fasta} from the github Repository of
+MMSeqs2~\cite{MMseqs2Repository} serves as target sequence file and
+consists of \numprint{20000} sequences of length between 7 and \numprint{8081}.
+\item the file \texttt{QUERY\_DIFF.fasta} consists of all sequences from
+the file \texttt{QUERY.fasta} from the github Repository of
+MMSeqs2~\cite{MMseqs2Repository} minus the sequences which occur in
+\texttt{DB.fasta}. This file of \numprint{426} sequences of length between
+8 and \numprint{4291} serves as query sequence file.
+\end{itemize}
+Some statistics on these datasets are summarized below in
+Table~\ref{tab:datasets}.
+
+\SKcomment{Table \ref{tab:datasets} provided little information. So it is
+better to add this information to the text and remove the table.}
+
+The BLOSUM62 score matrix was used for scoring pairs of amino acids.
+
 \section{Processing target sequences}
-Since the normal test datasets are too small to see the difference in 
-performance between the hashing approaches, tests were carried out on randomly 
-generated dataset consisting of \numprint{50000000} sequence characters. The
+Since the normal test datasets are too small to see the difference in
+performance between the hashing approaches, tests were carried out on randomly
+generated dataset consisting of \numprint{50000000} sequence characters.
+
+\SKcomment{Are these characters stored in one sequence, or multiple sequences?}
+
+The
 results from Figure~\ref{fig:target_hashing} showed that the direct
-extraction of \Qgram{q}s generally has a better run time, as expected from
-Table~\ref{tab:seeds}. Even the hashing using seed \numprint{111011}, which
+extraction of \Qgram{q}s is faster, as expected from
+Table~\ref{tab:seeds}.
+
+\SKcomment{Table \ref{tab:seeds} show the theoretical speed up factors for some
+spaced seeds of weight \(q\leq 7\). But the speedup factor
+are partly smaller than 1 and partly larger than 1. Also the seeds are
+different from those in the Table \ref{tab:seeds}. So I do not how you
+deduce the expection?}
+
+\SKcomment{It is superfluous to number the seeds if these numbers are not
+used. This also holds for Table \ref{tab:seeds}. Only for the seeds
+in \ref{tab:asymptoticseed9} and \ref{fig:asymptoticseed9} you refer to the
+seeds by their number.}
+
+Even the hashing using seed \numprint{111011}, which
 was predicted to have performance speedup, failed to show improvement. The
 reason could be repeated lookup of character to remove/add causing cache-miss,
 slowing the computation.
@@ -2030,16 +2069,21 @@ slowing the computation.
 \begin{center}
 \includegraphics[scale=0.45]{graphics/target_hashing.png}
 \end{center}
-\caption{Performance of two hashing functions on randomly generated dataset of 
+\caption{Performance of two hashing functions on randomly generated dataset of
 \numprint{50000000} character with default MMseqs2 spaced seeds}
 \label{fig:target_hashing}
 \end{figure}
 
-To examine the asymptotic behavior of the two hashing algorithms, seeds of 
-weight 9 and 12 were further tested. For each seed weight \(q\), the number of 
-seed blocks ranges from \([1,\frac{q}{2})\). The generated seeds are 
+To examine the asymptotic behavior
+
+\SKcomment{By your experiments you do not examine the asymptotic behavior.
+You just compare the asymptotic behavior with empirical results.}
+
+of the two hashing algorithms, seeds of
+weight 9 and 12 were further tested. For each seed weight \(q\), the number of
+seed blocks ranges from \(1\) to \(\frac{q}{2}-1\). The generated seeds are
 characterized in Table~\ref{tab:asymptoticseed9} and \ref{tab:asymptoticseed12}.
-The test results were summarized in Figure~\ref{fig:asymptoticseed9} and 
+The test results are summarized in Figure~\ref{fig:asymptoticseed9} and
 \ref{fig:asymptoticseed12}.
 
 \begin{table}
@@ -2054,7 +2098,7 @@ No & Seed & Span & Weight \(q\) & Number of & Speedup \\
 4& \numprint{101101110111} & 12 & 9 & 4 & 1.125
 \end{tabular}
 \caption{Seeds of weight 9 used in testing asymptotic behavior with their span,
-weight, number of blocks and theoretical hashing speedup factor $\frac{q}{2b}$ 
+weight, number of blocks and theoretical hashing speedup factor $\frac{q}{2b}$
 using recursive hashing\label{tab:asymptoticseed9}}
 \end{center}
 \end{table}
@@ -2063,10 +2107,10 @@ using recursive hashing\label{tab:asymptoticseed9}}
 \begin{center}
 \includegraphics[scale=0.45]{graphics/asymtotic9.png}
 \end{center}
-\caption{Performance of two hashing functions on randomly generated dataset of 
+\caption{Performance of two hashing functions on randomly generated dataset of
 \numprint{50000000} characters with seeds in Table~\ref{tab:asymptoticseed9}.}
 \label{fig:asymptoticseed9}
-\end{figure}   
+\end{figure}
 
 \begin{table}
 \begin{center}
@@ -2082,7 +2126,7 @@ No & Seed & Span & Weight \(q\) & Number of & Speedup \\
 6& \numprint{101011011011101101} & 17 & 12 & 6 & 1.0
 \end{tabular}
 \caption{Seeds of weight 12 used in testing asymptotic behavior with their span,
-weight, number of blocks and theoretical hashing speedup factor $\frac{q}{2b}$ 
+weight, number of blocks and theoretical hashing speedup factor $\frac{q}{2b}$
 using recursive hashing\label{tab:asymptoticseed12}}
 \end{center}
 \end{table}
@@ -2091,20 +2135,27 @@ using recursive hashing\label{tab:asymptoticseed12}}
 \begin{center}
 \includegraphics[scale=0.45]{graphics/asymtotic12.png}
 \end{center}
-\caption{Performance of two hashing functions on randomly generated dataset of 
+\caption{Performance of two hashing functions on randomly generated dataset of
 \numprint{50000000} characters with seeds in Table~\ref{tab:asymptoticseed12}.}
 \label{fig:asymptoticseed12}
 \end{figure}
 
 The asymtotic test shows that even with seeds of weight 9, the recursive hashing
-algorithm only performs better when the seed has 1 or 2 blocks. In the case of 
-seeds of weight 12, the hashing algorithm performs better than the normal 
-approach. This signals that recursive hashing does asymtotically have a better 
-run time, but with the caveat that better performance only occurs in the case 
-where the seed weight is larger than twice the number of blocks 
-\(q > 2b\), along with the fact that it's harder to implement and only offer 
-marginal increase in performance, might mean that the normal hashing approach is
-still the better general approach in hash value enumeration.
+algorithm only performs better when the seed has 1 or 2 blocks.
+
+\SKcomment{I am really surprised that recursive hashing only gives such a
+small speedup for seeds consisting only of 1 block. One would need to have a
+look at the code to understand this, but this is not a task here. After all,
+the absolute times are always about 0.5s, which hardly has an influence on the
+overall running time.}
+
+For seeds of weight 12, the hashing algorithm performs better than the normal
+approach. This signals that recursive hashing asymtotically has a smaller
+runtime, but with the caveat that better performance only occurs in the case
+than \(q > 2b\) holds. Given that recursive hashing is more difficult to
+implement and only offers marginal increase in performance, we conclude
+that for spaced seeds, the straightforward character by character extraction,
+weighting and summing is the better general approach to enumerate hash values.
 
 \section{Determining threshold}
 Both of the approaches, context-free and context-sensitive, were tested
@@ -2146,7 +2197,7 @@ of \Qgram{2} and \Qgram{3} were created and due to their small length, they
 are
 not sufficient to diverge from the character distribution used in
 context-free
-approach. In order to discern the usage of each approach,the run time
+approach. In order to discern the usage of each approach, the runtime
 of each method is investigated further in Figure~\ref{fig:sens_runtime}:
 \begin{figure}
 \centering
@@ -2237,7 +2288,7 @@ program spends 18.2~ns to generate a \Qgram{5}, 18.3~ns to generate a
 \Qgram{6} and 20.1~ns to generate a \Qgram{7}. This shows that the
 \Qgram{q}
 generation scales generally well with \(q\), where an additional loop in
-creation of \Qgram{7} causing an increase of 10~\% in run time. It could
+creation of \Qgram{7} causing an increase of 10~\% in runtime. It could
 then
 be reasoned that the generation of \Qgram{8} and \Qgram{9} may follow the
 same
@@ -2245,7 +2296,7 @@ trend, which coupled with the new approach in estimating threshold could
 lead to
 an expansion of seed weight (see Section~\ref{section:expand}).
 \section{General Performance}
-In this section, the overall run time of the whole program is profiled to
+In this section, the overall runtime of the whole program is profiled to
 find hotspots and to figure the scalability of the system. The program will
 be run with the most optimized settings, meaning context-free threshold
 approximation and \Qgram{q} generation using sorted method. In Figure, the
@@ -2266,7 +2317,7 @@ miliseconds,
 using seed \numprint{1111010101}, sensitivity 10, 100 and \numprint{1000}}
 \label{fig:program_w7}
 \end{figure}
-The test showed that the run time of processing target data is generally
+The test showed that the runtime of processing target data is generally
 negligible. The processing of match data could be more significant,
 reaching
 0.4~s in testing but still scales much better than \Qgram{q} generation
@@ -2312,17 +2363,17 @@ Compared to the MMseqs2 program, the implementation using unsorted
 \Qgram{q}s
 shows generally worse performance, with ... more time taken. On the other
 hand,
-the approach using sorted \Qgram{q}s presents better run time, especially
+the approach using sorted \Qgram{q}s achieves smaller runtime, especially
 in
 lower sensitivity. This shows that using optimization methods implemented
-in
-MMseqs2 could improve the run time even further.
+in MMseqs2 could improve the runtime even further.
 Two further possible optimization methods are usage of SIMD intructions and
 multithreadsing. Both of these methods were tried in the implementation
 using
 SIMD instruction \(\mathsf{\_\_mm\_shuffle\_epi8}\) and OpenMP library, but
-unfortunately both showed little to no improvement on run time. Reasons for
+unfortunately both showed little to no improvement on runtime. Reasons for
 these behaviors remains to be investigated.
+
 \section{Features}
 The new workflow was created with expandability in mind, therefore a lot of
 the calculation allows for greater seed size and even greater sub-\Qgram{q}
@@ -2336,7 +2387,7 @@ The program was intended to be a testing environment only, therefore custom
 workflows in MMseqs2 were not recreated, namely the stepwise sensitive
 search.
 \section{Possibility of expanding seed\label{section:expand}}
-Earlier it was shown that the run time of \Qgram{q} generation scales
+Earlier it was shown that the runtime of \Qgram{q} generation scales
 almost constantly to seed, therefore some testing was created to test for
 seeds of weight 8 and 9:
 \AVTcomment{Waiting for BytesUnit fix}
@@ -2345,7 +2396,7 @@ score matrices\label{section:scorematrix}}
 Even though the class diagram in Figure~\ref{fig:classes} shows that it's
 possible to compute the score matrix in compile time, since it only depends
 on the two index tables of sorted/unsorted \Qgram{q}s, the implementation
-decides to create the table in run time instead. The reason largely is due
+decides to create the table at runtime instead. The reason largely is due
 to the high memory stack size requirements and lack of compile time sorting
 algorithm. A manual compile time sorting implementation (i.e.\ quicksort)
 would again demand more compile time instances. A separate benchmark in
@@ -2370,7 +2421,7 @@ new method of estimating threshold for better estimation of number of
 generated \Qgram{q}s was implemented and showed to be a better estimation
 approach, both in low and high sensitivity. Finally, an optimized
 branch-and-bound algorithm was introduced and presented a lower memory
-consumption in tradeoff for marginal increase in run time, allowing future
+consumption in tradeoff for marginal increase in runtime, allowing future
 expansion into larger seed size.
 %%%%<
 %bibliography
