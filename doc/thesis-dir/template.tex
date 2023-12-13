@@ -1721,33 +1721,81 @@ using the target sequences and an user-provided sensitivity. Using the
 score matrices and the threshold, the program enters the step of \Qgram{q}
 generation using the Cartesian product.
 \subsection{Local composition bias correction}
-In the implementation of MMseqs2, a mechanism to evaluate the surrounding
-of current position while iterating the query sequences is introduced. The
-idea of this mechanism is to adjust the threshold of the \Qgram{q}
-environment in response to regions where local composition varies
+MMseqs2 employs a mechanism to evaluate the positional
+context of an amino acid when processing the query sequences. The
+idea of this mechanism is to adjust the score threshold \(k\)
+for regions whose local amino acid composition varies
 considerably from the background distribution. Without adjusting, these low
 regions can lead to biases in the prefiltering result. This correction of
 the threshold can be summarized as follow:
 \begin{align}
 \Delta \sigma_i(u[i]) =
-\sum_{a=1}^{|\Alpha|}f(a)\sigma(a,u[i])-\frac{1}{2d}\sum_{j=i-d,j\neq
-i}^{i+d}\sigma (u[i],u[j])
+\underbrace{\sum_{a\in \Alpha}f(a)\sigma(a,\Subchar{u}{i})}_{\text{expected score}}-
+\underbrace{\frac{1}{2d}\sum_{j=i-d,j\neq i}^{i+d}\sigma (u[i],u[j])}_{\text{average local score}}
 \end{align}
+<<<<<<< HEAD
 where \(u\) is the query sequence, \(i\) the current residue on the
 sequence and \(f(a)\) the background frequency of residue \(a\).
 The minuend is a representation of the expected score resulting from the
 background distribution, which can be precomputed when the target data is
 read. The subtrahend involves the current region in the query sequence and
+=======
+
+\SKcomment{The bias depends on the position, so that the amino acid is
+implicitely given. This should be reflected in the notation and one
+should define it as \(\Delta(i)\) or \(\Delta(\sigma,u,i)\).}
+
+where \(u\) is the query sequence, \(i\) is the current position in the
+sequence, \(d\) is a positive integer (explained below)
+and \(f(a)\) is the background frequency of residue \(a\).
+
+\SKcomment{\(d\) is not defined and I assume that \(i\geq d\) and
+\(i+d\leq |u|-1\) must hold. You define it later, but it should be mentioned
+here (which I did.)}
+
+The minuend is a representation of
+
+\SKcomment{I do not like the notion of minuend, as to me it is not clear what
+it means. From the context one can deduce that it is
+the first sum. So better write. The expression
+\(\sum_{a\in \Alpha}f(a)\sigma(a,\Subchar{u}{i})\) is
+the expected score resulting from the
+background distribution of the amino acids. For each \(b\in\Alpha\) one can
+precompute \(\sum_{a\in \Alpha}f(a)\sigma(a,b)\) given \(f\).}
+
+The subtrahend involves the current region in the query sequence and
+>>>>>>> 9d636de91660b29da28bd76580faca423b585cdd
 introduces a parameter \(d\) for the radius of the region, defined in
 MMseqs2 as a constant 20.
+
+\SKcomment{Do not use the notion subtrahend. Use 'the term which is
+subtracted' is an average local score at position \(i\) involving \(d\)
+amino acids on the left and on the right.}
+
 The corrected score between a query \Qgram{q} \(u\) and its generated
 \Qgram{q} \(v\) can then be computed as the sum of the pairwise amino acid
 score and the score correction.
 \begin{align}
 \sigma_c(u,v) = \sigma (u,v) + \sum_{i=0}^{q-1} \sigma_i(u[i])
 \end{align}
+<<<<<<< HEAD
 In the implementation, this correction is instead subtracted from the
 threshold at the beginning of the computation.
+=======
+
+\SKcomment{Replace \(\sigma_i(u[i])\) using the notation as suggested above.}
+
+In the implementation, this correction is instead subtracted from the
+threshold at the beginning of the computation
+
+\SKcomment{beginning of the computation of what? Like of \(\sigma(u,v\).
+One should be more specific about the context in which this computation
+occurs. You only state that it is applied when processing the query sequence.
+But one should be more precise, as the evaluation becomes relevant
+when the \(k\)-environment is constructed for the \(q\)-gram at position
+\(i\). So actually becomes a \(k_{c}\)-environment is constructed.}
+
+>>>>>>> 9d636de91660b29da28bd76580faca423b585cdd
 \begin{align}
 \sigma_c(u,v) = \sigma (u,v) + \sum_{i=0}^{q-1} \sigma_i(u[i]) \geq k
 \Leftrightarrow \sigma (u,v) \geq k - \sum_{i=0}^{q-1} \sigma_i(u[i]) =
@@ -1755,7 +1803,7 @@ k_{c}
 \end{align}
 \subsection{Turning Wheel Mechanism}
 An issue in enumerating the Cartesian product is the possible difference in
-number of loops (e.g.\ 2 loops for seed weight 4-6, 3 loops for seed weight
+the number of loops (e.g.\ 2 loops for seed weight 4-6, 3 loops for seed weight
 7). To resolve this problem and allow easy expansion to greater seed
 weight, a flexible loop structure is designed, where an array containing
 the loop indexes is created. The earliest entry of the array holds the
@@ -1764,7 +1812,34 @@ index the entry holds. By iterating through only the innermost loop and
 only adjusting the outer loop indexes as needed, the scheme can account for
 any number of loops.
 The formulation of the loop structure, is outlined in the
-pseudocode~\ref{code:turningWheel}.
+Algorithm~\ref{code:turningWheel}.
+
+\SKcomment{The three function in Algorithm~\ref{code:turningWheel} are
+not defined and explained. It is important to note the \(\mathsf{getScore}\)
+computase the score from wheel and with respect to the \(q\)-gram which is
+the input to the algorithm. For this it requires access to the loop data vector.
+You have also not explained what the elements of
+the loop data vector are. These are the elements of the sets to build
+the cartesian product for. You also can merge the two lines
+\(\Code \gets \mathsf{getCode}(\Wheel);\)
+\(\mathsf{createQgram}(\Code)\) into one and introduce a function which
+computes the \(q\)-gram from the wheel. It should be clarified that
+creating a \(q\)-gram involves applying the reverse of the sorting permutation
+and results into an element of the \(k\) environment.}
+
+\SKcomment{I actually do not see the point of merging the turning wheels code
+with the specific application of generating elements from the \
+\(k\)-mer environment. I would keep the abtract view which only requires
+to provide the sizes of each of the sets to construct the
+cartesian product from and an abstract function which is applied to the
+wheel.}
+
+\SKcomment{I do not understand why you could end a loop or not even
+turn the wheel, if you obtain a score \(<k\) This is only possible,
+if the elements in the data vector are sorted by the score, which has not been
+mentioned. This feature could also be integrated into the abstract function
+mentioned above.}
+
 \begin{algorithm}[t]
 \caption{Turning Wheel Mechanism}
 \label{code:turningWheel}
@@ -1840,12 +1915,22 @@ section of the inverse permutation is filled with integer 128 to signal the
 instruction to not shuffle and to simply pad the resulted vector with 0.
 \end{comment}
 \section{Merging target and query data}
-After being collected, the hashed data from the target and query sequences
-are packaged as byte units, prioritizing hash values. They then get sorted
-individually using radix sort, resulting in two data vectors sorted by hash
+After being collected, the hashed data from all target and query sequences
+is packaged as byte units, prioritizing hash values.
+
+\SKcomment{Unclear what prioritizing means here. You basically store the
+hash-value in the most significant bits and then are sorted taking only the
+number of bits used for the hash value. So they are basically sorted
+by hash-values.}
+
+They then get sorted
+individually using radix sort,
+
+\SKcomment{What does sorted individually mean here?}
+
+resulting in two data vectors sorted by hash
 values which would then be merged value by value, skipping through
-unmatching
-blocks.
+unmatching blocks.
 \begin{algorithm}[t]
 \caption{Merging query and target data}
 \label{code:merging_data}
@@ -1888,12 +1973,21 @@ blocks.
 \EndWhile
 \end{algorithmic}
 \end{algorithm}
+
+\SKcomment{Algorithm \ref{code:merging_data} looks good, but it should be
+referenced from the main text.}
+
 The merging process results in a vector of matches, represented again as
 byte units, containing respectively the sequence number of the match on the
 target, on the query, the diagonal number (difference between the target
 and query sequence position), and the query sequence position. These
 quartets are again sorted with radix sort to prepare for ungapped alignment
 stage.
+
+\SKcomment{You better mention that the matches are used for prefiltering:
+Only if a segment contains a diagonal with at least two matches, it is
+processed further with the ungapped alignment algorithm.}
+
 \Chapter{Benchmark and Performance}
 Separate modular benchmarks were carried out for the processing of target
 sequences, threshold estimation and similar \Qgram{q} generation. All
