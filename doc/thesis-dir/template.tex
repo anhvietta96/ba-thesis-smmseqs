@@ -1088,7 +1088,7 @@ in the for-loop. Also the indextable can be considered a global variable.
 As part
 of algorithm \ref{code:enumerateMultisetRec} you specify that the initial
 call is with \(q\) and the alphabet index \(0\).
-Then Algorithm \ref{code:enumerateMultiset} becomes superfluous and
+Then Algorithm becomes superfluous and
 the initial can is to complicated anyway.}
 \AVTcomment{I've fixed the naming. I'll also add 2 more direct step after
 in
@@ -1104,7 +1104,7 @@ There exists an unique integer weight for each character \(a\) in position
 \(p\) so that given any sorted \Qgram{q} \(u\) over an alphabet
 \(\Alpha\),
 \begin{align}
-c(u)=\sum_{p=0}^{q-1} w(p,u[p])\label{Equation:linearenc}
+sc(u)=\sum_{p=0}^{q-1} w(p,\Subchar{u}{p})
 \end{align}
 encodes exactly \(u\) to its index in table \(\IT{q}{\Alpha}\).
 \begin{Proof}
@@ -1533,7 +1533,7 @@ times}
 \end{algorithm}
 \SKcomment{Please be more precise: same approach as what? I assume you want
 to state, that derivation of \(k\) is as in the context dependent approach
-of section \ref{}.}
+of section.}
 \AVTcomment{I have renamed the approach to not mention context. I'll still need
 a name to refer to each approach in Result section. Can you recommend me how to 
 call them?}
@@ -1935,25 +1935,28 @@ section of the inverse permutation is filled with integer 128 to signal the
 instruction to not shuffle and to simply pad the resulted vector with 0.
 \end{comment}
 \section{Merging target and query data}
-After being collected, the hashed data from all target and query sequences
-is packaged as byte units, prioritizing hash values.
+After being collected, the hashed data containing the hash values, sequence 
+number and sequence position from all target and query sequences
+is packaged as byte units, where the hash values are stored in the most 
+significant bits.
 
 \SKcomment{Unclear what prioritizing means here. You basically store the
 hash-value in the most significant bits and then are sorted taking only the
 number of bits used for the hash value. So they are basically sorted
 by hash-values.}
+\AVTcomment{Fixed}
 
-They then get sorted
-individually using radix sort,
+Using radix sort only on the hash value bits, each vector then get sorted
 
 \SKcomment{What does sorted individually mean here?}
+\AVTcomment{Fixed}
 
-resulting in two data vectors sorted by hash
-values which would then be merged value by value, skipping through
-unmatching blocks.
+resulting in two data vectors sorted by hash values which would then be merged 
+value by value, skipping through unmatching blocks. This merging algorithm is 
+outlined in Algorithm~\ref{code:mergingdata}.
 \begin{algorithm}[t]
 \caption{Merging query and target data}
-\label{code:merging_data}
+\label{code:mergingdata}
 \begin{tabular}{@{}l@{~}l}
 \textbf{Input:}&query data \(\Query\)\\
 &target data \(\Target\)\\
@@ -1994,19 +1997,19 @@ unmatching blocks.
 \end{algorithmic}
 \end{algorithm}
 
-\SKcomment{Algorithm \ref{code:merging_data} looks good, but it should be
-referenced from the main text.}
-
 The merging process results in a vector of matches, represented again as
 byte units, containing respectively the sequence number of the match on the
 target, on the query, the diagonal number (difference between the target
 and query sequence position), and the query sequence position. These
-quartets are again sorted with radix sort to prepare for ungapped alignment
-stage.
+quartets are again sorted with radix sort on the first three values: target 
+sequence number, query sequence number and diagonal number. From these match 
+data, only the diagonals where there are two or more matches are selected for
+the ungapped alignment stage.
 
 \SKcomment{You better mention that the matches are used for prefiltering:
 Only if a segment contains a diagonal with at least two matches, it is
 processed further with the ungapped alignment algorithm.}
+\AVTcomment{Fixed}
 
 \Chapter{Benchmark and Performance}
 Separate modular benchmarks were carried out for the processing of target
@@ -2039,17 +2042,6 @@ the computation.
 \label{fig:target_hashing}
 \end{figure}
 \section{Determining threshold}
-In order to test the accuracy of the threshold estimation, measurements
-were firstly carried out on MMseqs2 with default seed.
-\begin{figure}
-\centering
-\includegraphics[scale=0.6]{graphics/mmseqs2_sensitivity.png}
-\caption{Ratio of number of generated \Qgram{q}s using MMseqs2 approach
-vs. expected}
-\label{fig:mmseqssens}
-\end{figure}
-The test shows that MMseqs2 often overgenerated \Qgram{q}s, with the worst
-case creating 231.11 times more than expected.
 Both of the approaches, context-free and context-sensitive, were tested
 with the
 dividing scheme in context-sensitive approach reused from the \Qgram{q}
