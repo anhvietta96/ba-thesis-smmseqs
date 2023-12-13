@@ -2157,83 +2157,122 @@ implement and only offers marginal increase in performance, we conclude
 that for spaced seeds, the straightforward character by character extraction,
 weighting and summing is the better general approach to enumerate hash values.
 
-\section{Determining threshold}
-Both of the approaches, context-free and context-sensitive, were tested
-with the
-dividing scheme in context-sensitive approach reused from the \Qgram{q}
+\section{Determining the score threshold}
+We tested the context-free and the context-sensitive approach to calculate
+the expected number of \(q\)-grams. The context-sensitive approach
+reused the division scheme of the \Qgram{q}
 generation algorithm. For each test, the total number of \Qgram{q}s
-generated is
-averaged and then compared to the expected list length per position and
-MMseqs2
-result.
+generated is averaged and then compared to the expected size of the
+\(k\)-environment per position and MMseqs2 result.
+
+\SKcomment{Unclear what you mean by 'and MMseqs2 result'. So the
+MMseqs2 result is the third approach to estimate the number of
+\(q\)-grams? Has this result been
+obtained by running MMseqs2 or is it the result you have obtained by your
+implementation of the MMseqs2 method?}
+
+\SKcomment{It is generally good practice to refer to the methods
+considered here by providing the section number in which they are
+described.}
+
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/threshold_contextfree.png}
 \caption{Ratio of number of generated \Qgram{q}s using context-free
-approach vs. expected}
+approach vs.\ expected number}
 \label{fig:numctxfree}
 \end{figure}
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/threshold_contextsens.png}
-\caption{Ratio of number of generated \Qgram{q}s using context-free
-approach vs. expected}
+\caption{Ratio of the average number of \(q\)-grams actually generated per
+position of the query sequences versus the expected number of \(q\)-grams
+calculated by the context-free approach}
 \label{fig:numctxsens}
 \end{figure}
+
+\SKcomment{In the figure you need to explain that the different
+number refer to the differnt sensitivity value.}
+
+\SKcomment{Note that I have revised the caption to clarify what is shown. Please
+adjust the other captions accordingy.}
+
 The benchmarks of context-free (Figure~\ref{fig:numctxfree}) and
 context-sensitive approach (Figure~\ref{fig:numctxsens}) both show better
-control compared to MMseqs2 and the resulted list lengths are relatively
-close to the expected value. The thresholds created by this approach show
-to be a good upper bounds for the \(k\)-environment in lower \(q\), where
-only sensitivity of 1 in the seed weight 6 crosses the expected ammount. In
-higher seed weight, both approaches serve well as an approximation, where
-only a maximum of 15~\% more \Qgram{q}s were generated compared to
-expected value.
-It's also noticeable that both approaches result in the same
+control compared to MMseqs2
+
+\SKcomment{You need to explain what you mean by better control.}
+
+\SKcomment{Where are the results for MMseqs2?}
+
+and the resulted list lengths are relatively
+close to the expected value. The thresholds calculated by this approach show
+to be a good upper bounds for the \(k\)-environment for seeds of weight
+\(q\in\{5,6\}\), where
+only for the sensitivity of 1 and seed weight 6 the expected number is
+smaller than the actual number of elements in the \(k\)-environment.
+For the seed of weight \(q=7\), both approaches serve well
+as an approximation, where only up to 15~\% more \Qgram{q}s were generated
+compared to expected value.
+It is also noticeable that both approaches result in the same
 threshold, which could be due to the relatively short sub-\Qgram{q} length.
-Since the dividing schema in the branch-and-bound algorithm is reused,
+
+\SKcomment{Why should this be a reason. The sub-\Qgram{q} length is only
+relevant for the the context-sensitive approach.}
+
+Since the dividing schema of the branch-and-bound algorithm is reused,
+
+\SKcomment{Why do you mention the branch-and-bound algorithm? Before you have
+mentioned that the method is the context-sensitive method.}
+
 histograms
 of \Qgram{2} and \Qgram{3} were created and due to their small length, they
 are
-not sufficient to diverge from the character distribution used in
+not sufficient to diverge from the character distribution used in the
 context-free
-approach. In order to discern the usage of each approach, the runtime
+approach.
+
+\SKcomment{Sorry, as I do not fully understand this argument,
+as the context-free approach is not clear to me.}
+
+In order to discern the usage of each approach, the runtime
 of each method is investigated further in Figure~\ref{fig:sens_runtime}:
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/speed_threshold.png}
-\caption{Run time comparison of context-free vs. context-sensitive
+\caption{Run time comparison of context-free vs.\ context-sensitive
 approach}
 \label{fig:sens_runtime}
 \end{figure}
 The context-free approach shows to take very little time, almost
 instantaneous.
 Coupled with the very good estimation of the threshold it proves to be an
-universal on-the-fly solution. The context-sensitive approach takes a lot
-more
-time, average around 0.5~s to create a threshold (compensated for creation
-of
-unsorted-unsorted \Qgram{q} score matrices, see
+universal on-the-fly solution. The context-sensitive approach runs much longer
+with around 0.5~s on average to calculate a threshold (compensated for
+creation of unsorted-unsorted \Qgram{q} score matrices, see
 Section~\ref{section:scorematrix}),since it incurs a \(O(|\Alpha|^{2q})\)
-time to build histogram. Therefore this approach should be used only on
-high sensitivity, where long computation time is expected, or cached in the
-preprocessing of target sequences.
+time to build the histogram. Therefore this approach should be used only if
+high sensitivity is required, where long computation time for the following
+computational steps is expected anyway. An alternative is to cache the
+threshold in the preprocessing of the target sequences.
+
 It is important to note that since the approximation of the threshold \(k\)
-doesn't take local score correction into account, all of the above
-measurements are without local score correction. In
-Figure~\ref{fig:compbias} are some benchmarks with correction of varying
-degree, showcasing how the average list length is impacted. The result
-shows that the average \Qgram{q} list can vary strongly and unpredictably
-under usage of local composition bias score correction, where if the scale
-of the correction is from 0.75~-~1, the resulted number can be as few as 5
-times or as many as 48 times more than expected. The proper scaling of the
+does not take local score correction into account, all of the above
+measurements are without local score correction.
+Figure~\ref{fig:compbias} shows result with correction of varying
+degree, showcasing how the average list length is affected. In particular,
+the average number of \Qgram{q}s generated per position can vary strongly
+and is difficult to predict, when the
+local composition bias score correction is used. So if the scale
+of the correction is from 0.75~-~1, the resulting number is by a factor from
+5 to 48 times larger than expected. The proper scaling of the
 factor remains to be investigated further.
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/comp_bias.png}
 \caption{Influence of local composition bias score correction on average
-\Qgram{q} list length. The original estimation on \Qgram{q} list length
-was 10.}
+\Qgram{q} list length. The original estimation of the average
+\Qgram{q} list length was 10.}
 \label{fig:compbias}
 \end{figure}
 \section{Generating \Qgram{q}s}
@@ -2271,11 +2310,11 @@ initial memory consumption, where only 340~MB of memory is consumed for the
 score matrices instead of 1.80~GB (see Table~\ref{tab:memdiff}).
 \begin{table}
 \begin{center}
-\begin{tabular}{c|c|}
-\Qgram{q} type & Memory Allocated in Bytes\\
+\begin{tabular}{c|r|}
+\Qgram{q} type & Memory Allocated in MB\\
 \hline
-Using sorted \Qgram{q}s & 340704000\\
-Using sorted \Qgram{q}s & 1811500000\\
+Using sorted \Qgram{q}s & \numprint{325}\\
+Using unsorted \Qgram{q}s & \numprint{1728}\\
 \end{tabular}
 \caption{Comparison of initial memory footprints in creation of score
 matrices
