@@ -2277,11 +2277,13 @@ factor remains to be investigated further.
 \end{figure}
 \section{Generating \Qgram{q}s}
 In order to test the efficiency of the \Qgram{q} list generation, the
-original workflow in MMseqs2 was replicated and tested against the new
-algorithm. This workflow, along with both variants of the new algorithm,
-with and without SIMD implementation, was measured in
-Figure~\ref{fig:genw5}, \ref{fig:genw6} and \ref{fig:genw7} for different
-seed weights.
+original workflow in MMseqs2 was reimplemented and tested using the
+algorithm presented in this thesis. There are two implementations of
+the algorithm, one using SIMD instructions for X86 processors and one
+which does not explicitely use such instructions.
+The running time for both implementtions, was measured for different
+different seed weights. Results are reported In
+Figures~\ref{fig:genw5}, \ref{fig:genw6} and \ref{fig:genw7}.
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/gen_w5.png}
@@ -2303,37 +2305,54 @@ different sensitivities using seed \numprint{11101101}}
 different sensitivities using seed \numprint{1111010101}}
 \label{fig:genw7}
 \end{figure}
-The tests showed that the new algorithm has generally a 10~\% to 15~\%
-performance loss compared to the MMseqs2 method. This is the overhead
-caused by the sorting and reshuffled of \Qgram{q}. The tradeoff is the low
-initial memory consumption, where only 340~MB of memory is consumed for the
-score matrices instead of 1.80~GB (see Table~\ref{tab:memdiff}).
+The figures show that the new algorithm has generally a 10~\% to 15~\%
+performance loss compared to the MMseqs2 method. This is likely due to
+the overhead caused by the sorting and the undoing of the sorting of
+\Qgram{q}s.
+
+\SKcomment{I doubt that the sorting is problematic, as you have to sort only
+once. Undoing the sorting has to be done for each generated \(q\)-mer, so this
+may be a problem. A point of future work would be to really measure the
+contribution of undoing the sorting. This could easily be done by only
+collecting the \(k\)-environments without processing them further. One version
+would apply the sorting, the other not. The difference would give the
+time for the sorting.}
+
+The positive effect of the new method is the low
+initial memory consumption of only 325~MB (used for the preprocessed
+score matrices), compared to \numprint{1728}~MB for the
+method using by MMseqs2 (see Table~\ref{tab:memdiff}).
 \begin{table}
 \begin{center}
-\begin{tabular}{c|r|}
-\Qgram{q} type & Memory Allocated in MB\\
+\begin{tabular}{l|r|}
+Method based on & Memory in MB\\
 \hline
-Using sorted \Qgram{q}s & \numprint{325}\\
-Using unsorted \Qgram{q}s & \numprint{1728}\\
+sorted \Qgram{q}s & \numprint{325}\\
+\Qgram{q}s & \numprint{1728}
 \end{tabular}
-\caption{Comparison of initial memory footprints in creation of score
-matrices
-between two approaches. Data collected using Intel
-V-Tune.\label{tab:memdiff}}
+\caption{Comparison of initial memory footprints for the score
+matrices constructed by the method using sorted \(q\)-grams and the
+method using \(q\)-grams.
+The data was collected using Intel V-Tune.\label{tab:memdiff}}
 \end{center}
 \end{table}
 On average, the
 program spends 18.2~ns to generate a \Qgram{5}, 18.3~ns to generate a
 \Qgram{6} and 20.1~ns to generate a \Qgram{7}. This shows that the
 \Qgram{q}
-generation scales generally well with \(q\), where an additional loop in
-creation of \Qgram{7} causing an increase of 10~\% in runtime. It could
-then
+generation scales generally well with \(q\), as an additional loop in
+the creation of \Qgram{7}s only causes an increase of 10~\% in runtime.
+It could then
 be reasoned that the generation of \Qgram{8} and \Qgram{9} may follow the
 same
 trend, which coupled with the new approach in estimating threshold could
 lead to
 an expansion of seed weight (see Section~\ref{section:expand}).
+
+\SKcomment{The problem with \(q>7\) is the fact that the number of
+possible \(q\)-grams becomes so large. But lets see. Maybe this is
+feasible with the appropriate threshold.}
+
 \section{General Performance}
 In this section, the overall runtime of the whole program is profiled to
 find hotspots and to figure the scalability of the system. The program will
