@@ -374,12 +374,27 @@ integers, where each integer encodes a different character of \(\Alpha\).
 That is, the alphabet will be interpreted mostly as an integer
 subset \([0,|\mathcal{A}|)\cap \Nats\).
 \section{Efficient enumeration of hash values}
-Since the database can be very large, a precise and efficient enumeration
-of
-hash values in every sequence position must be prioritized. In MMseqs2, at
-every residue,
-relevant characters based on the user-chosen spaced seed, which weight is
-denoted by \(q\), are individually
+Representing \Qgram{q}s as a sequence of characters is very costly, since it 
+takes \(O(q)\) operations to compare and they also demand \(O(q)\) space of 
+memory. Therefore, they are often firstly hashed to integer to be processed
+further. The standard hashing algorithm for \Qgram{q}s is called invertible 
+integer encoding, the characters are assigned a weight, which is expressed as 
+\(r^{q-1-i}\), where \(r\) is called the radix and \(i\) is the position of the 
+character in the \Qgram{q}.
+
+Since the weight of every character must be unique in every position in the
+\Qgram{q}, the radix must be large enough to discern every character in
+the alphabet and usually assigned as the alphabet size itself
+(\(r=|\Alpha|\)).
+The calculation of a hash value from a \Qgram{q} \(w\) could then be
+expressed as follows:
+\begin{align}
+H(w) = \sum_{i=0}^{q-1}r^{q-1-i}w[i]\label{DefineHfunction}
+\end{align}
+where \(w\in\Alpha^q\) and \(w[i]\) is the \(i\)-th character in \(w\).
+
+In MMseqs2, at every residue, relevant characters based on the user-chosen 
+spaced seed, which weight is denoted by \(q\), are individually
 extracted from the target sequence to create \Qgram{q}s and then process
 these \Qgram{q}s as independent strings. This approach requires to compute
 a hash value for each \Qgram{q} using \(O(q)\) time.For a sequence of
@@ -410,22 +425,19 @@ Algorithm~\ref{code:mmseqshash}.
 \State return \(\HashValVec\)
 \end{algorithmic}
 \end{algorithm}
-In order to optimize this process, a recursive hashing
-algorithm~\cite{cohen1997recursive} could be implemented, where the spaced
-seeds
-are considered as a shifting hash window. To gather the next hash value,
-the
-window can be shifted by one, resulting in the removal and addition of old
-and
+
+Since the database can be very large, a precise and efficient enumeration
+of hash values in every sequence position must be prioritized. In order to 
+optimize this process, a recursive hashing algorithm~\cite{cohen1997recursive} 
+could be implemented, where the spaced seeds are considered as a shifting hash 
+window. To gather the next hash value, the window can be shifted by one, 
+resulting in the removal and addition of old and
 new characters respectively, which are both determined by the spaced seed.
-If
-the spaced seed can be maximally divided into \(b\) blocks of consecutive
-1s,
-the \(b\) old characters can be characterized as the start of each block,
-and
-the new character respectively as the character directly after the end of
-the
-block. This schema is visualized in Figure~\ref{fig:recursive}.
+If the spaced seed can be maximally divided into \(b\) blocks of consecutive
+1s, the \(b\) old characters can be characterized as the start of each block,
+and the new character respectively as the character directly after the end of
+the block. This schema is visualized in Figure~\ref{fig:recursive}.
+
 \SKcomment{I assume that you have defined a block as a maximum sequence of
 1-bits of a spaced seed. But then the new character directly after the end
 of the block would correspond to a 0 bit in the spaced seed, i.e.\ it is
@@ -457,36 +469,14 @@ mean incremental/recursive hash functions?}
 functions. I fixed it by rewording the section, naming recursive hash
 function
 at beginning of paragraph.}
-Assuming the removal and addition operations on characters are of constant
-time
-complexity, the algorithm would run in \(O(nb)\) time, where \(b\) is the
-number
-of consecutive \Qgram{q} blocks. The simplest case of the algorithm, where
-the
-spaced seed itself is a consecutive \Qgram{q} (\(b=1\)), is called
-invertible
-integer hashing~\cite{gsa}, and it employs two fundamental equations.
-In order to achieve independence between hash values, the characters are
-usually
-assigned a weight, which might be expressed as \(r^{q-1-i}\), where \(r\)
-is
-called the radix
-and \(i\) is the position of the character in the
-\Qgram{q}.
-Since the weight of every character must be unique in every position in the
-\Qgram{q}, the radix must be large enough to discern every character in
-the alphabet and usually assigned as the alphabet size itself
-(\(r=|\Alpha|\)).
-The calculation of a hash value from a \Qgram{q} \(w\) could then be
-expressed
-as follows:
-\begin{align}
-H(w) = \sum_{i=0}^{q-1}r^{q-1-i}w[i]\label{DefineHfunction}
-\end{align}
-where $w$ is a \Qgram{q} and \(w[i]\) is the \(i\)-th character in \(w\).
+
+The algorithm for the simplest case, where the spaced seed is a single block of 
+1s, also \(b=1\), can be described as follows:
+
 As a base case of the recursive algorithm, the hash value for the
 first \Qgram{q} of the sequence is computed in \(O(k)\) time by evaluating
 the sum defined in Equation~\ref{DefineHfunction}.
+
 Provided we have calculated the hash value of the previous \Qgram{q}
 \(ax\), where \(a\) is a character and \(x\) is a \Qgram{q-1}.
 Then the hash value
@@ -525,8 +515,9 @@ The pseudocode for this schema is outlined in Algorithm \ref{code:invint}.
 \State return \(\HashValVec\)
 \end{algorithmic}
 \end{algorithm}
+
 In order to extend the schema to allow for spaced seeds, one could divide
-the seed into shorter blocks of 1s, intertwined by blocks of
+the seed into shorter blocks of consecutive 1s, intertwined by blocks of
 \SKcomment{Please do not use the notion of \(q\)-grams here, as, in
 general, the
 blocks are different length and only the sum of the length of the blocks is
@@ -545,7 +536,7 @@ add a
 Figure here to illustrate the change in each hash
 block. Also, would it be better to work with a specific example? Since the
 wording to be general seems awkward in my opinion.}
-For each non-beginning position, the algorithm will have to process \(n\)
+For each non-beginning position, the algorithm will have to process \(b\)
 blocks,
 each could be assumed to take constant processing time. Therefore the
 complexity
@@ -2025,22 +2016,96 @@ Table~\ref{tab:datasets}. The scoring function used in testing is the
 BLOSUM62
 score matrix.
 \section{Processing target sequences}
-Testing from Figure~\ref{fig:target_hashing} showed that the direct
+Since the normal test datasets are too small to see the difference in 
+performance between the hashing approaches, tests were carried out on randomly 
+generated dataset consisting of \numprint{50000000} sequence characters. The
+results from Figure~\ref{fig:target_hashing} showed that the direct
 extraction of \Qgram{q}s generally has a better run time, as expected from
 Table~\ref{tab:seeds}. Even the hashing using seed \numprint{111011}, which
-was
-predicted to have performance speedup, failed to show improvement. The
-reason
-could be repeated lookup of character to remove/add causing cache-miss,
-slowing
-the computation.
+was predicted to have performance speedup, failed to show improvement. The
+reason could be repeated lookup of character to remove/add causing cache-miss,
+slowing the computation.
+
 \begin{figure}[t]
 \begin{center}
 \includegraphics[scale=0.45]{graphics/target_hashing.png}
 \end{center}
-\caption{Performance of two hashing functions}
+\caption{Performance of two hashing functions on randomly generated dataset of 
+\numprint{50000000} character with default MMseqs2 spaced seeds}
 \label{fig:target_hashing}
 \end{figure}
+
+To examine the asymptotic behavior of the two hashing algorithms, seeds of 
+weight 9 and 12 were further tested. For each seed weight \(q\), the number of 
+seed blocks ranges from \([1,\frac{q}{2})\). The generated seeds are 
+characterized in Table~\ref{tab:asymptoticseed9} and \ref{tab:asymptoticseed12}.
+The test results were summarized in Figure~\ref{fig:asymptoticseed9} and 
+\ref{fig:asymptoticseed12}.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{c|c|r|c|c|c}
+No & Seed & Span & Weight \(q\) & Number of & Speedup \\
+& & & & Blocks \(b\) & factor \\
+\hline
+1& \numprint{111111111} & 9 & 9 & 1 & 4.500 \\
+2& \numprint{1110111111} & 10 & 9 & 2 & 2.250\\
+3& \numprint{11101110111} & 11 & 9 & 3 & 1.500 \\
+4& \numprint{101101110111} & 12 & 9 & 4 & 1.125
+\end{tabular}
+\caption{Seeds of weight 9 used in testing asymptotic behavior with their span,
+weight, number of blocks and theoretical hashing speedup factor $\frac{q}{2b}$ 
+using recursive hashing\label{tab:asymptoticseed9}}
+\end{center}
+\end{table}
+
+\begin{figure}[t]
+\begin{center}
+\includegraphics[scale=0.45]{graphics/asymtotic9.png}
+\end{center}
+\caption{Performance of two hashing functions on randomly generated dataset of 
+\numprint{50000000} characters with seeds in Table~\ref{tab:asymptoticseed9}.}
+\label{fig:asymptoticseed9}
+\end{figure}   
+
+\begin{table}
+\begin{center}
+\begin{tabular}{c|c|r|c|c|c}
+No & Seed & Span & Weight \(q\) & Number of & Speedup \\
+& & & & Blocks \(b\) & factor \\
+\hline
+1& \numprint{111111111111} & 12 & 12 & 1 & 6.0 \\
+2& \numprint{1111110111111} & 13 & 12 & 2 & 3.0\\
+3& \numprint{11101110111111} & 14 & 12 & 3 & 2.0 \\
+4& \numprint{111011101110111} & 15 & 12 & 4 & 1.5\\
+5& \numprint{1111011011011011} & 16 & 12 & 5 & 1.2\\
+6& \numprint{101011011011101101} & 17 & 12 & 6 & 1.0
+\end{tabular}
+\caption{Seeds of weight 12 used in testing asymptotic behavior with their span,
+weight, number of blocks and theoretical hashing speedup factor $\frac{q}{2b}$ 
+using recursive hashing\label{tab:asymptoticseed12}}
+\end{center}
+\end{table}
+
+\begin{figure}[t]
+\begin{center}
+\includegraphics[scale=0.45]{graphics/asymtotic12.png}
+\end{center}
+\caption{Performance of two hashing functions on randomly generated dataset of 
+\numprint{50000000} characters with seeds in Table~\ref{tab:asymptoticseed12}.}
+\label{fig:asymptoticseed12}
+\end{figure}
+
+The asymtotic test shows that even with seeds of weight 9, the recursive hashing
+algorithm only performs better when the seed has 1 or 2 blocks. In the case of 
+seeds of weight 12, the hashing algorithm performs better than the normal 
+approach. This signals that recursive hashing does asymtotically have a better 
+run time, but with the caveat that better performance only occurs in the case 
+where the seed weight is larger than twice the number of blocks 
+\(q > 2b\), along with the fact that it's harder to implement and only offer 
+marginal increase in performance, might mean that the normal hashing approach is
+still the better general approach in hash value enumeration.
+
 \section{Determining threshold}
 Both of the approaches, context-free and context-sensitive, were tested
 with the
