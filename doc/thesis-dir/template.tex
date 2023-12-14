@@ -1547,8 +1547,8 @@ is referenced in the scoring function. The alphabet provides a rank function
 to encode each of its characters as a unique integer.}
 
 Internally, the spaced seed is initially represented as a 64-bit constant, which
-during computation will be transcoded into a bitset. To simplify the 
-computation, the spaced seeds are defined to both start and end with 1 and 
+during computation will be transcoded into a bitset. To simplify the
+computation, the spaced seeds are defined to both start and end with 1 and
 therefore, the span of the seed can then be computed
 according to the position of the first {1 in} the bitset and also the seed
 weight \(q\) is the number of 1 bits.
@@ -1581,7 +1581,7 @@ makes heavy use of Metaprogramming and is based on the following
 seven main classes:}
 
 \begin{enumerate}
-\item An index table of \Qgram{q}s/sorted \Qgram{q}s which enumerates 
+\item An index table of \Qgram{q}s/sorted \Qgram{q}s which enumerates
 \Qgram{q}s/sorted \Qgram{q}s sequentially.
 \item A sorted \Qgram{q} encoder creates a table to help linearly encode
 sorted \Qgram{q}s using Algorithm~\ref{code:linearEncodingTable}.
@@ -1597,12 +1597,12 @@ are created:
 sequences are processed.}
 
 \begin{enumerate}
-\item A reader where the preprocessing for recursive hashing algorithm occurs. 
-Based on the chosen spaced seed it computes the start and end of blocks of 1s, 
+\item A reader where the preprocessing for recursive hashing algorithm occurs.
+Based on the chosen spaced seed it computes the start and end of blocks of 1s,
 and the custom positional ranks based on Algorithm~\ref{code:hashblock}.
-\item A reader that directly computes hash values based on the MMseqs2 method 
+\item A reader that directly computes hash values based on the MMseqs2 method
 based on Algorithm~\ref{code:mmseqshash}. Additionally, it is also equipped with
-an implementation of insertion sort to sort and hash sequence data to provide 
+an implementation of insertion sort to sort and hash sequence data to provide
 encodings of sorted \Qgram{q}s.
 \end{enumerate}
 
@@ -1624,10 +1624,10 @@ should be introduced before. How is this represented in your code?}
 data.
 \item A score matrix to cache all scores between sorted \Qgram{q}s and
 unsorted \Qgram{q}s.
-\item An environment constructor gets encoding of sorted \Qgram{q}s and uses 
+\item An environment constructor gets encoding of sorted \Qgram{q}s and uses
 them to call individual scores from the score
 matrices and generates a Cartesian product from the environments.
-\item A matcher class takes the hashed data from target and query sequences and 
+\item A matcher class takes the hashed data from target and query sequences and
 creates matches.
 \end{enumerate}
 
@@ -1638,13 +1638,13 @@ sorted q-gram and is not dependent on the query seed reader.}
 \SKcomment{Why do you need to cache scores between sorted \Qgram{q}s and
 unsorted \Qgram{q}s. Or do you mean for pairs of sorted \(q\)-qgrams and
 for pairs of unsorted \(q\)-qgrams?}
-\AVTcomment{I mean the score table \(\Scoretable{q}{u}\) for all \(u\) that is 
+\AVTcomment{I mean the score table \(\Scoretable{q}{u}\) for all \(u\) that is
 sorted \Qgram{q}}
 
 \SKcomment{As remarked earlier, the Query reader must also apply a
 recursive hashing function. This comes before the sorting I guess.}
 \AVTcomment{I did not use recursive hashing for query processing since it needs
-sorting the extracted \Qgram{q}s. Anyway I changed the classification to basing 
+sorting the extracted \Qgram{q}s. Anyway I changed the classification to basing
 on hashing algorithm}
 
 \SKcomment{Blocks of short segments is redundant. Blocks would suffice.
@@ -1654,7 +1654,7 @@ segment becomes relevant. That is, a segment consists of all matching seeds
 for the same pair of target/query sequence.}
 
 In Figure~\ref{fig:classes}, the relationship and dependency between the
-classes are outlined. 
+classes are outlined.
 
 Since the implementation of the recursive hashing of
 target sequences is straightforward and does not diverge much from the
@@ -1694,13 +1694,13 @@ In Figure~\ref{fig:classes}, some classes only depend on compile-time variables,
 and therefore they can be evaluated at compile time.
 
 Since spaced seeds are available at compile time as numeric constants, and their
-conversion to bitset is also possible through \(\texttt{std::bitset}\), their 
+conversion to bitset is also possible through \(\texttt{std::bitset}\), their
 information containing span, weight and number of blocks can be predetermined.
 
-The two index tables for sorted/unsorted \Qgram{2}s/\Qgram{3}s are based solely 
-on the scoring function and therefore, can be fully precomputed. Since the 
-linear encoding table LE (see Algorithm~\ref{code:linearEncodingTable}) depends 
-only on the index tables of sorted \Qgram{q}s and the scoring function, it also 
+The two index tables for sorted/unsorted \Qgram{2}s/\Qgram{3}s are based solely
+on the scoring function and therefore, can be fully precomputed. Since the
+linear encoding table LE (see Algorithm~\ref{code:linearEncodingTable}) depends
+only on the index tables of sorted \Qgram{q}s and the scoring function, it also
 can be evaluated at compilation.
 
 \SKcomment{How do you sort at compile time? Possibly std::sort can sort
@@ -1711,31 +1711,31 @@ description of the implementation.}
 
 \section{Run time computation}
 At runtime, at first the target and query database gets encoded using the
-transformer function. In this step, the character distribution from target 
-sequences are also collected to estimate a threshold for the \(k\)-environment. 
-Using the recursive hashing seed reader, the target 
+transformer function. In this step, the character distribution from target
+sequences are also collected to estimate a threshold for the \(k\)-environment.
+Using the recursive hashing seed reader, the target
 sequences are then hashed in \(O(nb)\) time and the hashes are packaged as
 byte units and saved in a dynamically-sized contiguous container (i.e.\ vector).
 
 Thereafter, an appropriate threshold is evaluated
-using the character distribution from the target sequences and an user-provided 
-sensitivity. 
+using the character distribution from the target sequences and an user-provided
+sensitivity.
 
-In the processing of query sequences, based on the chosen spaced seed, the 
+In the processing of query sequences, based on the chosen spaced seed, the
 \Qgram{2} and \Qgram{3} score matrices are evaluated using the index tables
 
 \SKcomment{Why are the \Qgram{2} and \Qgram{3} matrices \underline{evaluated}?
 They have been computed at compile time, i.e.\ for each \(2\)-gram and
 \(3\)-gram \(u\) one can enumerate \(2/3\)-gram/score-pairs \((v,\sigma(u,v))\)
 in sorted order.}
-\AVTcomment{They are not computed in compile time, please see 
+\AVTcomment{They are not computed in compile time, please see
 Section~\ref{section:scorematrix}}
 
 from sorted and unsorted \Qgram{q}s according to
-Equation~\ref{equation:sequenceScore}. By utilizing the template system, we 
+Equation~\ref{equation:sequenceScore}. By utilizing the template system, we
 manage to avoid the computation of unnecessary score matrix, e.g in working with
-seed of weight 4, only the \Qgram{2} score matrix is created. The entry in the 
-score matrix is represented as a pair of score and unsorted \Qgram{q} code and 
+seed of weight 4, only the \Qgram{2} score matrix is created. The entry in the
+score matrix is represented as a pair of score and unsorted \Qgram{q} code and
 sorted after score value, resulting in the score tables \(\Scoretable{q}{u}\) as
 input data vectors for the \(k\)-enviroment construction stage.
 
@@ -1746,7 +1746,7 @@ defined for \(q\)-grams. So it applies to sorted \(q\)-grams as well.}
 can be stored and sorted? But that does not make sense since on below
 you explain how to determine the score-threshold. I am lost.}
 
-Using the score matrices and the threshold, the program enters the step of 
+Using the score matrices and the threshold, the program enters the step of
 \Qgram{q} generation using the Cartesian product.
 
 \subsection{Local composition bias correction}
