@@ -1709,7 +1709,7 @@ stored, one can only guess. But such details are neceesary for the
 description of the implementation.}
 \AVTcomment{There is no sorting here, I hope this leads to less confusion.}
 
-\section{Run time computation}
+\section{Runtime computation}
 At runtime, at first the target and query database gets encoded using the
 transformer function. In this step, the character distribution from target
 sequences are also collected to estimate a threshold for the \(k\)-environment.
@@ -2248,7 +2248,7 @@ of each method is investigated further in Figure~\ref{fig:sens_runtime}:
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/speed_threshold.png}
-\caption{Run time comparison of context-free vs.\ context-sensitive
+\caption{Runtime comparison of context-free vs.\ context-sensitive
 approach}
 \label{fig:sens_runtime}
 \end{figure}
@@ -2358,48 +2358,49 @@ lead to
 an expansion of seed weight (see Section~\ref{section:expand}).
 
 \SKcomment{The problem with \(q>7\) is the fact that the number of
-possible \(q\)-grams becomes so large. But lets see. Maybe this is
+possible \(q\)-grams becomes so large. So if we would construct the
+same number of \(q\)-grams in about the same runtime, it would be a much
+smaller fraction of the entire search space. But lets see. Maybe this is
 feasible with the appropriate threshold.}
 
 \section{General Performance}
-In this section, the overall runtime of the whole program is profiled to
-find hotspots and to figure the scalability of the system. The program will
+In this section, the whole program is profiled to
+identify those parts which take up most of the runtime and to get an idea
+of the scalability of the system. The program will
 be run with the most optimized settings, meaning context-free threshold
-approximation and \Qgram{q} generation using sorted method. In Figure, the
-recorded time in each step of the program is visualized.
+approximation and \Qgram{q} generation using sorted \(q\)-grams.
+In Figure, the recorded time in each step of the program is visualized.
+
+\SKcomment{Add reference to figure in previous sentence.}
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/program_w6.png}
-\caption{Run time of different phases in the program, measured in
-miliseconds,
-using seed \numprint{11101101}, sensitivity 10, 100 and \numprint{1000}}
+\caption{Runtime in ms of different phases of the program
+using seed~\numprint{11101101}, sensitivity 10, 100 and \numprint{1000}}
 \label{fig:program_w6}
 \end{figure}
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/program_w7.png}
-\caption{Run time of different phases in the program, measured in
-miliseconds,
+\caption{Runtime in ms of different phases in the program,
 using seed \numprint{1111010101}, sensitivity 10, 100 and \numprint{1000}}
 \label{fig:program_w7}
 \end{figure}
-The test showed that the runtime of processing target data is generally
-negligible. The processing of match data could be more significant,
-reaching
-0.4~s in testing but still scales much better than \Qgram{q} generation
-phase.
-This means that the hotspot of the program lies in the \Qgram{q} generation
-phase, specifically in the Cartesian product formation and in lesser
-manner,
-the radix sort of \Qgram{q} data. In the most heavy measurement, the
-\Qgram{q}
-generation phase still takes 1.5~-~2 times as long as the sorting after,
-see
-Figure~\ref{fig:hotspot_w6} and \ref{fig:hotspot_w7}.
+The test shows that the runtime of processing the target sequences is very small
+compared to the rest of the runtime. There is only a little increase for the
+running time of this phase when switching from the seed \numprint{11101101}
+of weight 6 to the seed \numprint{1111010101} of weight 7.
+The merging step takes up to 400~ms, but scales well for an increasing
+sensitivity value. It is evident that the processing of the query sequences
+dominates the runtime of the program for sensitivity \(\geq 100\).
+When looking at the two phases of the query processing,
+see Figures~\ref{fig:hotspot_w6} and \ref{fig:hotspot_w7}, constructing and
+storing \(q\)-grams takes at least twice as much time
+as their sorting using radix sort.
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/hotspot_w6.png}
-\caption{Run time of \Qgram{q} generation and radix sort, measured in
+\caption{Runtime of \Qgram{q} generation and radix sort, measured in
 miliseconds,
 using seed \numprint{11101101}, sensitivity 10, 100 and \numprint{1000}}
 \label{fig:hotspot_w6}
@@ -2407,7 +2408,7 @@ using seed \numprint{11101101}, sensitivity 10, 100 and \numprint{1000}}
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/hotspot_w7.png}
-\caption{Run time of \Qgram{q} generation and radix sort, measured in
+\caption{Runtime of \Qgram{q} generation and radix sort, measured in
 miliseconds,
 using seed \numprint{1111010101}, sensitivity 10, 100 and \numprint{1000}}
 \label{fig:hotspot_w7}
@@ -2420,7 +2421,7 @@ is compared to MMseqs2 in Figure~\ref{fig:mmseqs2comp}.
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/mmseqs2comp.png}
-\caption{Run time of the program using both sorted and unsorted \Qgram{q}s,
+\caption{Runtime of the program using both sorted and unsorted \Qgram{q}s,
 measured in ms, is compared to MMseqs2, in generation of 10, 100 and 1000
 \Qgram{q} per sequence position}
 \label{fig:mmseqs2comp}
