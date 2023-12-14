@@ -1529,9 +1529,50 @@ a name to refer to each approach in Result section. Can you recommend me how to
 call them?}
 
 \Chapter{Implementation and Design}
+\section{Input}
+At compile time, the program takes in a scoring function, which in the
+context of protein sequences could be a BLOSUM or PAM matrix, a spaced seed
+and a recursive hashing function.
+
+The scoring function consists of a matrix
+of scores for each pair of characters from a given alphabet. This alphabet
+is referenced in the scoring function. The alphabet provides a rank function
+to encode each of its characters as a unique integer.
+
+\SKcomment{You cannot descibe an assumption using the word 'should'. Also
+put the information in appropriate order. So just write:
+The scoring function consists of a matrix
+of scores for each pair of characters from a given alphabet. This alphabet
+is referenced in the scoring function. The alphabet provides a rank function
+to encode each of its characters as a unique integer.}
+
+Internally, the spaced seed is initially represented as a 64-bit constant, which
+during computation will be transcoded into a bitset. To simplify the 
+computation, the spaced seeds are defined to both start and end with 1 and 
+therefore, the span of the seed can then be computed
+according to the position of the first {1 in} the bitset and also the seed
+weight \(q\) is the number of 1 bits.
+
+\SKcomment{In the table in which you show the spaced seeds used, you do not
+show the leading and trailing zeros. But if you represent a spaced seed as a
+constant, you have to have some convention. The most promiment is:
+All spaced seed begin with a 1 and end with a 1. This would allow to reprent
+the spaced seed anywhere in a 64-bit unsigned integer. But you likely represent
+the spaced seed right aligned. This means that the span is defined by
+the position of the most signicant 1 bit.}
+
+At runtime the program takes in two set of sequences in FASTA format.
+Any data error, for example empty file or corrupt data format will
+automatically lead to termination of the program and an error message will
+be logged~\cite{gttl}. Additionally, the sensitivity of the program can be
+adjusted as a command line argument.
+
 \section{Design overview}
 
-The program consists of seven main classes:
+The methods described above were implemented in a program called SMMseqs.
+The implementation in C++ follows an object-oriented approach and
+makes heavy use of Metaprogramming and is based on the following
+nine main classes:
 
 \SKcomment{Which program? Invent a name, say SuperMMseqs, and then start as
 follows: Most of the methods described above where implemented in a program
@@ -1540,9 +1581,15 @@ makes heavy use of Metaprogramming and is based on the following
 seven main classes:}
 
 \begin{enumerate}
+\item An index table of \Qgram{q}s/sorted \Qgram{q}s which enumerates 
+\Qgram{q}s/sorted \Qgram{q}s sequentially.
+\item A sorted \Qgram{q} encoder creates a table to help linearly encode
+sorted \Qgram{q}s using Algorithm~\ref{code:linearEncodingTable}.
 \item A seed reader to convert a spaced seed specification into a binary
 representation and to compute the span and weight of the spaced seed.
-To further process seeds, two variants are created:
+Based on the implemented sequence hashing algorithm, two variants of the
+class
+are created:
 
 \SKcomment{Variants of what?}
 
@@ -1550,19 +1597,19 @@ To further process seeds, two variants are created:
 sequences are processed.}
 
 \begin{enumerate}
-\item Target reader divides seeds into blocks of shorter \Qgram{q}s as
-input for recursive hashing function.
-
-\item Query reader divides seeds into blocks of short segments, sorts query
-sequences and uses sorted \Qgram{q} encoder to linearly encode the
-resulted sorted \Qgram{q}s.
+\item A reader where the preprocessing for recursive hashing algorithm occurs. 
+Based on the chosen spaced seed it computes the start and end of blocks of 1s, 
+and the custom positional ranks based on Algorithm~\ref{code:hashblock}.
+\item A reader that directly computes hash values based on the MMseqs2 method 
+based on Algorithm~\ref{code:mmseqshash}. Additionally, it is also equipped with
+an implementation of insertion sort to sort and hash sequence data to provide 
+encodings of sorted \Qgram{q}s.
 \end{enumerate}
 
 \SKcomment{The reader do not divide anything. They only extract \(q\)
 characters from the input sequences at positions specified by the space seed.}
 
-\item A recursive hash engine to collect every \Qgram{q} hashes from
-target sequences and package them.
+\item A recursive hash engine to collect \Qgram{q} hash from sequences.
 
 \SKcomment{The verb packages has not been used before. If you write 'every'
 you cannot use 'hashes'. Please be more precise and consistent in your wording.}
@@ -1573,15 +1620,15 @@ given scoring function and \(q\).
 it does not make sense to only introduce it here. Also the scoring function
 should be introduced before. How is this represented in your code?}
 
-\item Sorted \Qgram{q} encoder creates a table to help linearly encode
-sorted \Qgram{q}s.
 \item A class to approximate an appropriate threshold given target sequence
 data.
 \item A score matrix to cache all scores between sorted \Qgram{q}s and
 unsorted \Qgram{q}s.
-\item An environment constructor gets sorted \Qgram{q} codes from the
-query seed reader, uses them to call individual scores from the score
+\item An environment constructor gets encoding of sorted \Qgram{q}s and uses 
+them to call individual scores from the score
 matrices and generates a Cartesian product from the environments.
+\item A matcher class takes the hashed data from target and query sequences and 
+creates matches.
 \end{enumerate}
 
 \SKcomment{Unclear what 'call individual scores from the score matrices'.
@@ -1591,9 +1638,14 @@ sorted q-gram and is not dependent on the query seed reader.}
 \SKcomment{Why do you need to cache scores between sorted \Qgram{q}s and
 unsorted \Qgram{q}s. Or do you mean for pairs of sorted \(q\)-qgrams and
 for pairs of unsorted \(q\)-qgrams?}
+\AVTcomment{I mean the score table \(\Scoretable{q}{u}\) for all \(u\) that is 
+sorted \Qgram{q}}
 
 \SKcomment{As remarked earlier, the Query reader must also apply a
 recursive hashing function. This comes before the sorting I guess.}
+\AVTcomment{I did not use recursive hashing for query processing since it needs
+sorting the extracted \Qgram{q}s. Anyway I changed the classification to basing 
+on hashing algorithm}
 
 \SKcomment{Blocks of short segments is redundant. Blocks would suffice.
 Do not use the notion of segments here. When you later consider
@@ -1601,8 +1653,10 @@ sorted matching seeds of two seqnum/position pairs, then the notion of
 segment becomes relevant. That is, a segment consists of all matching seeds
 for the same pair of target/query sequence.}
 
-In Figure~\ref{fig:classes}, the relationship and dataflow between the
-classes are outlined. Since the implementation of the recursive hashing of
+In Figure~\ref{fig:classes}, the relationship and dependency between the
+classes are outlined. 
+
+Since the implementation of the recursive hashing of
 target sequences is straightforward and does not diverge much from the
 pseudocode, the section below focuses mainly on the processing of query
 sequences.
@@ -1615,7 +1669,7 @@ the public instance variables and methods. This does not necessariy coincide
 with the data flow. Accordung to your version you mix relation ships
 (class B knows class A) and dataflow. But all edges could also represent
 the data flow. Does it coincide with the class dependencies?}
-
+\AVTcomment{I think dependency is a better word. I've changed accordingly.}
 \SKcomment{I assume that the ellipses represent input data
 and the edge going out from ellipses represent the data flow. If this is
 correct you need to add a second directed edge from target sequence to
@@ -1623,6 +1677,7 @@ threshold estimator.}
 \SKcomment{Please specify what a rhombus means and a rectangle means. Likely
 intediat data and result data. But there is no class which joins the target
 hash data and the query environments to obtain match data.}
+\AVTcomment{I'm adding legend to the figure.}
 \SKcomment{Why use 'hash' in 'target hash data' but not in 'query data'? After
 all, the elements delivered by the environment constructor re hashed as well.}
 
@@ -1634,111 +1689,65 @@ all, the elements delivered by the environment constructor re hashed as well.}
 \label{fig:classes}
 \end{figure}
 
-
-\section{Input}
-At compile time, the program takes in a scoring function, which in the
-context of protein sequences could be a BLOSUM or PAM matrix, a spaced seed
-and a recursive hashing function. The scoring function should detail the
-
-\SKcomment{You cannot descibe an assumption using the word 'should'. Also
-put the information in appropriate order. So just write:
-The scoring function consists of a matrix
-of scores for each pair of characters from a given alphabet. This alphabet
-is referenced in the scoring function. The alphabet provides a rank function
-to encode each of its characters as a unique integer.}
-
-relevant alphabet, the transformer function, which encodes every character
-in the alphabet to its corresponding rank, and a matrix of scores between
-every pairs of characters. Internally, the spaced seed is initially
-represented as a numeric constant,
-
-\SKcomment{constant of which type?}
-
-\SKcomment{In the table in which you show the spaced seeds used, you do not
-show the leading and trailing zeros. But if you represent a spaced seed as a
-constant, you have to have some convention. The most promiment is:
-All spaced seed begin with a 1 and end with a 1. This would allow to reprent
-the spaced seed anywhere in a 64-bit unsigned integer. But you likely represent
-the spaced seed right aligned. This means that the span is defined by
-the position of the most signicant 1 bit.}
-
-which during computation will be
-transcoded into a bitset. The span of the seed can then be computed
-according to the position of the first {1 in} the bitset and also the seed
-weight \(q\) is the number of 1 bits.
-
-At runtime the program takes in two set of sequences in FASTA format.
-Any data error, for example empty file or corrupt data format will
-automatically lead to termination of the program and an error message will
-be logged~\cite{gttl}. Additionally, the sensitivity of the program can be
-adjusted as a command line argument.
-
 \section{Compile time computation}
-Figure~\ref{fig:classes} shows that some classes/tables can be evaluated at
-compile time.
+In Figure~\ref{fig:classes}, some classes only depend on compile-time variables,
+and therefore they can be evaluated at compile time.
 
-\SKcomment{How can I derive this from figure~\ref{fig:classes}?}
+Since spaced seeds are available at compile time as numeric constants, and their
+conversion to bitset is also possible through \(\texttt{std::bitset}\), their 
+information containing span, weight and number of blocks can be predetermined.
 
-Each seed gets transcoded and its weight and span can be
-
-\SKcomment{What is transcoded? Previously you mentioned binary encoded.
-Likely you mean the same.}
-
-precomputed and therefore, the two seed readers and their schematics can be
-
-\SKcomment{What is the schematiasc of a seed reader?}
-
-predetermined. The two index tables for sorted/unsorted 2-grams/3-grams
-take in only scoring function as parameter and therefore, can be complete be
-computed at compile time. Since the linear encoding table LE (see
-Algorithm~\ref{code:linearEncodingTable}) is based solely on the sorted
-2-grams/3-grams index table, it also can be evaluated at compilation.
+The two index tables for sorted/unsorted \Qgram{2}s/\Qgram{3}s are based solely 
+on the scoring function and therefore, can be fully precomputed. Since the 
+linear encoding table LE (see Algorithm~\ref{code:linearEncodingTable}) depends 
+only on the index tables of sorted \Qgram{q}s and the scoring function, it also 
+can be evaluated at compilation.
 
 \SKcomment{How do you sort at compile time? Possibly std::sort can sort
 a std::array at compile time, but as you do not specify how the tables are
 stored, one can only guess. But such details are neceesary for the
 description of the implementation.}
-
-\SKcomment{The index table do not take in
-the scoring function. They are based on the scoring function. Please be more
-precise.}
+\AVTcomment{There is no sorting here, I hope this leads to less confusion.}
 
 \section{Run time computation}
 At runtime, at first the target and query database gets encoded using the
-transformer function. Using the target seed reader, the target sequences
-are then hashed in \(O(nb)\) time and the hashes are packaged as
-byte units and saved in a contiguous container (i.e.\ array or vector).
+transformer function. In this step, the character distribution from target 
+sequences are also collected to estimate a threshold for the \(k\)-environment. 
+Using the recursive hashing seed reader, the target 
+sequences are then hashed in \(O(nb)\) time and the hashes are packaged as
+byte units and saved in a dynamically-sized contiguous container (i.e.\ vector).
 
-\SKcomment{It must be a vector, as for an array you would need its size
-at compile time.}
-In the processing of query sequences, firstly the \Qgram{2} and \Qgram{3}
-score matrices \(\Scoretablename\) can be evaluated using the index tables
+Thereafter, an appropriate threshold is evaluated
+using the character distribution from the target sequences and an user-provided 
+sensitivity. 
 
-\SKcomment{Please do not write 'can be evaluated'. Use 'are evaluated'}
+In the processing of query sequences, based on the chosen spaced seed, the 
+\Qgram{2} and \Qgram{3} score matrices are evaluated using the index tables
 
 \SKcomment{Why are the \Qgram{2} and \Qgram{3} matrices \underline{evaluated}?
 They have been computed at compile time, i.e.\ for each \(2\)-gram and
 \(3\)-gram \(u\) one can enumerate \(2/3\)-gram/score-pairs \((v,\sigma(u,v))\)
 in sorted order.}
+\AVTcomment{They are not computed in compile time, please see 
+Section~\ref{section:scorematrix}}
 
 from sorted and unsorted \Qgram{q}s according to
-Equation~\ref{equation:sequenceScore}.
+Equation~\ref{equation:sequenceScore}. By utilizing the template system, we 
+manage to avoid the computation of unnecessary score matrix, e.g in working with
+seed of weight 4, only the \Qgram{2} score matrix is created. The entry in the 
+score matrix is represented as a pair of score and unsorted \Qgram{q} code and 
+sorted after score value, resulting in the score tables \(\Scoretable{q}{u}\) as
+input data vectors for the \(k\)-enviroment construction stage.
 
 \SKcomment{Why from sorted to unsorted \(q\)-grams? The evaluation was
 defined for \(q\)-grams. So it applies to sorted \(q\)-grams as well.}
-
-The result then can then be stored
-as a pair of score and unsorted \Qgram{q} code and sorted after score
-value for further use.
 
 \SKcomment{So you mean the \(k\)-environment for a single \(q\)-gram
 can be stored and sorted? But that does not make sense since on below
 you explain how to determine the score-threshold. I am lost.}
 
-Thereafter, an appropriate threshold is evaluated
-using the target sequences and an user-provided sensitivity. Using the
-score matrices and the threshold, the program enters the step of \Qgram{q}
-generation using the Cartesian product.
+Using the score matrices and the threshold, the program enters the step of 
+\Qgram{q} generation using the Cartesian product.
 
 \subsection{Local composition bias correction}
 MMseqs2 employs a mechanism to evaluate the positional
@@ -1767,7 +1776,11 @@ and \(f(a)\) is the background frequency of residue \(a\).
 \(i+d\leq |u|-1\) must hold. You define it later, but it should be mentioned
 here (which I did.)}
 
-The minuend is a representation of
+The expression
+\(\sum_{a\in \Alpha}f(a)\sigma(a,\Subchar{u}{i})\) is
+the expected score resulting from the
+background distribution of the amino acids. For each \(b\in\Alpha\) one can
+precompute \(\sum_{a\in \Alpha}f(a)\sigma(a,b)\) given \(f\).
 
 \SKcomment{I do not like the notion of minuend, as to me it is not clear what
 it means. From the context one can deduce that it is
@@ -1777,7 +1790,7 @@ the expected score resulting from the
 background distribution of the amino acids. For each \(b\in\Alpha\) one can
 precompute \(\sum_{a\in \Alpha}f(a)\sigma(a,b)\) given \(f\).}
 
-The subtrahend involves the current region in the query sequence and
+The second sum involves the current region in the query sequence and
 introduces a parameter \(d\) for the radius of the region, defined in
 MMseqs2 as a constant 20.
 
@@ -1989,21 +2002,16 @@ outlined in Algorithm~\ref{code:mergingdata}.
 
 The merging process results in a vector of matches, represented again as
 byte units, containing respectively the sequence number of the match on the
-target, on the query, the diagonal number (difference between the target
-and query sequence position), and the query sequence position. These
+target, on the query, the diagonal number as the difference between the target
+and query sequence position, and the query sequence position. These
 quartets are again sorted with radix sort on the first three values: target
 sequence number, query sequence number and diagonal number. From these match
 data, only the diagonals where there are two or more matches are selected for
 the ungapped alignment stage.
 
-\SKcomment{You better mention that the matches are used for prefiltering:
-Only if a segment contains a diagonal with at least two matches, it is
-processed further with the ungapped alignment algorithm.}
-\AVTcomment{Fixed}
-
 \Chapter{Results}
 Separate modular benchmarks were carried out for the processing of target
-sequences, threshold estimation and similar \Qgram{q} generation.
+sequences, threshold estimation step and the \Qgram{q} generation stage.
 
 \SKcomment{What do you mean by similar \Qgram{q} generation? Is this the
 construction of the \(k\)-environments?}
