@@ -2494,17 +2494,35 @@ the seeds were generated.}
 \SKcomment{Unclear which Bug/missing feature you are referring to.}
 \section{Compile-time calculation of
 score matrices\label{section:scorematrix}}
-Even though the class diagram in Figure~\ref{fig:classes} shows that it's
+Even though the class diagram in Figure~\ref{fig:classes} shows that it is
 possible to compute the score matrix in compile time, since it only depends
 on the two index tables of sorted/unsorted \Qgram{q}s, the implementation
+
+\SKcomment{How can an implementation decide?}
+
 decides to create the table at runtime instead. The reason largely is due
 to the high memory stack size requirements and lack of compile time sorting
-algorithm. A manual compile time sorting implementation (i.e.\ quicksort)
-would again demand more compile time instances. A separate benchmark in
+algorithm.
+
+\SKcomment{There are ways of sorting at compile time, see e.g.\
+\url{https://stackoverflow.com/questions/32660523/c-calculate-and-sort-vector-at-compile-time}, but I think it is more a matter of efficient compile
+time sorting.}
+
+A manual compile time sorting implementation (i.e.\ quicksort)
+would again demand more compile time instances.
+
+\SKcomment{What do you mean by 'manual time sorting implementation'?}
+
+A separate benchmark in
 Figure~\ref{fig:scorematrix} showed that this could incur a 0.6~s loss in
 creating the sorted-unsorted \Qgram{3} score matrix or 3.3~s in creating
 the unsorted-unsorted \Qgram{3} score matrix at the start of the
 computation.
+
+\SKcomment{But you only need the sorted-sorted \(q\)-grams matrix. At least in
+a previous table you had compared the sizes of sorted/sorted score matrix
+with the unsorted-unsorted score matrix. So why would you consider
+the sorted-unsorted score matrix? Am I missing something?}
 \begin{figure}
 \centering
 \includegraphics[scale=0.7]{graphics/scorematrix.png}
