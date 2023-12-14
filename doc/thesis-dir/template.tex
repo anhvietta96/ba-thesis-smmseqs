@@ -2413,6 +2413,7 @@ miliseconds,
 using seed \numprint{1111010101}, sensitivity 10, 100 and \numprint{1000}}
 \label{fig:hotspot_w7}
 \end{figure}
+
 \Chapter{Discussion \& Future improvements}
 \section{Performance}
 The performance of the implementation using both sorted and unsorted
@@ -2426,9 +2427,19 @@ measured in ms, is compared to MMseqs2, in generation of 10, 100 and 1000
 \Qgram{q} per sequence position}
 \label{fig:mmseqs2comp}
 \end{figure}
+
+\SKcomment{Why do these results appear here and not in the results section?}
+
 Compared to the MMseqs2 program, the implementation using unsorted
 \Qgram{q}s
 shows generally worse performance, with ... more time taken. On the other
+
+\SKcomment{please add date for \ldots}
+
+\SKcomment{In previous experiment you showed that the method using
+sorted \(q\)-grams is slower than the method using \(q\)-grams. But here
+the result it different. Likely, I am missing something.}
+
 hand,
 the approach using sorted \Qgram{q}s achieves smaller runtime, especially
 in
@@ -2444,10 +2455,24 @@ these behaviors remains to be investigated.
 \section{Features}
 The new workflow was created with expandability in mind, therefore a lot of
 the calculation allows for greater seed size and even greater sub-\Qgram{q}
-size. A few of MMseqs2 features were also recreated, namely the ability to
+size. A few of MMseqs2 features were also reimplemented, namely the ability to
 scale local composition bias correction and sensitivity manually. The
 design of the program also prioritizes flexibility, in that every
-calculation option, ranging from MMseqs2 mode vs new sorted \Qgram{q}
+calculation option, ranging from MMseqs2 mode
+to new sorted \Qgram{q}
+
+\SKcomment{As far as I understand, MMseqs2 mode refers to the way to calculate
+\(k\) from a given sensitivity setting. But the new sorted \(q\)-gram
+mode refers to the way of first precomputing score tables for sorted
+\(q'\)-grams, using these to create sorted \(q\)-grams and finally undoing the
+sorting. So it is strange that you use
+'from MMseqs2 mode new sorted \(q\)-gram mode' in one sentence.
+I actually do not think that you need to mention the different variants
+of the implementation here. It would suffice to state:
+The program provides options to select one of three implemented methods to
+determine the score threshold \(k\) and one of the two methods to
+construct the \(k\)-environment.}
+
 method mode and both context-free and context-sensitive approach can be
 changed on-the-fly without recompilation.
 The program was intended to be a testing environment only, therefore custom
@@ -2457,7 +2482,16 @@ search.
 Earlier it was shown that the runtime of \Qgram{q} generation scales
 almost constantly to seed, therefore some testing was created to test for
 seeds of weight 8 and 9:
+
+\SKcomment{Unclear what you mean by 'scales almost constantly to seed'.
+You likely want to state: \ldots the average runtime for generating
+a \Qgram{q} of the \(k\)-environment hardly increases with an increasing
+weight of the seed. So some experiments using the weight 8 and 9 for
+the seeds were generated.}
+
 \AVTcomment{Waiting for BytesUnit fix}
+
+\SKcomment{Unclear which Bug/missing feature you are referring to.}
 \section{Compile-time calculation of
 score matrices\label{section:scorematrix}}
 Even though the class diagram in Figure~\ref{fig:classes} shows that it's
