@@ -325,7 +325,7 @@ searched one by one against the target set. For each spaced seed window in
 the query sequence (loop 2), a \Qgram{q} is extracted and a list of all
 similar \Qgram{q}s with a Blosum62 similarity above a threshold score is
 created using a linear-time branch-and-bound algorithm. Lower threshold
-scores result in higher average numbers of similar k-mers and thereby
+scores result in higher average numbers of similar q-grams and thereby
 higher sensitivity and lower speed. Each generated \Qgram{q} (loop 3) then
 gets queried against a precomputed database of \Qgram{q}s in target
 sequences. The sum of scores of the corresponding target sequences then
@@ -341,7 +341,8 @@ further.
 \end{figure}
 In MMseqs2, the prefiltering stage was reengineered (See
 Figure~\ref{fig:prefilterMMseqs2}). After the query-target matches are
-collected, they get sorted and iterated over to detect double k-mer matches
+collected, they get sorted and iterated over to detect double \(q\)-gram
+matches
 by comparing the current diagonal with the previously matched diagonal. If
 the previous and current diagonals agree, they both get stored as a double
 match for the ungapped alignment stage.
@@ -1257,7 +1258,7 @@ pairs of \(q\)-grams should be similar to the frequencies for sorted
 \SKcomment{Another possible point for a discussion: It should be possible
 to calculate the exact distribution of the scores using a DP-method: Assume
 integer scores. If one knows the distribution for all pairs of
-\((q-1)\)-mers, then one can compute the distribution for all pairs of
+\((q-1)\)-grams
 \(q\)-grams. This would be an interesting GSA-exercise. I have just
 added a Python-script \texttt{bin/pair\_score\_distrib.py}. Results look
 okay,
@@ -1851,8 +1852,8 @@ creating a \(q\)-gram involves applying the reverse of the sorting permutation
 and results into an element of the \(k\) environment.}
 
 \SKcomment{I actually do not see the point of merging the turning wheels code
-with the specific application of generating elements from the \
-\(k\)-mer environment. I would keep the abtract view which only requires
+with the specific application of generating elements from the
+\(k\)-environment. I would keep the abtract view which only requires
 to provide the sizes of each of the sets to construct the
 cartesian product from and an abstract function which is applied to the
 wheel.}
@@ -2319,7 +2320,7 @@ the overhead caused by the sorting and the undoing of the sorting of
 \Qgram{q}s.
 
 \SKcomment{I doubt that the sorting is problematic, as you have to sort only
-once. Undoing the sorting has to be done for each generated \(q\)-mer, so this
+once. Undoing the sorting has to be done for each generated \(q\)-grams, so this
 may be a problem. A point of future work would be to really measure the
 contribution of undoing the sorting. This could easily be done by only
 collecting the \(k\)-environments without processing them further. One version
@@ -2533,15 +2534,21 @@ matrix}
 \Chapter{Conclusion}
 In this paper, the prefiltering module of the MMseqs2 software suite was
 examined and alternative optimization methods were tried and tested. A
-possible improvement in processing target sequences through recursive
-hashing, although has a better time complexity in theory, was shown to not
-be a major improvement, other than in edge cases of low block numbers. A
-new method of estimating threshold for better estimation of number of
-generated \Qgram{q}s was implemented and showed to be a better estimation
-approach, both in low and high sensitivity. Finally, an optimized
-branch-and-bound algorithm was introduced and presented a lower memory
-consumption in tradeoff for marginal increase in runtime, allowing future
-expansion into larger seed size.
+possible improvement was a blockwise processing of all \(q\)-grams
+of target sequences, allowing to use recursive hashing. While this
+improves the time complexity in theory, there was no improvement in the
+empirical runtime for the relevant spaced seeds.
+Only for seeds with a small number of
+blocks (which make them less useful) a small reduction of the runtime
+was seen in the experiment reported here. A
+new method of estimating the score threshold consistent with the number
+of generated \Qgram{q}s was implemented and showed to be a better estimation
+approach, both for low and high sensitivity settings. Finally, an optimized
+branch-and-bound algorithm was introduced, considerably reducing the
+space requirement at the cost of a small
+increase in runtime, possibly allowing to further increase the weight
+of the seeds.
+
 %%%%<
 %bibliography
 \newpage
