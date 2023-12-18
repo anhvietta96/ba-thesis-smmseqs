@@ -182,6 +182,8 @@
 \Maketitle
 
 \SKcomment{Please provide a longer abstract}
+\AVTcomment{multiset proof}
+\AVTcomment{seed 8 9}
 
 % if you write in German, maybe change this to "Zusammenfassung".
 \addchap*{Abstract}
@@ -292,7 +294,7 @@ The third workflow simply compares
 databases using only prefiltering and aligning modules. The last workflow
 updates clustering between new and old clustered database by deleting
 deprecated sequences and appending new sequences to each cluster.
-In benchmarks, MMseqs showed to be 4-30 times faster than
+In benchmarks, MMseqs shows to be 4-30 times faster than
 UBLAST~\cite{edgar2010search} and RAPsearch2~\cite{zhao2012rapsearch2}.
 MMseqs could cluster large databases down to 30\% sequence
 identity \numprint{2000} times faster than BLASTclust.
@@ -313,7 +315,7 @@ distribution of jobs on computer clusters.
 than sensitivity of BLAST.
 \end{itemize}
 An in-depth look into the three core modules is presented below.
-\SKcomment{I will skip reading the next section.}
+
 \subsection{Fast \Qgram{q} prefiltering stage}
 In MMseqs, the prefiltering stage is the first step to process all
 sequences and serves to reduce the search space significantly, therefore
@@ -849,6 +851,7 @@ The inverse of \(\varphi_{u}\) is \(\varphi_{u}^{-1}\), defined by
 \begin{align}
 \Perminverse{u}{\Perm{u}{i}}=i\text{ for all }i, 0\leq i\leq q-1
 \end{align}
+
 As a consequence \(\Perminverse{u}{\Perm{u}{u}}=u\).
 From the Lemma we can deduce, that it suffices to precompute the
 the score tables \(\mathsf{ST}_{q'}\) for \(q'\in\{2,3\}\)
@@ -857,10 +860,16 @@ the \(k\)-environment of a sorted \(q\)-gram whose members are finally
 transformed by the inverse of the sorting permutation.
 The advantage of this approach is the smaller number of sorted \Qgram{q}s
 compared to unsorted, leading to a more efficient memory usage and a more
-compacted computation of the score matrix. Table~\ref{tab:numdiff} outlines
-the difference in number of \Qgram{q}s to be enumerated and the size of the
-resulted score matrices.
-\AVTcomment{clarify}
+compacted computation of the score matrix. The number of possible sorted 
+\Qgram{q}s for a given \(\mathcal(A)\) and \(q\) can be computed as the binomial
+\(\binom{q+r-1}{q}\) where \(r=|\Alpha|\). This can be proven by induction on 
+\(q\)~\cite{pfn}. Since there are \(\binom{q+r-1}{q}\) score tables 
+\(\Scoretable{q}{u}\) to be evaluted, each contains \(r^q\) entries, the method 
+of sorted \Qgram{q}s only needs to construct a \(\binom{q+r-1}{q}r^q\) matrix, 
+compared to \(r^{2q}\) from the approach in MMseqs2. Table~\ref{tab:numdiff} 
+outlines the difference in number of \Qgram{q}s to be enumerated and the size of
+the resulted score matrices. 
+
 \begin{table}
 \begin{center}
 \begin{tabular}{c|c|r|r|r}
@@ -880,14 +889,6 @@ the score matrix is calculated as the square of the number of (sorted)
 \(q\)-grams.\label{tab:numdiff}}
 \end{center}
 \end{table}
-\SKcomment{Here is an implementation issue which maybe should be discussed
-in the corresponding section.
-For the 210 sorted \(2\)-grams,
-you need 8 bits to encode each, compared to 9 bits for the \(2\)-grams.
-For the 1540 sorted \(3\)-grams,
-you need 11 bits to encode each, compared to 13 bits for the \(3\)-grams.
-This should at least be discussed at later, if encoding of \(2\)-grams
-or \(3\)-grams becomes relevant in the implementation.}
 
 \section{Working with sorted \Qgram{q}s}
 \subsection{Enumeration}
@@ -899,31 +900,26 @@ Given an alphabet \(\Alpha\) and a natural number \(q > 0\), a sorted
 \Qgram{q} over \(\Alpha\) is a string \(u\in\Alpha^{q}\) such that
 \(\Subchar{u}{i}\leq\Subchar{u}{i+1}\) for all \(i\), \(0\leq i\leq q-2\).
 
-The number of possible sorted \Qgram{q}s for a given \(\mathcal(A)\) and
-\(q\) can be computed as the binomial \(\binom{q+r-1}{q}\) where
-\(r=|\Alpha|\). This can be proven by induction on \(q\)~\cite{pfn}.
-
-The advantage of sorted \Qgram{q}s over normal \Qgram{q}s is that number of
-sorted \Qgram{q}s is significantly smaller than the number of \Qgram{q}s
-(see
-Table~\ref{tab:numdiff}). Therefore, a separate index system is created to
-map
-every sorted \Qgram{q} sequentially to an integer, named sort code and
-denoted
-with \(sc\), i.e a function
+The advantage of sorted \Qgram{q}s over normal \Qgram{q}s is that size of the 
+set of sorted \Qgram{q}s, which is denoted by \(M\), is significantly smaller 
+than the number of \Qgram{q}s (see Table~\ref{tab:numdiff}).
+Therefore, a separate index system is created to
+map every sorted \Qgram{q} sequentially to an integer, named sort code and
+denoted with \(sc\), i.e a function
 \(sc: \Alpha^q \rightarrow [0,\binom{q+|\Alpha|-1}{q})\).
+
 Firstly, an ordering must be defined on the set of all sorted \Qgram{q}s.
 In
 order for the ordering to comply with the usual \Qgram{q} encoding,
 illustrated
 in Equation~\ref{DefineHfunction}, we can define so
-that if and only if a sorted \Qgram{q} \(u\) comes before \(v\),
-the encoding of \(u\) is smaller than the encoding of \(v\):
+that a sorted \Qgram{q} \(u\) comes before \(v\) if and only if 
+the \Qgram{q} encoding of \(u\) is smaller than the \Qgram{q} encoding of \(v\):
 \begin{align}
-\IT{q}{\Alpha}(u) < \IT{q}{\Alpha}(v)\Leftrightarrow H(u) < H(v)
+sc(u) < sc(v)\Leftrightarrow H(u) < H(v)
 \label{eq:ordering}
 \end{align}
-Using this definition, we can create a table to index every sorted
+Using this definition, we can create a table \(\IT{q}{\Alpha}\) to index every sorted
 \Qgram{q},
 i.e a table that assigns every sorted \Qgram{q} an index sequentially and
 these
@@ -1014,8 +1010,8 @@ where \(''\) is the empty string.
 &index table \(\IT{q}{\Alpha}\)
 \end{tabular}
 \begin{algorithmic}
-\Function{\(\mathsf{MultisetEnumerateRecursion}(q',\Alpha',u)\)}{}
-\If{\(q_i = 0\)}
+\Function{\(\mathsf{MultisetEnumerateRecursion}(q',\Alpha,u)\)}{}
+\If{\(q' = 0\)}
 \State \(\IT{q}{\Alpha}.\Append(u)\)
 \Else
 \For{\(a_j \in \Alpha'\)}
@@ -1025,8 +1021,6 @@ where \(''\) is the empty string.
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
-\SKcomment{You do not refer to these algorithms, but your lemma refers to
-table \(IT\) which likely stands for \(\IT{q}{\Alpha}\).}
 \subsection{Linear encoding}
 Using the index table, a scheme to encode any given \Qgram{q} over
 alphabet \(\Alpha\) to its table index in \(O(q)\) can be devised.
@@ -1060,10 +1054,46 @@ which leads to \(w_a - w_a' = 0\), or \(w_a = w_a'\), which is a
 contradiction. Therefore \(w(q,a)\) must be unique.
 \end{Proof}
 \end{Lemma}
+
 \SKcomment{I think the lemma should be as below, as the main point is
 the fact that \(c\) is bijective. The fact that \(w\) is unique does not
 matter in my opionion. The proof should actually construct \(w\) and
 show the bijective property.}
+
+
+\AVTcomment{I'm not sure how to prove this, since the condition, that 
+\(sc(u)=\sum_{p=0}^{q-1} w(p,\Subchar{u}{p})\) correctly points to the index 
+of \(u\), is built in to Lemma~\ref{lm:weightproof}. Below I've added some 
+justification for this.}
+
+\(w(q',a)\) exists and is unique, therefore we can construct a table of size 
+\(q\times \Alpha\) to cache all \(w(q',a)\) for all \(0 < q' \leq q\), 
+\(a\in \Alpha\). To compute these weights, the index tables \(\IT{q}{\Alpha}\) 
+is utilized, where the index of \Qgram{q} \(au\) and its suffix \(u\) are 
+compared. The difference in their index is the weight \(w(q,a)\):
+\begin{align}
+w(q,a) = sc(au) - sc(u)
+\label{eq:weightcalc}
+\end{align}
+This method 
+would therefore guarantee the correctness that \(sc(u)\) must point to the 
+index of \(u\), since the \(i\)-th iteration would guarantee that the all 
+weights \(w(i,a)\), \(a\in\Alpha\) are correct. The function \(sc(u)\) is also 
+always bijective, since its value for \(u\in \Alpha^q\) is constrained in 
+\([0,|M|)\) by design of the index table.
+
+Based on the above description, Algorithm~\ref{code:linearEncodingTable} 
+outlines a recursive method to compute a \(q\times \Alpha\)-table
+\(\LE{q}{\Alpha}\). The base case of \(q' = 1\) can be 
+directly given and based on the index tables \(\IT{i}{\Alpha}\) for all
+\(q'\), \(2\leq q'\leq q\).
+the \Qgram{q'}s are tracked for change in prefix and the weight of the
+prefix can be calculated with Equation~\ref{eq:weightcalc}. The
+pseudocode for the construction of LE is given in
+Algorithm~\ref{code:linearEncodingTable}. The notation \([\bot] \times r\)
+denotes the creation of a list of length \(r\) filled with empty values.
+
+\begin{comment}
 Lemma~\ref{lm:weightproof} then leads to the linear computation of the sort
 code
 \(sc\), outlined in Lemma~\ref{lm:codeproof}.
@@ -1082,18 +1112,11 @@ satisfies
 \item \(sc(u)\neq sc(u')\) for all \(u,u'\in M\), \(u\neq u'\).
 \end{itemize}
 \begin{Proof}
-\AVTcomment{I must think about this proof a bit more.}
 \end{Proof}
 \end{Lemma}
-The recursive method to compute a \(q\cdot r\)-table
-LE is then derived from the proof above. The base case can be directly
-given and based on the index tables \(\IT{i}{\Alpha}\) for all
-\(i\), \(2\leq i\leq q\).
-the \Qgram{q_i}s are tracked for change in prefix and the weight of the
-prefix can be calculated with Equation~\ref{Equation:linearenc}. The
-pseudocode for the construction of LE is given in
-Algorithm~\ref{code:linearEncodingTable}. The notation \([\bot] \times r\)
-denotes the creation of a list of length \(r\) filled with empty values.
+\end{comment}
+
+
 \begin{algorithm}[t]
 \caption{Creating linear encoding table \(\LE{q}{\Alpha}\)}
 \label{code:linearEncodingTable}
@@ -1118,12 +1141,14 @@ more significant weight at beginning}
 \EndFor
 \end{algorithmic}
 \end{algorithm}
+
 \SKcomment{You introduce \(\CurrentWeight\) as a list of \(r\) elements
 being undefined initially. So the insert-operation then prepends the value
 of \(\CurrentWeight\) to \(\LE{q}{\Alpha}\). This should somehow be
 commented.}
 \SKcomment{I do not see why Algorithm \ref{code:linearEncodingTable} was
 derived from the proof above. Need more explanation.}
+\AVTcomment{I've added some explanation above.}
 
 \section{Simplified approach in determining the score-threshold}
 \subsection{MMseqs and MMseqs2 approaches}
@@ -1159,6 +1184,7 @@ section
 is to provide a systematic approach that allows the user to control the
 amount
 of \Qgram{q} generated more predictably and effectively.
+
 \subsection{A simplistic approach}
 In order to control the generation of \Qgram{q}s, a metric must firstly be
 defined. The average environment size \(s\) was reused from MMseqs since
@@ -1171,18 +1197,6 @@ of a discrete distribution of scores for pairs of \(q\)-grams. So let
 \(h_{q}(x)\) be the percentage of pairs
 \((u,u')\in\Alpha^{q}\times\Alpha^{q}\) over all possible \Qgram{q} pairs such 
 that \(\sigma(u,u')=x\).
-
-\SKcomment{Just as a possible point for a discussion: The frequencies for
-pairs of \(q\)-grams should be similar to the frequencies for sorted
-\(q\)-grams.}
-\SKcomment{Another possible point for a discussion: It should be possible
-to calculate the exact distribution of the scores using a DP-method: Assume
-integer scores. If one knows the distribution for all pairs of
-\((q-1)\)-grams
-\(q\)-grams. This would be an interesting GSA-exercise. I have just
-added a Python-script \texttt{bin/pair\_score\_distrib.py}. Results look
-okay,
-but I have not verified them.}
 
 \begin{figure}[t]
 \begin{center}
@@ -1206,18 +1220,16 @@ be generally quantified to:
 \begin{align}
 \mathcal{P}(\sigma \geq k) = \sum_{i = k}^\infty h_q(i)
 \end{align}
+
 The average environment size \(s\) could be normalized to
 probability:
 \begin{align}
 p = \frac{s}{|\Alpha|^q}
 \end{align}
+
 Therefore the portion to the right of the estimated threshold would be ideally 
 in continuous distribution equal to \(p\):
-\SKcomment{Approximation of what? You have two equations with \(p\) on the
-left hand side. The first is based on sampling the space of \(q\)-grams and
-the second is based on an unkown probability function. Please be more
-precise.
-The current description is confusing.}
+
 \begin{align}
 p = \mathcal{P}(\sigma \geq k)
 \end{align}
@@ -1228,6 +1240,7 @@ upper bound of the right portion:
 \mathcal{P}(\sigma \geq k) \leq p < \mathcal{P}(\sigma \geq
 k-1)\label{eq:distribution}
 \end{align}
+
 The idea of the algorithm is to approximate a score distribution between
 \Qgram{q} \(h_q\). Then the distribution can be iterated from the right tail to
 calculate \(\mathcal{P}(\sigma \geq k)\), where \(k\) is the current score
@@ -1239,17 +1252,12 @@ context-free model, i.e they occur independently from what comes before and
 after, the score distribution between \Qgram{q}s \(h_q\) can be approximated
 recursively
 through convolution~\cite{dmsv}:
+
 \begin{align}
 h_{q}(x) = \sum_{y\in\mathcal{Z}} h_{q-1}(y)h_1(x-y)
 \label{eq:convolution}
 \end{align}
-\SKcomment{So this is basically the idea which I used in
-\texttt{bin/pair\_score\_distrib.py}. But why have you mentioned uniformly
-distributed above, which refers to a sampling procedure. So you actually
-have
-not sampled the \(q\)-grams and computed the exact value? Actually, I
-cannot
-tell from you sloppy description.}
+
 It is important to note that \(h_1\), the 1-gram score distribution,
 depends on both character distribution collected from target sequence and
 uniform character distribution. The reason is that the scores are between
@@ -1366,17 +1374,27 @@ of small segments}
 The key idea of Algorithm~\ref{code:ctxsens1} is that based on
 Equation~\ref{DefineHfunction}, the hash values of the \Qgram{q} \(u\) can
 be
-treated as an \(q\) digit long \(r\)-ary number \((r=|\Alpha|)\), where the
-\(i\)-th character in the \Qgram{q} corresponds to the \(i\)-th digit in
-the
-number. Therefore, to extract the hash value of the substring
+treated as a \(r\)-ary number of length \(q\), \((r=|\Alpha|)\), where the
+\(i\)-th character in the \Qgram{q} corresponds to the \(i\)-th position in
+the hash value. Therefore, to extract the hash value of the substring
 \(\Subchar{u}{i\ldots j}\), \(0 \leq i \leq j < q\), one can first apply a
 right shift, which corresponds to an integer division. Thereafter, an
 modulo
 operation with the operand \(r^{j-i+1}\) was used, which is extracts the
 last
-\(j-i+1\) digits (corresponding to the substring).
-\AVTcomment{Maybe a figure here is needed to represent the extraction.}
+\(j-i+1\) positions, which corresponds to the hash of current substring. The 
+effect of these two operations on hash value is visualized in 
+Figure~\ref{fig:hash_extract}. 
+
+\begin{figure}[t]
+\begin{center}
+\includegraphics[scale=0.5]{graphics/hash_extract.png}
+\end{center}
+\caption{Effect of two operations integer division and modulo on hash value H 
+represented as a \(r\)-ary number}
+\label{fig:hash_extract}
+\end{figure}
+
 After the positional hash values are extracted, they are collected to
 create
 their individual histogram. The histograms then get normalized to
@@ -1443,9 +1461,12 @@ a name to refer to each approach in Result section. Can you recommend me how to
 call them?}
 
 \Chapter{Implementation and Design}
-The methods described above were implemented in a program called SMMseqs.
-The implementation in C++ follows an object-oriented approach and
-makes heavy use of Metaprogramming.
+In this chapter, we discuss on how we design a program that utilizes the above 
+ideas and how that program was implemented in a practical programming system.
+
+The methods described above were implemented with a object-oriented approach in 
+a program called SMMseqs, which makes extensive use of the template system in 
+C++, with intention on scalability and high level of generalization.
 
 \section{Input}
 At compile time, the program takes in a scoring function, which in the
@@ -1500,18 +1521,14 @@ two readers based on specified method.
 given scoring function and \(q\).
 \item A class to approximate an appropriate threshold given target sequence
 data.
-\item A score matrix to cache all scores between sorted \Qgram{q}s and
-unsorted \Qgram{q}s.
-\item An environment constructor gets encoding of sorted \Qgram{q}s and uses
-them to call individual scores from the score
-matrices and generates a Cartesian product from the environments.
+\item A score matrix to cache all scores between sorted \Qgram{q'}s and
+\Qgram{q'}s, \(q'\in\{2,3\}\) i.e all \(\Scoretable{q'}{u}\) where \(u\in M_{q'}\).
+\item An environment constructor gets encoding of sorted \Qgram{q}s \(sc(u_i)\) 
+and uses them to get the appropiate score tables \(\Scoretable{q'}{u_i}\) and 
+generates a \Qgram{q} environment.
 \item A matcher class takes the hashed data from target and query sequences and
 creates matches.
 \end{enumerate}
-
-\SKcomment{Unclear what 'call individual scores from the score matrices'.
-I assume the at environment constructor can process any code of a
-sorted q-gram and is not dependent on the query seed reader.}
 
 \SKcomment{Why do you need to cache scores between sorted \Qgram{q}s and
 unsorted \Qgram{q}s. Or do you mean for pairs of sorted \(q\)-qgrams and
@@ -1526,30 +1543,16 @@ sorting the extracted \Qgram{q}s. Anyway I changed the classification to basing
 on hashing algorithm}
 
 In Figure~\ref{fig:classes}, the relationship and dependency between the
-classes are outlined. The seed readers are based solely on the provided spaced 
-seeds in compilation. The hash engine depends only on the reader and takes in 
-additionally a sequence set at run time. The index tables have only the scoring 
-function as an dependency and 
+classes are outlined.
 
 Since the implementation of the recursive hashing of
 target sequences is straightforward and does not diverge much from the
 pseudocode, the section below focuses mainly on the processing of query
 sequences.
 
-\SKcomment{I assume that the ellipses represent input data
-and the edge going out from ellipses represent the data flow. If this is
-correct you need to add a second directed edge from target sequence to
-threshold estimator.}
-\SKcomment{Please specify what a rhombus means and a rectangle means. Likely
-intediat data and result data. But there is no class which joins the target
-hash data and the query environments to obtain match data.}
-\AVTcomment{I'm adding legend to the figure.}
-\SKcomment{Why use 'hash' in 'target hash data' but not in 'query data'? After
-all, the elements delivered by the environment constructor re hashed as well.}
-
 \begin{figure}[t]
 \begin{center}
-\includegraphics[scale=0.5]{graphics/Class_Diagram.png}
+\includegraphics[scale=0.5]{graphics/ClassDiagram.png}
 \end{center}
 \caption{Relationship between the main classes and inputs}
 \label{fig:classes}
@@ -1565,9 +1568,9 @@ information containing span, weight and number of blocks can be predetermined.
 
 The two index tables for sorted/unsorted \Qgram{2}s/\Qgram{3}s are based solely
 on the scoring function and therefore, can be fully precomputed. Since the
-linear encoding table LE (see Algorithm~\ref{code:linearEncodingTable}) depends
-only on the index tables of sorted \Qgram{q}s and the scoring function, it also
-can be evaluated at compilation.
+linear encoding table \(\LE{q}{\Alpha}\) (see Algorithm~\ref{code:linearEncodingTable})
+depends only on the index tables of sorted \Qgram{q}s and the scoring function, 
+it also can be evaluated at compilation.
 
 \section{Runtime computation}
 At runtime, at first the target and query database gets encoded using the
@@ -1596,7 +1599,7 @@ Equation~\ref{equation:sequenceScore}. By utilizing the template system, we
 manage to avoid the computation of unnecessary score matrix, e.g in working with
 seed of weight 4, only the \Qgram{2} score matrix is created. The entries in the
 score matrix are represented as a pair of score and unsorted \Qgram{q} code. 
-They are then  sorted after score value, resulting in the score tables 
+They are then sorted after score value, resulting in the score tables 
 \(\Scoretable{q}{u}\) as input data vectors for the \(k\)-enviroment 
 construction stage.
 
@@ -1606,6 +1609,8 @@ defined for \(q\)-grams. So it applies to sorted \(q\)-grams as well.}
 \SKcomment{So you mean the \(k\)-environment for a single \(q\)-gram
 can be stored and sorted? But that does not make sense since on below
 you explain how to determine the score-threshold. I am lost.}
+
+\AVTcomment{I've reworded last section.}
 
 Using the score matrices and the threshold, the program enters the step of
 \Qgram{q} generation using the Cartesian product.
@@ -1620,22 +1625,14 @@ regions can lead to biases in the prefiltering result. This correction of
 the threshold can be summarized as follow:
 
 \begin{align}
-\Delta \sigma_i(u[i]) =
+\Delta(\sigma,u,i) =
 \underbrace{\sum_{a\in \Alpha}f(a)\sigma(a,\Subchar{u}{i})}_{\text{expected score}}-
 \underbrace{\frac{1}{2d}\sum_{j=i-d,j\neq i}^{i+d}\sigma (u[i],u[j])}_{\text{average local score}}
 \end{align}
 
-\SKcomment{The bias depends on the position, so that the amino acid is
-implicitely given. This should be reflected in the notation and one
-should define it as \(\Delta(i)\) or \(\Delta(\sigma,u,i)\).}
-
 where \(u\) is the query sequence, \(i\) is the current position in the
 sequence, \(d\) is a positive integer (explained below)
 and \(f(a)\) is the background frequency of residue \(a\).
-
-\SKcomment{\(d\) is not defined and I assume that \(i\geq d\) and
-\(i+d\leq |u|-1\) must hold. You define it later, but it should be mentioned
-here (which I did.)}
 
 The expression
 \(\sum_{a\in \Alpha}f(a)\sigma(a,\Subchar{u}{i})\) is
@@ -1643,33 +1640,21 @@ the expected score resulting from the
 background distribution of the amino acids. For each \(b\in\Alpha\) one can
 precompute \(\sum_{a\in \Alpha}f(a)\sigma(a,b)\) given \(f\).
 
-The second sum involves the current region in the query sequence and
-introduces a parameter \(d\) for the radius of the region, defined in
-MMseqs2 as a constant 20.
-
-\SKcomment{Do not use the notion subtrahend. Use 'the term which is
-subtracted' is an average local score at position \(i\) involving \(d\)
-amino acids on the left and on the right.}
+The second sum represents the average local score at current postion \(i\), 
+involving \(d\) characters to the left and to the right. The size of the region 
+\(d\) is defined in MMseqs2 as a constant 20.
 
 The corrected score between a query \Qgram{q} \(u\) and its generated
 \Qgram{q} \(v\) can then be computed as the sum of the pairwise amino acid
 score and the score correction.
 
 \begin{align}
-\sigma_c(u,v) = \sigma (u,v) + \sum_{i=0}^{q-1} \sigma_i(u[i])
+\sigma_c(u,v) = \sigma (u,v) + \sum_{i=0}^{q-1} \Delta(\sigma,u,i)
 \end{align}
 
-\SKcomment{Replace \(\sigma_i(u[i])\) using the notation as suggested above.}
-
 In the implementation, this correction is instead subtracted from the
-threshold at the beginning of the construction of \(k\)-environment.
-
-\SKcomment{beginning of the computation of what? Like of \(\sigma(u,v\).
-One should be more specific about the context in which this computation
-occurs. You only state that it is applied when processing the query sequence.
-But one should be more precise, as the evaluation becomes relevant
-when the \(k\)-environment is constructed for the \(q\)-gram at position
-\(i\). So actually becomes a \(k_{c}\)-environment is constructed.}
+threshold at the beginning of every positional construction of 
+\(k\)-environment.
 
 \begin{align}
 \sigma_c(u,v) = \sigma (u,v) + \sum_{i=0}^{q-1} \sigma_i(u[i]) \geq k
@@ -1690,19 +1675,6 @@ any number of loops.
 The formulation of the loop structure, is outlined in the
 Algorithm~\ref{code:turningWheel}.
 
-\SKcomment{The three function in Algorithm~\ref{code:turningWheel} are
-not defined and explained. It is important to note the \(\mathsf{getScore}\)
-computase the score from wheel and with respect to the \(q\)-gram which is
-the input to the algorithm. For this it requires access to the loop data vector.
-You have also not explained what the elements of
-the loop data vector are. These are the elements of the sets to build
-the cartesian product for. You also can merge the two lines
-\(\Code \gets \mathsf{getCode}(\Wheel);\)
-\(\mathsf{createQgram}(\Code)\) into one and introduce a function which
-computes the \(q\)-gram from the wheel. It should be clarified that
-creating a \(q\)-gram involves applying the reverse of the sorting permutation
-and results into an element of the \(k\) environment.}
-
 \SKcomment{I actually do not see the point of merging the turning wheels code
 with the specific application of generating elements from the
 \(k\)-environment. I would keep the abtract view which only requires
@@ -1715,6 +1687,8 @@ turn the wheel, if you obtain a score \(<k\) This is only possible,
 if the elements in the data vector are sorted by the score, which has not been
 mentioned. This feature could also be integrated into the abstract function
 mentioned above.}
+\AVTcomment{the data vectors are indeed sorted after the score. I've changed 
+the wording in the last section to mention that.}
 
 \begin{algorithm}[t]
 \caption{Turning Wheel Mechanism}
@@ -1722,21 +1696,23 @@ mentioned above.}
 \begin{tabular}{@{}l@{~}l}
 \textbf{Input:}&number of loops \(n\)\\
 &loop data vector \(v_0\), \(v_1\), ..., \(v_{n-1}\)\\
-&threshold \(k\)\\
-&function \(\mathsf{createQgram}\)\\
-&function \(\mathsf{getScore}\)\\
-&function \(\mathsf{getCode}\)
+&corrected threshold \(k_c\)\\
+&function \(\mathsf{createQgram}\ref{code:createq}\)\\
+&invert permutation \(\varphi\)
+\end{tabular}
+
+\begin{tabular}{@{}l@{~}l}
+\textbf{Note:}&notation \(vw(i)\) refers to \(v_i[\Wheel[i]]\)\\
 \end{tabular}
 \begin{algorithmic}
 \State \(\Loopid \gets n-1\)
 \State \(\Wheel \gets [0]\times n\)
-\State \(\Score \gets \mathsf{getScore}(\Wheel)\)
+\State \(\Score \gets \sum_{i=0}^{n-1} vw(i).\Score\)
 \If{\(\Score < k\)} \Comment{Current data vectors not viable. Early
 Termination.}
 \State return
 \Else \Comment{First loop iteration}
-\State \(\Code \gets \mathsf{getCode}(\Wheel)\)
-\State \(\mathsf{createQgram}(\Code)\)
+\State \(\mathsf{createQgram}(\varphi,vw(0),vw(1),\ldots,vw(n-1))\)
 \EndIf
 \While{True}
 \State \(\Wheel[\Loopid]\gets \Wheel[\Loopid]+1\)
@@ -1747,10 +1723,9 @@ Termination.}
 \EndIf
 \State \(\Loopid\gets \Loopid-1\)
 \Else
-\State \(\Score \gets \mathsf{getScore}(\Wheel)\)
-\If{\(\Score \geq k\)}\Comment{Viable \Qgram{q} found}
-\State \(\Code \gets \mathsf{getCode}(\Wheel)\)
-\State \(\mathsf{createQgram}(\Code)\)
+\State \(\Score \gets \sum_{i=0}^{n-1} vw(i).\Score\)
+\If{\(\Score \geq k_c\)}\Comment{Viable \Qgram{q} found}
+\State \(\mathsf{createQgram}(\varphi,vw(0),vw(1),\ldots,vw(n-1))\)
 \Else \Comment{No viable \Qgram{q} found, end current loop}
 \State \(\Wheel[\Loopid]\gets \text{len}(v_{\Loopid})\)
 \EndIf
@@ -1761,6 +1736,25 @@ Termination.}
 \EndWhile
 \end{algorithmic}
 \end{algorithm}
+
+\begin{algorithm}[t]
+\caption{create \Qgram{q} from score-code pairs}
+\label{code:createq}
+\begin{tabular}{@{}l@{~}l}
+\textbf{Input:}&\Qgram{q'} index table \(\mathsf{QIT}_{q'}\) for \(q'\in\{2,3\}\)\\
+&score-code pairs \(p_0\), \(p_1\), ..., \(p_{n-1}\)\\
+&invert permutation \(\varphi\)
+\end{tabular}
+
+\begin{tabular}{@{}l@{~}l}
+\textbf{Note:}&notation \(u_i\) refers to \(\mathsf{QIT}_{\Qsplit(q)[i]}[p_i.\Code]\)\\
+\end{tabular}
+\begin{algorithmic}
+\State \(u \gets u_0u_1\ldots u_{n-1}\)\Comment{Concatenate individual \Qgram{q'}s corresponding to each code}
+\State \(u \gets \varphi(u)\)
+\end{algorithmic}
+\end{algorithm}
+
 \begin{comment}
 \subsection{SIMD}
 SIMD (Single-Instruction Multiple-Data) is a group of instructions allowing
@@ -1872,17 +1866,14 @@ MMSeqs2~\cite{MMseqs2Repository} minus the sequences which occur in
 \texttt{DB.fasta}. This file of \numprint{426} sequences of length between
 8 and \numprint{4291} serves as query sequence file.
 \end{itemize}
-Some statistics on these datasets are summarized below in
-Table~\ref{tab:datasets}.
 
 The BLOSUM62 score matrix was used for scoring pairs of amino acids.
 
 \section{Processing target sequences}
 Since the normal test datasets are too small to see the difference in
-performance between the hashing approaches, tests were carried out on randomly
-generated dataset consisting of \numprint{50000000} sequence characters.
-
-\SKcomment{Are these characters stored in one sequence, or multiple sequences?}
+performance between the hashing approaches, tests were carried out on a 
+single-sequence, randomly generated dataset consisting of \numprint{50000000} 
+sequence characters.
 
 The
 results from Figure~\ref{fig:target_hashing} showed that the direct
@@ -1894,11 +1885,6 @@ spaced seeds of weight \(q\leq 7\). But the speedup factor
 are partly smaller than 1 and partly larger than 1. Also the seeds are
 different from those in the Table \ref{tab:seeds}. So I do not how you
 deduce the expection?}
-
-\SKcomment{It is superfluous to number the seeds if these numbers are not
-used. This also holds for Table \ref{tab:seeds}. Only for the seeds
-in \ref{tab:asymptoticseed9} and \ref{fig:asymptoticseed9} you refer to the
-seeds by their number.}
 
 Even the hashing using seed \numprint{111011}, which
 was predicted to have performance speedup, failed to show improvement. The
@@ -1914,17 +1900,13 @@ slowing the computation.
 \label{fig:target_hashing}
 \end{figure}
 
-To examine the asymptotic behavior
-
-\SKcomment{By your experiments you do not examine the asymptotic behavior.
-You just compare the asymptotic behavior with empirical results.}
-
-of the two hashing algorithms, seeds of
+To examine how the two algorithms behave with larger seed weight and different 
+number of blocks, seeds of
 weight 9 and 12 were further tested. For each seed weight \(q\), the number of
-seed blocks ranges from \(1\) to \(\frac{q}{2}-1\). The generated seeds are
-characterized in Table~\ref{tab:asymptoticseed9} and \ref{tab:asymptoticseed12}.
-The test results are summarized in Figure~\ref{fig:asymptoticseed9} and
-\ref{fig:asymptoticseed12}.
+seed blocks ranges from \(1\) to \(\lfloor\frac{q}{2}\rfloor\). The generated 
+seeds are characterized in Table~\ref{tab:asymptoticseed9} and 
+\ref{tab:asymptoticseed12}. The test results are summarized in 
+Figure~\ref{fig:asymptoticseed9} and \ref{fig:asymptoticseed12}.
 
 \begin{table}
 \begin{center}
@@ -1932,10 +1914,10 @@ The test results are summarized in Figure~\ref{fig:asymptoticseed9} and
 No & Seed & Span & Weight \(q\) & Number of & Speedup \\
 & & & & Blocks \(b\) & factor \(\frac{q}{2b}\)\\
 \hline
-1& \numprint{111111111} & 9 & 9 & 1 & 4.500 \\
-2& \numprint{1110111111} & 10 & 9 & 2 & 2.250\\
-3& \numprint{11101110111} & 11 & 9 & 3 & 1.500 \\
-4& \numprint{101101110111} & 12 & 9 & 4 & 1.125
+9& \numprint{111111111} & 9 & 9 & 1 & 4.500 \\
+10& \numprint{1110111111} & 10 & 9 & 2 & 2.250\\
+11& \numprint{11101110111} & 11 & 9 & 3 & 1.500 \\
+12& \numprint{101101110111} & 12 & 9 & 4 & 1.125
 \end{tabular}
 \caption{Seeds of weight 9 used in testing asymptotic behavior with their span,
 weight, number of blocks and theoretical hashing speedup factor $\frac{q}{2b}$
@@ -1958,12 +1940,12 @@ using recursive hashing\label{tab:asymptoticseed9}}
 No & Seed & Span & Weight \(q\) & Number of & Speedup \\
 & & & & Blocks \(b\) & factor \(\frac{q}{2b}\)\\
 \hline
-1& \numprint{111111111111} & 12 & 12 & 1 & 6.0 \\
-2& \numprint{1111110111111} & 13 & 12 & 2 & 3.0\\
-3& \numprint{11101110111111} & 14 & 12 & 3 & 2.0 \\
-4& \numprint{111011101110111} & 15 & 12 & 4 & 1.5\\
-5& \numprint{1111011011011011} & 16 & 12 & 5 & 1.2\\
-6& \numprint{101011011011101101} & 17 & 12 & 6 & 1.0
+13& \numprint{111111111111} & 12 & 12 & 1 & 6.0 \\
+14& \numprint{1111110111111} & 13 & 12 & 2 & 3.0\\
+15& \numprint{11101110111111} & 14 & 12 & 3 & 2.0 \\
+16& \numprint{111011101110111} & 15 & 12 & 4 & 1.5\\
+17& \numprint{1111011011011011} & 16 & 12 & 5 & 1.2\\
+18& \numprint{101011011011101101} & 17 & 12 & 6 & 1.0
 \end{tabular}
 \caption{Seeds of weight 12 used in testing asymptotic behavior with their span,
 weight, number of blocks and theoretical hashing speedup factor $\frac{q}{2b}$
@@ -1993,22 +1975,19 @@ weighting and summing is the better general approach to enumerate hash values.
 
 \section{Determining the score threshold}
 We tested the context-free~\ref{code:ctxfree} and the context-sensitive 
-approach~\ref{code:ctxsens},\ref{code:ctxsens1} to calculate
+approach~\ref{code:ctxsens1},\ref{code:ctxsens} to calculate
 the expected number of \(q\)-grams. The context-sensitive approach
 reused the division scheme of the \Qgram{q}
 generation algorithm. For each test, the total number of \Qgram{q}s
 generated is averaged and then compared to the expected size of the
 \(k\)-environment per position and MMseqs2 result in Figure~\ref{fig:mmseqssens}.
 
-\SKcomment{It is generally good practice to refer to the methods
-considered here by providing the section number in which they are
-described.}
-
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/threshold_contextfree.png}
-\caption{Ratio of number of generated \Qgram{q}s using context-free
-approach vs.\ expected number}
+\caption{Ratio of the average number of \(q\)-grams actually generated per
+position of the query sequences versus the expected number of \(q\)-grams
+calculated by the context-free approach}
 \label{fig:numctxfree}
 \end{figure}
 \begin{figure}
@@ -2016,22 +1995,13 @@ approach vs.\ expected number}
 \includegraphics[scale=0.6]{graphics/threshold_contextsens.png}
 \caption{Ratio of the average number of \(q\)-grams actually generated per
 position of the query sequences versus the expected number of \(q\)-grams
-calculated by the context-free approach}
+calculated by the context-sensitive approach}
 \label{fig:numctxsens}
 \end{figure}
-
-\SKcomment{In the figure you need to explain that the different
-number refer to the differnt sensitivity value.}
-
-\SKcomment{Note that I have revised the caption to clarify what is shown. Please
-adjust the other captions accordingy.}
 
 The benchmarks of context-free (Figure~\ref{fig:numctxfree}) and
 context-sensitive approach (Figure~\ref{fig:numctxsens}) both show better
 control of the average environment size compared to MMseqs2
-
-\SKcomment{Where are the results for MMseqs2?}
-
 and the resulted list lengths are relatively
 close to the expected value. The thresholds calculated by this approach show
 to be a good upper bounds for the \(k\)-environment for seeds of weight
@@ -2072,9 +2042,10 @@ of each method is investigated further in Figure~\ref{fig:sens_runtime}:
 approach}
 \label{fig:sens_runtime}
 \end{figure}
-The context-free approach shows to take very little time, almost
-instantaneous.
-Coupled with the very good estimation of the threshold it proves to be an
+The context-free approach shows to be very fast compared to the 
+context-sensitive approach.
+Coupled with the result of the threshold estimation presented in 
+Figure~\ref{fig:numctxfree}, it proves to be an
 universal on-the-fly solution. The context-sensitive approach runs much longer
 with around 0.5~s on average to calculate a threshold (compensated for
 creation of unsorted-unsorted \Qgram{q} score matrices, see
@@ -2108,11 +2079,9 @@ factor remains to be investigated further.
 \section{Generating \Qgram{q}s}
 In order to test the efficiency of the \Qgram{q} list generation, the
 original workflow in MMseqs2 was reimplemented and tested using the
-algorithm presented in this thesis. There are two implementations of
-the algorithm, one using SIMD instructions for X86 processors and one
-which does not explicitely use such instructions.
+algorithm presented in this thesis.
 The running time for both implementtions, was measured for different
-different seed weights. Results are reported In
+different seed weights. Results are reported in
 Figures~\ref{fig:genw5}, \ref{fig:genw6} and \ref{fig:genw7}.
 \begin{figure}
 \centering
@@ -2138,14 +2107,6 @@ different sensitivities using seed \numprint{1111010101}}
 The figures show that the new algorithm has generally a 10~\% to 15~\%
 performance loss compared to the MMseqs2 method. This is likely due to
 the overhead caused by the undoing of the sorting of \Qgram{q}s.
-
-\SKcomment{I doubt that the sorting is problematic, as you have to sort only
-once. Undoing the sorting has to be done for each generated \(q\)-grams, so this
-may be a problem. A point of future work would be to really measure the
-contribution of undoing the sorting. This could easily be done by only
-collecting the \(k\)-environments without processing them further. One version
-would apply the sorting, the other not. The difference would give the
-time for the sorting.}
 
 The positive effect of the new method is the low
 initial memory consumption of only 325~MB (used for the preprocessed
@@ -2177,12 +2138,6 @@ same
 trend, which coupled with the new approach in estimating threshold could
 lead to
 an expansion of seed weight (see Section~\ref{section:expand}).
-
-\SKcomment{The problem with \(q>7\) is the fact that the number of
-possible \(q\)-grams becomes so large. So if we would construct the
-same number of \(q\)-grams in about the same runtime, it would be a much
-smaller fraction of the entire search space. But lets see. Maybe this is
-feasible with the appropriate threshold.}
 
 \section{General Performance}
 \subsection{Performance Hotspots}
@@ -2257,76 +2212,20 @@ measured in ms, is compared to MMseqs2, in generation of 10, 100 and 1000
 Compared to the MMseqs2 program, the implementation using unsorted
 \Qgram{q}s
 shows generally worse performance, with 24~\% more time taken. On the other
-
-\SKcomment{In previous experiment you showed that the method using
-sorted \(q\)-grams is slower than the method using \(q\)-grams. But here
-the result it different. Likely, I am missing something.}
-
 hand,
 the approach using sorted \Qgram{q}s achieves smaller runtime, especially
 in
 lower sensitivity. This shows that using optimization methods implemented
 in MMseqs2 could improve the runtime even further.
 
-\Chapter{Discussion \& Future improvements}
-\section{Performance}
-Two further possible optimization methods are usage of SIMD intructions and
-multithreading. Both of these methods were tried in the implementation
-using
-SIMD instruction \(\mathsf{\_\_mm\_shuffle\_epi8}\) and OpenMP library, but
-unfortunately both showed little to no improvement on runtime. Reasons for
-these behaviors remains to be investigated.
-
-\section{Features}
-The new workflow was created with expandability in mind, therefore a lot of
-the calculation allows for greater seed size and even greater sub-\Qgram{q}
-size. A few of MMseqs2 features were also reimplemented, namely the ability to
-scale local composition bias correction and sensitivity manually. The
-design of the program also prioritizes flexibility, in that every
-calculation option, ranging from \(k\)-environment construction using regular 
-\Qgram{q}s to the new method using sorted \Qgram{q}s
-
-\SKcomment{As far as I understand, MMseqs2 mode refers to the way to calculate
-\(k\) from a given sensitivity setting. But the new sorted \(q\)-gram
-mode refers to the way of first precomputing score tables for sorted
-\(q'\)-grams, using these to create sorted \(q\)-grams and finally undoing the
-sorting. So it is strange that you use
-'from MMseqs2 mode new sorted \(q\)-gram mode' in one sentence.
-I actually do not think that you need to mention the different variants
-of the implementation here. It would suffice to state:
-The program provides options to select one of three implemented methods to
-determine the score threshold \(k\) and one of the two methods to
-construct the \(k\)-environment.}
-
-and both context-free and context-sensitive approach can be
-changed on-the-fly without recompilation.
-The program was intended to be a testing environment only, therefore custom
-workflows in MMseqs2 were not recreated, namely the stepwise sensitive
-search.
-\section{Possibility of expanding seed\label{section:expand}}
-Earlier it was shown that the runtime of \Qgram{q} generation scales
-well against seed weight, therefore some testing was created to test for
-seeds of weight 8 and 9:
-
-\AVTcomment{Waiting for BytesUnit fix}
-
+\Chapter{Discussion \& Future Improvements}
 \section{Compile-time calculation of
 score matrices\label{section:scorematrix}}
 Even though the class diagram in Figure~\ref{fig:classes} shows that it is
 possible to compute the score matrix in compile time, since it only depends
 on the two index tables of sorted/unsorted \Qgram{q}s, we decided to create 
 the table at runtime instead. The reason largely is due
-to the high memory stack size requirements and lack of compile time sorting
-algorithm.
-
-\SKcomment{There are ways of sorting at compile time, see e.g.\
-\url{https://stackoverflow.com/questions/32660523/c-calculate-and-sort-vector-at-compile-time}, but I think it is more a matter of efficient compile
-time sorting.}
-
-A manual compile time sorting implementation (i.e.\ quicksort)
-would again demand more compile time instances.
-
-\SKcomment{What do you mean by 'manual time sorting implementation'?}
+to the high memory stack size requirements.
 
 A separate benchmark in
 Figure~\ref{fig:scorematrix} showed that this could incur a 0.6~s loss in
@@ -2339,6 +2238,7 @@ a previous table you had compared the sizes of sorted/sorted score matrix
 with the unsorted-unsorted score matrix. So why would you consider
 the sorted-unsorted score matrix? Am I missing something?}
 \AVTcomment{In the case of sorted \Qgram{q}s, we need a table of size number of sorted \Qgram{q}s \(\times\) number of \Qgram{q}s}
+
 \begin{figure}
 \centering
 \includegraphics[scale=0.7]{graphics/scorematrix.png}
@@ -2346,6 +2246,136 @@ the sorted-unsorted score matrix? Am I missing something?}
 matrix}
 \label{fig:scorematrix}
 \end{figure}
+
+\section{Performance}
+The overall workflow of the implemented program shows to be more efficient with 
+the new method of \(k\)-environment construction using sorted \Qgram{q}s. 
+However the performance increase comes from the smaller size of the run-time
+constructed score matrices, which means that if these matrices are constructed 
+in compile time, this new approach will not show such an improvement. 
+\begin{comment}
+The advantage of this method however comes in more compact memory usage, which 
+should be taken advantage of in the representation of the score matrices. Based 
+on Table~\ref{tab:numdiff}, we could see that for the 210 sorted \(2\)-grams,
+8 bits of encoding are needed, compared to 9 bits for the \(2\)-grams.
+For the 1540 sorted \(3\)-grams, 11 bits of encoding are needed, compared to 13 
+bits for the \(3\)-grams. That means that if the score fits in 5 bits, a 
+\end{comment}
+Two further possible optimization methods are usage of SIMD intructions and
+multithreading. Both of these methods were tried in the implementation
+using
+SIMD instruction \(\mathsf{\_\_mm\_shuffle\_epi8}\) and OpenMP library, but
+unfortunately both showed little to no improvement on runtime. Reasons for
+these behaviors remains to be investigated.
+
+\SKcomment{Here is an implementation issue which maybe should be discussed
+in the corresponding section.
+For the 210 sorted \(2\)-grams,
+you need 8 bits to encode each, compared to 9 bits for the \(2\)-grams.
+For the 1540 sorted \(3\)-grams,
+you need 11 bits to encode each, compared to 13 bits for the \(3\)-grams.
+This should at least be discussed at later, if encoding of \(2\)-grams
+or \(3\)-grams becomes relevant in the implementation.}
+
+\section{Features}
+The new workflow was created with expandability in mind, therefore a lot of
+the calculation allows for greater seed size and even greater sub-\Qgram{q}
+size. A few of MMseqs2 features were also reimplemented, namely the ability to
+scale local composition bias correction and sensitivity manually. The
+design of the program also prioritizes flexibility, in that every
+calculation option, ranging from \(k\)-environment construction using regular 
+\Qgram{q}s to the new method using sorted \Qgram{q}s,
+and both context-free and context-sensitive approach can be
+changed on-the-fly without recompilation.
+The program was intended to be a testing environment only, therefore custom
+workflows in MMseqs2 were not recreated, namely the stepwise sensitive
+search.
+
+\section{Possibility of expanding seed\label{section:expand}}
+Earlier it was hypothesized that the runtime of \Qgram{q} generation scales
+well against seed with weight larger than 7, therefore some testing was created 
+to examine the behavior of the program with seeds of weight 8 and 9. Since 
+MMseqs2 does not include seeds of weight 8 and 9, seeds were reused from 
+DIAMOND~\cite{buchfink2015fast} and summarized in Table~\ref{tab:seed89}. The 
+measurement of run time and amount of \Qgram{q} are visualized in 
+Figure~\ref{fig:speed8} and \ref{fig:speed9}, and Figure~\ref{fig:ctxfree89} and
+\ref{fig:ctxsens89} respectively.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{c|c|r|c}
+No & Seed & Span & Weight \(q\)\\
+\hline
+19& \numprint{1011110111} & 10 & 8\\
+20& \numprint{11110110111} & 11 & 9
+\end{tabular}
+\caption{Seeds of weight 8 and 9, taken from DIAMOND~\cite{buchfink2015fast}, 
+used in testing program behavior with higher seed weight 
+\label{tab:seed89}}
+\end{center}
+\end{table}
+
+\begin{figure}
+\centering
+\includegraphics[scale=0.7]{graphics/gen_w8.png}
+\caption{Time measured in miliseconds to generate \Qgram{8}s with
+different sensitivities using seed \numprint{1011110111}}
+\label{fig:speed8}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[scale=0.7]{graphics/gen_w9.png}
+\caption{Time measured in miliseconds to generate \Qgram{9}s with
+different sensitivities using seed \numprint{11110110111}}
+\label{fig:speed9}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[scale=0.7]{graphics/ctxfree_hiweight.png}
+\caption{Ratio of the average number of \(q\)-grams actually generated per
+position of the query sequences versus the expected number of \(q\)-grams
+calculated by the context-free approach}
+\label{fig:ctxfree89}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[scale=0.7]{graphics/ctxsens_hiweight.png}
+\caption{Ratio of the average number of \(q\)-grams actually generated per
+position of the query sequences versus the expected number of \(q\)-grams
+calculated by the context-sensitive approach}
+\label{fig:ctxsens89}
+\end{figure}
+
+Figure~\ref{fig:speed8} and \ref{fig:speed9} show that, similar to the tests of
+\Qgram{5}, \Qgram{6} and \Qgram{7}, method using \Qgram{q} have better run time.
+
+To evaluate the time to generate \Qgram{q}s, results from the computation with 
+highest sensitivity of \numprint{1000} were used.
+For the seed of weight 8, the program takes \numprint{4004}~ms to generate 
+\numprint{204688068} \Qgram{8}s. This averages to 19.5~ns to generate each 
+\Qgram{8}, which stays close to the average time of \Qgram{7} generation 
+(20.1~ms, 3~\% less). For the seed of weight 9, the program takes 
+\numprint{7446}~ms to generate \numprint{337761491}  \Qgram{9}s. This averages 
+to 22.0~ns to generate each \Qgram{9}, which stays close to the average time of 
+\Qgram{7} generation (20.1~ms, 10~\% more). These two tests present promising 
+results and show that the construction of \(k\)-environment for \Qgram{8} and 
+\Qgram{9} is both viable in run time performance.
+
+Another interesting result shown in the tests is that the average number of 
+\Qgram{9}s generated per position using context-free model 
+\(\frac{\numprint{337761491}}{\numprint{210848}}\approx \numprint{1602}\) is 
+60.2~\% larger than expected (\numprint{1000}) while the context-sensitive model
+gives a more accurate approximation of 
+\(\frac{\numprint{195296133}}{\numprint{210848}}\approx 926\), which 
+corresponds to only 7.6~\% smaller than expected. This shows that for larger 
+\(q\), the context-sensitive approach could show a lot more stable results. The 
+run time of this approach can also be dramatically reduced if 
+the score matrices of \Qgram{q} pairs are constructed in compile time, and 
+therefore the value of this method should be investigated further.
+
 \Chapter{Conclusion}
 In this paper, the prefiltering module of the MMseqs2 software suite was
 examined and alternative optimization methods were tried and tested. A
@@ -2379,18 +2409,6 @@ of the seeds.
 \noappendicestocpagenum
 \addappheadtotoc
 \Chapter{Some additional method descriptions}
-\begin{table}
-\begin{center}
-\begin{tabular}{c|c|c|c}
-Dataset & Number of sequences & Maximum Sequence Length & Minimum Sequence
-Length\\
-\hline
-QUERY\_DIFF & 426 & \numprint{4291} & 8\\
-TARGET & \numprint{20000} & \numprint{8081} & 7\\
-\end{tabular}
-\caption{Datasets used in testing the modules\label{tab:datasets}}
-\end{center}
-\end{table}
 
 \Chapter{Some Additional Data}
 %%%%<

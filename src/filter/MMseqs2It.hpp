@@ -83,7 +83,7 @@ class MMseqs2 {
     const uint8_t sizeof_match_unit>
   void query_all_vs_all(GttlMultiseq* query, GttlMultiseq* target,const double sensitivity,
                         GTTL_UNUSED const bool with_simd,const bool short_header,const bool show, 
-                        const bool mmseqs, const bool correct,const double correct_ratio,
+                        const bool mmseqs, const bool ctxsens,const bool correct,const double correct_ratio,
                         const size_t num_threads) const {
     const size_t target_seq_len_bits = target->sequences_length_bits_get();
     const size_t target_seq_num_bits = target->sequences_number_bits_get();
@@ -120,9 +120,13 @@ class MMseqs2 {
     rt.show("Target sorting finished");
     constexpr const uint8_t weight = multiseq_hash.weight_get();
     const BGDistribution<Blosum62,weight> distribution{};
-    //const auto threshold = distribution.template context_sensitive_threshold_get<sizeof_target_unit>(target_hash_data,target_packer,sensitivity);
-    const auto threshold = distribution.custom_threshold_get2(literate_target.rank_dist_get(),sensitivity);
-    //std::cout << "Threshold " << (int) threshold << std::endl;
+    int64_t threshold;
+    if(ctxsens){
+      threshold = distribution.template context_sensitive_threshold_get<sizeof_target_unit>(target_hash_data,target_packer,sensitivity);
+    } else {
+      threshold = distribution.custom_threshold_get2(literate_target.rank_dist_get(),sensitivity);
+    }
+    std::cout << "Threshold " << (int) threshold << std::endl;
     rt.show("Evaluated threshold");
     const BytesCompositeEnvironment2<ScoreClass,seed> env_constructor{literate_target.rank_dist_get(),threshold};
     //env_constructor.set_background_data();
@@ -130,6 +134,9 @@ class MMseqs2 {
     env_constructor.template process_openmp<sizeof_query_unit>(query,query_hash_data,query_packer,mmseqs,with_simd,correct,correct_ratio,num_threads);
     rt.show("Constructed Cartesian products");
     std::cout << "Total generated qgrams: " << query_hash_data.size() << std::endl;
+    /*for(size_t i = 0; i < query_hash_data.size(); i++){
+      std::cout << query_hash_data[i].template decode_at<0>(query_packer) << '\t' << query_hash_data[i].template decode_at<2>(query_packer) << std::endl;
+    }*/
     env_constructor.template sort<sizeof_query_unit>(query_hash_data,hashbits);
     rt.show("Query sorting finished");
     find_hits<sizeof_query_unit,sizeof_target_unit,sizeof_match_unit>(query_hash_data,target_hash_data,matches,query_packer,target_packer,match_packer);
@@ -219,13 +226,13 @@ class MMseqs2 {
 
   public:
   MMseqs2(GttlMultiseq* query, GttlMultiseq* target,const double sensitivity,
-          const bool with_simd,const bool short_header,const bool show, const bool mmseqs,
+          const bool with_simd,const bool short_header,const bool show, const bool mmseqs, const bool ctxsens,
           const bool correct, const double correct_ratio, const size_t num_threads){
     
     const size_t target_seq_len_bits = target->sequences_length_bits_get();
     const size_t target_seq_num_bits = target->sequences_number_bits_get();
     const size_t query_seq_len_bits = query->sequences_length_bits_get();
-    const size_t query_seq_num_bits = target->sequences_number_bits_get();
+    const size_t query_seq_num_bits = query->sequences_number_bits_get();
     const size_t hashbits = multiseq_hash.hashbits_get();
 
     const auto sizeof_target_unit = sizeof_unit_get(hashbits+target_seq_num_bits+target_seq_len_bits);
@@ -233,17 +240,15 @@ class MMseqs2 {
     const auto sizeof_match_unit = sizeof_unit_get(query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits);
 
     //std::cout << (int) sizeof_target_unit << '\t' << (int) sizeof_query_unit << '\t' << (int) sizeof_match_unit << std::endl;
-    std::cout << (int) hashbits+target_seq_num_bits+target_seq_len_bits << '\t' 
+    /*std::cout << (int) hashbits+target_seq_num_bits+target_seq_len_bits << '\t' 
     << (int) hashbits+query_seq_num_bits+query_seq_len_bits << '\t' 
-    << (int) query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits << std::endl;
+    << (int) query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits << std::endl;*/
     
     std::cout << "Hashbits: " << (int) hashbits << std::endl;
     std::cout << "Target_seqnum_bits: " << (int) target_seq_num_bits << std::endl;
     std::cout << "Target_seqpos_bits: " << (int) target_seq_len_bits << std::endl; 
     std::cout << "Query_seqnum_bits: " << (int) query_seq_num_bits << std::endl;
     std::cout << "Query_seqpos_bits: " << (int) query_seq_len_bits << std::endl;
-
-
 
     if(sizeof_match_unit > max_unit_size or sizeof_query_unit > max_unit_size
     or sizeof_target_unit > max_unit_size){
@@ -258,7 +263,7 @@ class MMseqs2 {
           constexpr_target_size == sizeof_target_unit and
           constexpr_match_size == sizeof_match_unit){
             query_all_vs_all<constexpr_query_size,constexpr_target_size,
-            constexpr_match_size>(query,target,sensitivity,with_simd,short_header,show,mmseqs,correct,correct_ratio,num_threads);
+            constexpr_match_size>(query,target,sensitivity,with_simd,short_header,show,mmseqs,ctxsens,correct,correct_ratio,num_threads);
           }
         });
       });
