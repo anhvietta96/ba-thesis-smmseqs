@@ -182,8 +182,6 @@
 \Maketitle
 
 \SKcomment{Please provide a longer abstract}
-\AVTcomment{multiset proof}
-\AVTcomment{seed 8 9}
 
 % if you write in German, maybe change this to "Zusammenfassung".
 \addchap*{Abstract}
@@ -380,9 +378,9 @@ Representing \Qgram{q}s as a sequence of characters is very costly, since it
 takes \(O(q)\) operations to compare and they also demand \(O(q)\) space of
 memory. Therefore, they are often firstly hashed to integer to be processed
 further. The standard hashing algorithm for \Qgram{q}s is called invertible
-integer encoding, the characters are assigned a weight, which is expressed as
-\(r^{q-1-i}\), where \(r\) is an integer called the radix and \(i\) is the position of the
-character in the \Qgram{q}.
+integer encoding, where the characters are assigned a weight, which is expressed
+as \(r^{q-1-i}\), where \(r\) is an integer called the radix and \(i\) is the 
+position of the character in the \Qgram{q}.
 
 Since the weight of every character must be unique in every position in the
 \Qgram{q}, the radix must be large enough to discern every character in
@@ -677,7 +675,7 @@ and theoretical hashing speedup factor $\frac{q}{2b}$
 using recursive hashing\label{tab:seeds}}
 \end{center}
 \end{table}
-\section{Optimizing query data processing\label{section:qgramgen}}
+\section{Construction of \(k\)-environment \label{section:qgramgen}}
 In order to quantify the similarity between sequences, one uses a scoring
 function. This provides quantitative measures for comparing biological
 sequences, structures, and interactions, facilitating a deeper
@@ -698,7 +696,7 @@ matrices can be summarized as a mathematical function:
 \begin{align}
 \sigma: \mathcal{A} \times \mathcal{A} \rightarrow \Reals
 \end{align}
-A positive score between two residues often denotes similarity between them
+A positive score between two residues denotes similarity between them
 and a negative score indicates dissimilarity. The score between two
 sequences \(u,v\in \Alpha^q\) can then be defined as follow:
 \begin{align}
@@ -2336,7 +2334,7 @@ different sensitivities using seed \numprint{11110110111}}
 \includegraphics[scale=0.7]{graphics/ctxfree_hiweight.png}
 \caption{Ratio of the average number of \(q\)-grams actually generated per
 position of the query sequences versus the expected number of \(q\)-grams
-calculated by the context-free approach}
+calculated with seed of weight 8 and 9 by the context-free approach}
 \label{fig:ctxfree89}
 \end{figure}
 
@@ -2345,7 +2343,7 @@ calculated by the context-free approach}
 \includegraphics[scale=0.7]{graphics/ctxsens_hiweight.png}
 \caption{Ratio of the average number of \(q\)-grams actually generated per
 position of the query sequences versus the expected number of \(q\)-grams
-calculated by the context-sensitive approach}
+calculated with seed of weight 8 and 9 by the context-sensitive approach}
 \label{fig:ctxsens89}
 \end{figure}
 
@@ -2364,17 +2362,12 @@ to 22.0~ns to generate each \Qgram{9}, which stays close to the average time of
 results and show that the construction of \(k\)-environment for \Qgram{8} and 
 \Qgram{9} is both viable in run time performance.
 
-Another interesting result shown in the tests is that the average number of 
-\Qgram{9}s generated per position using context-free model 
-\(\frac{\numprint{337761491}}{\numprint{210848}}\approx \numprint{1602}\) is 
-60.2~\% larger than expected (\numprint{1000}) while the context-sensitive model
-gives a more accurate approximation of 
-\(\frac{\numprint{195296133}}{\numprint{210848}}\approx 926\), which 
-corresponds to only 7.6~\% smaller than expected. This shows that for larger 
-\(q\), the context-sensitive approach could show a lot more stable results. The 
-run time of this approach can also be dramatically reduced if 
-the score matrices of \Qgram{q} pairs are constructed in compile time, and 
-therefore the value of this method should be investigated further.
+Another interesting result shown in the tests is that the threshold evaluated by
+the context-free model in generating \Qgram{8}s is better than that by the 
+context-sensitive model. In generating \Qgram{9}s is the relationship reversed,
+where the average \(k\)-environment size esimated by the context-sensitive model
+stays relatively close to expected. This shows that both methods are seemingly
+not stable in higher seed weights. This issue shoul be investigated further.
 
 \Chapter{Conclusion}
 In this paper, the prefiltering module of the MMseqs2 software suite was
