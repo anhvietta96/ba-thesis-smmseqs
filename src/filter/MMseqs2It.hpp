@@ -6,6 +6,7 @@
 #include "filter/InvIntHash.hpp"
 #include "utilities/unused.hpp"
 #include "utilities/runtime_class.hpp"
+#include "filter/distribution.hpp"
 
 #define TIME
 

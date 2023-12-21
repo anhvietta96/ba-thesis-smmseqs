@@ -28,7 +28,8 @@ class SpacedSeedOptions{
        show = false,
        short_header_option = false,
        mmseqs = false,
-       correct = false;
+       correct = false,
+       ctxsens = false;
   std::string seeds = "0", sensitivity = "1",correct_ratio = "1",num_threads = "1";
 
  public:
@@ -61,6 +62,8 @@ class SpacedSeedOptions{
         cxxopts::value<bool>(show)->default_value("false"))
         ("m,mmseqs", "mmseqs mode using unsorted q-grams only",
         cxxopts::value<bool>(mmseqs)->default_value("false"))
+        ("f,ctxsens", "approximate threshold using context-sensitive method",
+        cxxopts::value<bool>(ctxsens)->default_value("false"))
         ("h,help", "print usage");
     try
     {
@@ -131,6 +134,10 @@ class SpacedSeedOptions{
   {
     return mmseqs;
   }
+  bool ctxsens_is_set(void) const noexcept
+  {
+    return ctxsens;
+  }
   bool local_score_correction_is_set(void) const noexcept
   {
     return correct;
@@ -168,8 +175,8 @@ static constexpr const size_t gt_spaced_seed_spec_tab[] = {
   851UL /* 5, 6, 10 1101010011, MMseq2_proteins_5 */,
   981UL /* 6, 7, 10 1111010101, MMseq2_proteins_6 */,
   1715UL /* 7, 7, 11 11010110011, MMseq2_proteins_7 */,
-  3699UL, /* 8, 8, 12 111001110011*/
-  7399UL /* 9, 9, 13 1110011100111*/
+  759UL, /* 8, 8, 12 1011110111*/
+  1975UL /* 9, 9, 13 1110011100111*/
 };
 #endif
 
@@ -183,10 +190,10 @@ constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab)/sizeof
 
 template<class ScoreClass,const uint8_t seed_idx>
 void process(GttlMultiseq* query,GttlMultiseq* target,const double sensitivity,
-            const bool with_simd,const bool show,const bool short_header, const bool mmseqs, const bool correct, const double correct_ratio, const size_t num_threads)
+            const bool with_simd,const bool show,const bool short_header, const bool mmseqs, const bool ctxsens, const bool correct,  const double correct_ratio, const size_t num_threads)
 {
   constexpr const size_t seed = gt_spaced_seed_spec_tab[seed_idx];
-  const MMseqs2<ScoreClass,InvIntHashFunc,seed> mmseqs2{query,target,sensitivity,with_simd,short_header,show,mmseqs,correct,correct_ratio,num_threads};
+  const MMseqs2<ScoreClass,InvIntHashFunc,seed> mmseqs2{query,target,sensitivity,with_simd,short_header,show,mmseqs,ctxsens,correct,correct_ratio,num_threads};
 }
 
 int main(int argc, char *argv[])
@@ -264,6 +271,7 @@ int main(int argc, char *argv[])
   const double sensitivity = std::stod(options.sensitivity_get());
   const bool mmseqs = options.mmseqs_mode_is_set();
   const bool correct = options.local_score_correction_is_set();
+  const bool ctxsens = options.ctxsens_is_set();
   
 
   //const auto threshold_string = options.threshold_get();
@@ -274,7 +282,7 @@ int main(int argc, char *argv[])
   {
     if(seed_idx_constexpr == seed_idx)
     {
-      process<Blosum62,seed_idx_constexpr>(query,target,sensitivity,with_simd,show,short_header,mmseqs,correct,correct_ratio,num_threads);
+      process<Blosum62,seed_idx_constexpr>(query,target,sensitivity,with_simd,show,short_header,mmseqs,ctxsens,correct,correct_ratio,num_threads);
     }
   });
   

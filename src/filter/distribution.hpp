@@ -7,6 +7,7 @@
 #include "filter/env_matrix.hpp"
 #include "utilities/bytes_unit.hpp"
 #include "utilities/runtime_class.hpp"
+#include "filter/spaced_seeds.hpp"
 
 #ifndef THRESHOLD_FACTOR
 #define THRESHOLD_FACTOR 1
@@ -409,408 +410,88 @@ class BGDistribution {
     }
   }
 
+  template<const uint8_t qgram_length>
+  const ScoreQgramcodePair2* const env_get(const uint64_t code) const {
+    static const FullMatrix<ScoreClass,qgram_length> fm{};
+    return fm.sorted_env_get(code);
+  }
+
   template<const size_t sizeof_unit>
-  int64_t context_sensitive_threshold_get(const std::vector<BytesUnit<sizeof_unit,3>>& hash_data,const GttlBitPacker<sizeof_unit,3>& packer, const double sensitivity) const {
-    if constexpr(weight == 4){
-      RunTimeClass rt{};
-      constexpr const size_t hash_size = constexpr_pow(undefined_rank,2);
-      std::array<uint32_t,hash_size> code_count1{};
-      std::array<uint32_t,hash_size> code_count2{};
-      for(size_t i = 0; i < hash_data.size(); i++){
-        const size_t code = hash_data[i].template decode_at<0>(packer);
-        code_count1[code/hash_size]++;
-        code_count2[code%hash_size]++;
-      }
+  int64_t context_sensitive_threshold_get(const std::vector<BytesUnit<sizeof_unit,3>>& hash_data,
+  const GttlBitPacker<sizeof_unit,3>& packer, const double sensitivity) const {
+    static constexpr const uint64_t seed = (1 << weight) - 1;
+    static constexpr const SpacedSeedEncoder<ScoreClass,seed,3> spaced_seed_encoder{};
+    static constexpr const auto num_of_primary_env = spaced_seed_encoder.num_of_primary_env_get();
+    static constexpr const auto& subqgram_length_arr = spaced_seed_encoder.subqgram_length_arr_get();
 
-      const size_t total = hash_data.size();
+    std::array<uint64_t,num_of_primary_env> modFactors{};
+    std::array<uint64_t,num_of_primary_env> divFactors{};
+    std::array<int64_t,num_of_primary_env> minArr{};
 
-      std::array<double,hash_size> freq1{};
-      std::array<double,hash_size> freq2{};
-      for(size_t i = 0; i < hash_size; i++){
-        freq1[i] = static_cast<double>(code_count1[i])/total;
+    for(size_t i = 0; i < num_of_primary_env; i++){
+      modFactors[i] = constexpr_pow(undefined_rank,subqgram_length_arr[i]);
+      uint64_t divFactor = 1;
+      for(size_t j = i+1; j < num_of_primary_env; j++){
+        divFactor *= constexpr_pow(undefined_rank,subqgram_length_arr[j]);
       }
-      for(size_t i = 0; i < hash_size; i++){
-        freq2[i] = static_cast<double>(code_count2[i])/total;
-      }
-      rt.show("Extracted from hash data");
-      const FullMatrix<ScoreClass,2> fm{};
-      constexpr const int64_t min = sc.smallest_score * 2;
-
-      std::array<double,num_possible_values_single*2> hist1{};
-      std::array<double,num_possible_values_single*2> hist2{};
-
-      for(size_t i = 0; i < hash_size; i++){
-        const auto& env = fm.sorted_env_get(i);
-        for(size_t j = 0; j < hash_size; j++){
-          hist1[env[j].score-min] += freq1[i];
-          hist2[env[j].score-min] += freq2[i];
-        }
-      }
-
-      std::array<double,num_possible_values_max> hist{};
-      for(size_t i = 0; i < num_possible_values_single * 2; i++){
-        for(size_t j = 0; j < num_possible_values_single * 2; j++){
-          hist[i+j] += hist1[i] * hist2[j];
-        }
-      }
-      rt.show("Constructed histogram");
-      
-      const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
-      //std::cout << "Cutoff " << cutoff << std::endl;
-      double count = 0;
-      size_t idx = num_possible_values_single * 2-1;
-      for(;idx < num_possible_values_single * 2;idx--){
-        count += hist[idx];
-        //std::cout << count << std::endl;
-        if(count > cutoff) break;
-      }
-
-      return smallest_score + idx + 1;
-    } else if constexpr(weight == 5){
-      constexpr const size_t hash_size1 = constexpr_pow(undefined_rank,3);
-      constexpr const size_t hash_size2 = constexpr_pow(undefined_rank,2);
-      RunTimeClass rt{};
-      std::array<uint32_t,hash_size1> code_count1{};
-      std::array<uint32_t,hash_size2> code_count2{};
-      for(size_t i = 0; i < hash_data.size(); i++){
-        const size_t code = hash_data[i].template decode_at<0>(packer);
-        code_count1[code/hash_size2]++;
-        code_count2[code%hash_size2]++;
-      }
-
-      const size_t total = hash_data.size();
-      
-      std::array<double,hash_size1> freq1{};
-      std::array<double,hash_size2> freq2{};
-      for(size_t i = 0; i < hash_size1; i++){
-        freq1[i] = static_cast<double>(code_count1[i])/total;
-      }
-      for(size_t i = 0; i < hash_size2; i++){
-        freq2[i] = static_cast<double>(code_count2[i])/total;
-      }
-      rt.show("Extract from hash data");
-      const FullMatrix<ScoreClass,3> fm1{};
-      const FullMatrix<ScoreClass,2> fm2{};
-      constexpr const int64_t min1 = sc.smallest_score * 3;
-      constexpr const int64_t min2 = sc.smallest_score * 2;
-
-      std::array<double,num_possible_values_max> hist1{};
-      std::array<double,num_possible_values_max> hist2{};
-
-      for(size_t i = 0; i < hash_size1; i++){
-        const auto& env = fm1.sorted_env_get(i);
-        for(size_t j = 0; j < hash_size1; j++){
-          hist1[env[j].score-min1] += freq1[i];
-        }
-      }
-
-      for(size_t i = 0; i < hash_size2; i++){
-        const auto& env = fm2.sorted_env_get(i);
-        for(size_t j = 0; j < hash_size2; j++){
-          hist2[env[j].score-min2] += freq2[i];
-        }
-      }
-
-      std::array<double,num_possible_values_max> hist{};
-      for(size_t i = 0; i < num_possible_values_single * 3; i++){
-        for(size_t j = 0; j < num_possible_values_single * 2; j++){
-          hist[i+j] += hist1[i] * hist2[j];
-        }
-      }
-      rt.show("Constructed histogram");
-      const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
-      //std::cout << "Cutoff " << cutoff << std::endl;
-      double count = 0;
-      size_t idx = num_possible_values_max-1;
-      for(;idx < num_possible_values_max;idx--){
-        count += hist[idx];
-        //std::cout << count << std::endl;
-        if(count > cutoff) break;
-      }
-
-      return smallest_score + idx + 1;
-    } else if constexpr(weight == 6){
-      constexpr const size_t hash_size = constexpr_pow(undefined_rank,3);
-      RunTimeClass rt{};
-      std::array<uint32_t,hash_size> code_count1{};
-      std::array<uint32_t,hash_size> code_count2{};
-      for(size_t i = 0; i < hash_data.size(); i++){
-        const size_t code = hash_data[i].template decode_at<0>(packer);
-        code_count1[code/hash_size]++;
-        code_count2[code%hash_size]++;
-      }
-
-      const size_t total = hash_data.size();
-      
-      std::array<double,hash_size> freq1{};
-      std::array<double,hash_size> freq2{};
-      for(size_t i = 0; i < hash_size; i++){
-        freq1[i] = static_cast<double>(code_count1[i])/total;
-        freq2[i] = static_cast<double>(code_count2[i])/total;
-      }
-      rt.show("Extract from hash data");
-      const FullMatrix<ScoreClass,3> fm1{};
-      constexpr const int64_t min = sc.smallest_score * 3;
-
-      std::array<double,num_possible_values_max> hist1{};
-      std::array<double,num_possible_values_max> hist2{};
-
-      for(size_t i = 0; i < hash_size; i++){
-        const auto& env = fm1.sorted_env_get(i);
-        for(size_t j = 0; j < hash_size; j++){
-          hist1[env[j].score-min] += freq1[i];
-          hist2[env[j].score-min] += freq2[i];
-        }
-      }
-
-      std::array<double,num_possible_values_max> hist{};
-      for(size_t i = 0; i < num_possible_values_single * 3; i++){
-        for(size_t j = 0; j < num_possible_values_single * 3; j++){
-          hist[i+j] += hist1[i] * hist2[j];
-        }
-      }
-      rt.show("Constructed histogram");
-      const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
-      //std::cout << "Cutoff " << cutoff << std::endl;
-      double count = 0;
-      size_t idx = num_possible_values_max-1;
-      for(;idx < num_possible_values_max;idx--){
-        count += hist[idx];
-        //std::cout << count << std::endl;
-        if(count > cutoff) break;
-      }
-
-      return smallest_score + idx + 1;
-    } else if(weight == 7){
-      constexpr const size_t hash_size4 = constexpr_pow(undefined_rank,4);
-      constexpr const size_t hash_size2 = constexpr_pow(undefined_rank,2);
-      constexpr const size_t hash_size3 = constexpr_pow(undefined_rank,3);
-      constexpr const size_t hash_size5 = hash_size2*hash_size3;
-      RunTimeClass rt{};
-      std::array<uint32_t,hash_size3> code_count1{};
-      std::array<uint32_t,hash_size2> code_count2{};
-      std::array<uint32_t,hash_size2> code_count3{};
-      for(size_t i = 0; i < hash_data.size(); i++){
-        const size_t code = hash_data[i].template decode_at<0>(packer);
-        code_count1[code/hash_size4]++;
-        code_count2[(code/hash_size2)%hash_size2]++;
-        code_count3[code%hash_size2]++;
-      }
-
-      const size_t total = hash_data.size();
-      
-      std::array<double,hash_size3> freq1{};
-      std::array<double,hash_size2> freq2{};
-      std::array<double,hash_size2> freq3{};
-      for(size_t i = 0; i < hash_size3; i++){
-        freq1[i] = static_cast<double>(code_count1[i])/total;
-      }
-      for(size_t i = 0; i < hash_size2; i++){
-        freq2[i] = static_cast<double>(code_count2[i])/total;
-      }
-      for(size_t i = 0; i < hash_size2; i++){
-        freq3[i] = static_cast<double>(code_count3[i])/total;
-      }
-      rt.show("Extract from hash data");
-      const FullMatrix<ScoreClass,3> fm3{};
-      const FullMatrix<ScoreClass,2> fm2{};
-      constexpr const int64_t min1 = sc.smallest_score * 3;
-      constexpr const int64_t min2 = sc.smallest_score * 2;
-
-      std::array<double,num_possible_values_max> hist1{};
-      std::array<double,num_possible_values_max> hist2{};
-      std::array<double,num_possible_values_max> hist3{};
-      std::array<double,num_possible_values_max> temp_hist{};
-      
-      for(size_t i = 0; i < hash_size3; i++){
-        const auto& env = fm3.sorted_env_get(i);
-        for(size_t j = 0; j < hash_size3; j++){
-          hist1[env[j].score-min1] += freq1[i];
-        }
-      }
-
-      for(size_t i = 0; i < hash_size2; i++){
-        const auto& env = fm2.sorted_env_get(i);
-        for(size_t j = 0; j < hash_size2; j++){
-          hist2[env[j].score-min2] += freq2[i];
-          hist3[env[j].score-min2] += freq3[i];
-        }
-      }
-
-      for(size_t i = 0; i < num_possible_values_single * 2; i++){
-        for(size_t j = 0; j < num_possible_values_single * 2; j++){
-          temp_hist[i+j] += hist2[i] * hist3[j];
-        }
-      }
-
-      std::array<double,num_possible_values_max> hist{};
-      for(size_t i = 0; i < num_possible_values_single * 4; i++){
-        for(size_t j = 0; j < num_possible_values_single * 3; j++){
-          hist[i+j] += temp_hist[i] * hist1[j];
-        }
-      }
-      rt.show("Constructed histogram");
-      const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
-      //std::cout << "Cutoff " << cutoff << std::endl;
-      double count = 0;
-      size_t idx = num_possible_values_max-1;
-      for(;idx < num_possible_values_max;idx--){
-        count += hist[idx];
-        //std::cout << count << std::endl;
-        if(count > cutoff) break;
-      }
-
-      return smallest_score + idx + 1;
-    } else if(weight == 8){
-      constexpr const size_t hash_size5 = constexpr_pow(undefined_rank,5);
-      constexpr const size_t hash_size3 = constexpr_pow(undefined_rank,3);
-      constexpr const size_t hash_size2 = constexpr_pow(undefined_rank,2);
-      RunTimeClass rt{};
-      std::array<uint32_t,hash_size3> code_count1{};
-      std::array<uint32_t,hash_size3> code_count2{};
-      std::array<uint32_t,hash_size2> code_count3{};
-      for(size_t i = 0; i < hash_data.size(); i++){
-        const size_t code = hash_data[i].template decode_at<0>(packer);
-        code_count1[code/hash_size5]++;
-        code_count2[(code/hash_size2)%hash_size3]++;
-        code_count3[code%hash_size2]++;
-      }
-
-      const size_t total = hash_data.size();
-      
-      std::array<double,hash_size3> freq1{};
-      std::array<double,hash_size2> freq2{};
-      std::array<double,hash_size2> freq3{};
-      for(size_t i = 0; i < hash_size3; i++){
-        freq1[i] = static_cast<double>(code_count1[i])/total;
-      }
-      for(size_t i = 0; i < hash_size2; i++){
-        freq2[i] = static_cast<double>(code_count2[i])/total;
-      }
-      for(size_t i = 0; i < hash_size2; i++){
-        freq3[i] = static_cast<double>(code_count3[i])/total;
-      }
-      rt.show("Extract from hash data");
-      const FullMatrix<ScoreClass,3> fm3{};
-      const FullMatrix<ScoreClass,2> fm2{};
-      constexpr const int64_t min1 = sc.smallest_score * 3;
-      constexpr const int64_t min2 = sc.smallest_score * 2;
-
-      std::array<double,num_possible_values_max> hist1{};
-      std::array<double,num_possible_values_max> hist2{};
-      std::array<double,num_possible_values_max> hist3{};
-      std::array<double,num_possible_values_max> temp_hist{};
-      
-      for(size_t i = 0; i < hash_size3; i++){
-        const auto& env = fm3.sorted_env_get(i);
-        for(size_t j = 0; j < hash_size3; j++){
-          hist1[env[j].score-min1] += freq1[i];
-          hist2[env[j].score-min1] += freq2[i];
-        }
-      }
-
-      for(size_t i = 0; i < hash_size2; i++){
-        const auto& env = fm2.sorted_env_get(i);
-        for(size_t j = 0; j < hash_size2; j++){
-          hist3[env[j].score-min2] += freq3[i];
-        }
-      }
-
-      for(size_t i = 0; i < num_possible_values_single * 3; i++){
-        for(size_t j = 0; j < num_possible_values_single * 2; j++){
-          temp_hist[i+j] += hist2[i] * hist3[j];
-        }
-      }
-
-      std::array<double,num_possible_values_max> hist{};
-      for(size_t i = 0; i < num_possible_values_single * 5; i++){
-        for(size_t j = 0; j < num_possible_values_single * 3; j++){
-          hist[i+j] += temp_hist[i] * hist1[j];
-        }
-      }
-      rt.show("Constructed histogram");
-      const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
-      //std::cout << "Cutoff " << cutoff << std::endl;
-      double count = 0;
-      size_t idx = num_possible_values_max-1;
-      for(;idx < num_possible_values_max;idx--){
-        count += hist[idx];
-        //std::cout << count << std::endl;
-        if(count > cutoff) break;
-      }
-
-      return smallest_score + idx + 1;
-    } else {
-      constexpr const size_t hash_size6 = constexpr_pow(undefined_rank,6);
-      constexpr const size_t hash_size3 = constexpr_pow(undefined_rank,3);
-      RunTimeClass rt{};
-      std::array<uint32_t,hash_size3> code_count1{};
-      std::array<uint32_t,hash_size3> code_count2{};
-      std::array<uint32_t,hash_size3> code_count3{};
-      for(size_t i = 0; i < hash_data.size(); i++){
-        const size_t code = hash_data[i].template decode_at<0>(packer);
-        code_count1[code/hash_size6]++;
-        code_count2[(code/hash_size3)%hash_size3]++;
-        code_count3[code%hash_size3]++;
-      }
-
-      const size_t total = hash_data.size();
-      
-      std::array<double,hash_size3> freq1{};
-      std::array<double,hash_size3> freq2{};
-      std::array<double,hash_size3> freq3{};
-      for(size_t i = 0; i < hash_size3; i++){
-        freq1[i] = static_cast<double>(code_count1[i])/total;
-      }
-      for(size_t i = 0; i < hash_size3; i++){
-        freq2[i] = static_cast<double>(code_count2[i])/total;
-      }
-      for(size_t i = 0; i < hash_size3; i++){
-        freq3[i] = static_cast<double>(code_count3[i])/total;
-      }
-      rt.show("Extract from hash data");
-      const FullMatrix<ScoreClass,3> fm3{};
-      constexpr const int64_t min1 = sc.smallest_score * 3;
-
-      std::array<double,num_possible_values_max> hist1{};
-      std::array<double,num_possible_values_max> hist2{};
-      std::array<double,num_possible_values_max> hist3{};
-      std::array<double,num_possible_values_max> temp_hist{};
-      
-      for(size_t i = 0; i < hash_size3; i++){
-        const auto& env = fm3.sorted_env_get(i);
-        for(size_t j = 0; j < hash_size3; j++){
-          hist1[env[j].score-min1] += freq1[i];
-          hist2[env[j].score-min1] += freq2[i];
-          hist3[env[j].score-min1] += freq3[i];
-        }
-      }
-
-      for(size_t i = 0; i < num_possible_values_single * 3; i++){
-        for(size_t j = 0; j < num_possible_values_single * 3; j++){
-          temp_hist[i+j] += hist2[i] * hist3[j];
-        }
-      }
-
-      std::array<double,num_possible_values_max> hist{};
-      for(size_t i = 0; i < num_possible_values_single * 6; i++){
-        for(size_t j = 0; j < num_possible_values_single * 3; j++){
-          hist[i+j] += temp_hist[i] * hist1[j];
-        }
-      }
-      rt.show("Constructed histogram");
-      const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
-      //std::cout << "Cutoff " << cutoff << std::endl;
-      double count = 0;
-      size_t idx = num_possible_values_max-1;
-      for(;idx < num_possible_values_max;idx--){
-        count += hist[idx];
-        //std::cout << count << std::endl;
-        if(count > cutoff) break;
-      }
-
-      return smallest_score + idx + 1;
+      divFactors[i] = divFactor;
+      minArr[i] = sc.smallest_score * subqgram_length_arr[i];
     }
+
+    std::array<std::array<uint32_t,constexpr_pow(undefined_rank,3)>,3> code_count{};
+
+    RunTimeClass rt{};
+    const size_t total = hash_data.size();
+    for(size_t i = 0; i < total; i++){
+      const size_t code = hash_data[i].template decode_at<0>(packer);
+      for(size_t j = 0; j < num_of_primary_env; j++){
+        code_count[j][(code/divFactors[j])%modFactors[j]]++;
+      }
+    }
+
+    std::array<std::array<double,constexpr_pow(undefined_rank,3)>,3> freq{};
+    for(size_t i = 0; i < num_of_primary_env; i++){
+      for(size_t j = 0; j < modFactors[i]; j++){
+        freq[i][j] = static_cast<double>(code_count[i][j])/total;
+      }
+    }
+    rt.show("Extracted from hash data");
+
+    std::array<std::array<double,num_possible_values_max>,num_of_primary_env> hist{};
+    constexpr_for<0,num_of_primary_env,1>([&] (auto k){
+      for(size_t i = 0; i < modFactors[k]; i++){
+        const auto& env = env_get<subqgram_length_arr[k]>(i);
+        for(size_t j = 0; j < modFactors[k]; j++){
+          hist[k][env[j].score-minArr[k]] += freq[k][i];
+        }
+      }
+    });
+
+    std::array<double,num_possible_values_max> convoluted = hist[0];
+    size_t num = subqgram_length_arr[0];
+    for(size_t k = 1; k < num_of_primary_env; k++){
+      std::array<double,num_possible_values_max> temp_conv{}; 
+      for(size_t i = 0; i < num_possible_values_single * num; i++){
+        for(size_t j = 0; j < num_possible_values_single * subqgram_length_arr[k]; j++){
+          temp_conv[i+j] += convoluted[i] * hist[k][j];
+        }
+      }
+      convoluted = temp_conv;
+      num += subqgram_length_arr[k];
+    }
+    rt.show("Constructed histogram");
+    
+    const double cutoff = sensitivity;// / constexpr_pow(undefined_rank,weight); 
+    //std::cout << "Cutoff " << cutoff << std::endl;
+    double count = 0;
+    size_t idx = num_possible_values_max-1;
+    for(;idx < num_possible_values_max;idx--){
+      count += convoluted[idx];
+      //std::cout << count << std::endl;
+      if(count > cutoff) break;
+    }
+
+    return smallest_score + idx + 1;
   }
 };
 

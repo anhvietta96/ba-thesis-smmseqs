@@ -3,7 +3,6 @@
 #include "sequences/alphabet.hpp"
 #include "utilities/constexpr_for.hpp"
 #include "filter/multiset_code.hpp"
-#include "filter/distribution.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -131,15 +130,6 @@ constexpr std::array<uint8_t,num_of_primary_env> create_subqgram_length_arr(){
   return qgram_length_arr;
 }
 
-template<const uint8_t num_of_primary_env,const uint8_t weight>
-constexpr std::array<int8_t,num_of_primary_env> create_env_threshold_arr(const std::array<uint8_t,num_of_primary_env>& qgram_length_arr,const int8_t& threshold,const int8_t& highest_score){
-  std::array<int8_t,num_of_primary_env> env_threshold_arr{};
-  for(uint8_t i = 0; i < num_of_primary_env; i++){
-    env_threshold_arr[i] = threshold - (weight - qgram_length_arr[i]) * highest_score;
-  }
-  return env_threshold_arr;
-}
-
 template<class ScoreClass,const size_t seed, const uint8_t max_subqgram_length>
 class SpacedSeedEncoder {
   private:
@@ -155,13 +145,8 @@ class SpacedSeedEncoder {
                                                       weight / max_subqgram_length;
   static constexpr const MultisetEncoder<char_spec,undefined_rank,max_subqgram_length> multiset_encoder{};
   
-  //Threshold
-  static constexpr const Distribution<ScoreClass,weight-1> dis{};
-  static constexpr const int8_t threshold = dis.threshold_get(weight-1);
-
   //Init in constexpr constructor
   std::array<uint8_t,num_of_primary_env> subqgram_length_arr{};
-  std::array<int8_t,num_of_primary_env> env_threshold_arr{};
 
   public:
   constexpr SpacedSeedEncoder(){
@@ -176,10 +161,6 @@ class SpacedSeedEncoder {
         subqgram_length_arr[num_of_primary_env-1-i]--;
         overcount--;
       }
-    }
-    
-    for(uint8_t i = 0; i < num_of_primary_env; i++){
-      env_threshold_arr[i] = threshold - (weight - subqgram_length_arr[i]) * sc.highest_score;
     }
   };
 
@@ -276,16 +257,8 @@ class SpacedSeedEncoder {
     return subqgram_length_arr;
   }
 
-  constexpr const std::array<int8_t,num_of_primary_env>& env_threshold_arr_get() const {
-    return env_threshold_arr;
-  }
-
   constexpr uint8_t num_of_primary_env_get() const {
     return num_of_primary_env;
-  }
-
-  constexpr int8_t threshold_get() const {
-    return threshold;
   }
 
   constexpr size_t span_get() const {

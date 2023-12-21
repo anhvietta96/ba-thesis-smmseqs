@@ -75,16 +75,12 @@ class SpacedSeedOptions{
 };
 
 static constexpr const size_t gt_spaced_seed_spec_tab[] = {
-  29UL /* 0, 4, 5 11101, MMseq2_proteins_0 */,
-  59UL /* 1, 5, 6 111011, MMseq2_proteins_1 */,
-  107UL /* 2, 5, 7 1101011, MMseq2_proteins_2 */,
-  3205UL /* 3, 5, 12 110010000101, MMseq2_proteins_3 */,
-  237UL /* 4, 6, 8 11101101, MMseq2_proteins_4 */,
-  851UL /* 5, 6, 10 1101010011, MMseq2_proteins_5 */,
-  981UL /* 6, 7, 10 1111010101, MMseq2_proteins_6 */,
-  1715UL /* 7, 7, 11 11010110011, MMseq2_proteins_7 */,
-  31709UL,
-  56173UL
+  4095UL,
+  8127UL,
+  15295UL,
+  30583UL,
+  63195UL,
+  177901
 };
 
 constexpr const uint8_t seed_table_size = sizeof(gt_spaced_seed_spec_tab)/sizeof(size_t);
@@ -112,11 +108,11 @@ void process(GttlMultiseq* multiseq,const bool correctness){
   const size_t hashbits = multiseq_hash.hashbits_get();
 
   const auto sizeof_unit = sizeof_unit_get(hashbits+seq_num_bits+seq_len_bits);
-  if(sizeof_unit>9){
+  if(sizeof_unit>12){
     std::cerr << "sizeof_unit too large for computation" << std::endl;
   }
 
-  constexpr_for<8,10,1>([&] (auto sizeof_unit_constexpr){
+  constexpr_for<8,13,1>([&] (auto sizeof_unit_constexpr){
     if(sizeof_unit_constexpr == sizeof_unit){
       std::vector<BytesUnit<sizeof_unit_constexpr,3>> rechash_data;
       std::vector<BytesUnit<sizeof_unit_constexpr,3>> nhash_data;
@@ -131,6 +127,7 @@ void process(GttlMultiseq* multiseq,const bool correctness){
       if(correctness){
         assert(rechash_data.size() == nhash_data.size());
         for(size_t i = 0; i < rechash_data.size(); i++){
+          std::cout << rechash_data[i].template decode_at<0>(packer) << std::endl;
           assert(rechash_data[i] == nhash_data[i]);
         }
       }

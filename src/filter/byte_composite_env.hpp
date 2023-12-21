@@ -334,17 +334,6 @@ class BytesCompositeEnvironment2 {
     threshold = _threshold;
   };
 
-  void set_background_data(const std::array<uint64_t,alpha_size+1>& target_distribution,const double sensitivity){
-    background_correction_set(target_distribution);
-    const BGDistribution<ScoreClass,weight> distribution{};
-    threshold = distribution.custom_threshold_get(sensitivity);
-  }
-
-  void set_background_data(const std::array<uint64_t,alpha_size+1>& target_distribution,const int64_t _threshold){
-    background_correction_set(target_distribution);
-    threshold = _threshold;
-  }
-
   void background_correction_set(const std::array<uint64_t,alpha_size+1>& target_distribution) {
     //calculate frequency of background data
     std::array<double,undefined_rank> frequency{};
