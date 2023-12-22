@@ -1822,7 +1822,7 @@ using recursive hashing\label{tab:asymptoticseed9}}
 
 \begin{figure}[t]
 \begin{center}
-\includegraphics[scale=0.45]{graphics/asymtotic9.png}
+\includegraphics[scale=0.7]{graphics/asymtotic9.png}
 \end{center}
 \caption{Performance of two hashing functions on randomly generated dataset of
 \numprint{50000000} characters with seeds in Table~\ref{tab:asymptoticseed9}.}
@@ -1850,7 +1850,7 @@ using recursive hashing\label{tab:asymptoticseed12}}
 
 \begin{figure}[t]
 \begin{center}
-\includegraphics[scale=0.45]{graphics/asymtotic12.png}
+\includegraphics[scale=0.7]{graphics/asymtotic12.png}
 \end{center}
 \caption{Performance of two hashing functions on randomly generated dataset of
 \numprint{50000000} characters with seeds in Table~\ref{tab:asymptoticseed12}.}
@@ -1957,8 +1957,8 @@ factor remains to be investigated further.
 \centering
 \includegraphics[scale=0.6]{graphics/comp_bias.png}
 \caption{Influence of local composition bias score correction on average
-\Qgram{q} list length. The original estimation of the average
-\Qgram{q} list length was 10.}
+\Qgram{q} list length with the scaling parameter \(v\in\{0,0.25,0.5,0.75,1\}\). 
+The original estimation of the average \Qgram{q} list length was 10.}
 \label{fig:compbias}
 \end{figure}
 
@@ -1973,21 +1973,21 @@ Figures~\ref{fig:genw5}, \ref{fig:genw6} and \ref{fig:genw7}.
 \centering
 \includegraphics[scale=0.6]{graphics/gen_w5.png}
 \caption{Time measured in miliseconds to generate \Qgram{q}s with
-different sensitivities using seed \numprint{1101011}}
+different sensitivity parameters using seed \numprint{1101011}}
 \label{fig:genw5}
 \end{figure}
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/gen_w6.png}
 \caption{Time measured in miliseconds to generate \Qgram{q}s with
-different sensitivities using seed \numprint{11101101}}
+different sensitivity parameters using seed \numprint{11101101}}
 \label{fig:genw6}
 \end{figure}
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/gen_w7.png}
 \caption{Time measured in miliseconds to generate \Qgram{q}s with
-different sensitivities using seed \numprint{1111010101}}
+different sensitivity parameters using seed \numprint{1111010101}}
 \label{fig:genw7}
 \end{figure}
 The figures show that the new algorithm has generally a 10~\% to 15~\%
@@ -2039,14 +2039,14 @@ each step of the program is visualized.
 \centering
 \includegraphics[scale=0.6]{graphics/program_w6.png}
 \caption{Runtime in ms of different phases of the program
-using seed~\numprint{11101101}, sensitivity 10, 100 and \numprint{1000}}
+using seed~\numprint{11101101}, sensitivity parameter \(s\in\{10,100,\numprint{1000}\}\)}
 \label{fig:program_w6}
 \end{figure}
 \begin{figure}
 \centering
 \includegraphics[scale=0.6]{graphics/program_w7.png}
 \caption{Runtime in ms of different phases in the program,
-using seed \numprint{1111010101}, sensitivity 10, 100 and \numprint{1000}}
+using seed \numprint{1111010101}, sensitivity parameter \(s\in\{10,100,\numprint{1000}\}\)}
 \label{fig:program_w7}
 \end{figure}
 
@@ -2067,7 +2067,7 @@ as their sorting using radix sort.
 \includegraphics[scale=0.6]{graphics/hotspot_w6.png}
 \caption{Runtime of \Qgram{q} generation and radix sort, measured in
 miliseconds,
-using seed \numprint{11101101}, sensitivity parameter 10, 100 and \numprint{1000}}
+using seed \numprint{11101101}, sensitivity parameter \(s\in\{10,100,\numprint{1000}\}\)}
 \label{fig:hotspot_w6}
 \end{figure}
 \begin{figure}
@@ -2075,7 +2075,7 @@ using seed \numprint{11101101}, sensitivity parameter 10, 100 and \numprint{1000
 \includegraphics[scale=0.6]{graphics/hotspot_w7.png}
 \caption{Runtime of \Qgram{q} generation and radix sort, measured in
 miliseconds,
-using seed \numprint{1111010101}, sensitivity parameter 10, 100 and \numprint{1000}}
+using seed \numprint{1111010101}, sensitivity parameter \(s\in\{10,100,\numprint{1000}\}\)}
 \label{fig:hotspot_w7}
 \end{figure}
 
@@ -2090,7 +2090,7 @@ since the benchmark involves the run time of the program as a whole.
 \centering
 \includegraphics[scale=0.6]{graphics/mmseqs2comp.png}
 \caption{Runtime of the program using both sorted and unsorted \Qgram{q}s,
-measured in ms, is compared to MMseqs2, in generation of 10, 100 and 1000
+measured in ms, is compared to MMseqs2, in generation of 10, 100 and \numprint{1000}
 \Qgram{q} per sequence position}
 \label{fig:mmseqs2comp}
 \end{figure}
@@ -2190,7 +2190,7 @@ used in testing program behavior with higher seed weight
 \centering
 \includegraphics[scale=0.7]{graphics/gen_w8.png}
 \caption{Time measured in miliseconds to generate \Qgram{8}s with
-different sensitivities using seed \numprint{1011110111}}
+different sensitivity parameters using seed \numprint{1011110111}}
 \label{fig:speed8}
 \end{figure}
 
@@ -2198,7 +2198,7 @@ different sensitivities using seed \numprint{1011110111}}
 \centering
 \includegraphics[scale=0.7]{graphics/gen_w9.png}
 \caption{Time measured in miliseconds to generate \Qgram{9}s with
-different sensitivities using seed \numprint{11110110111}}
+different sensitivity parameters using seed \numprint{11110110111}}
 \label{fig:speed9}
 \end{figure}
 
