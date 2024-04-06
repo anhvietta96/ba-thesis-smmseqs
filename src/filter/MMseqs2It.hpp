@@ -28,7 +28,7 @@ class MMseqs2 {
     std::vector<BytesUnit<sizeof_match_unit,4>>& match_vec,
     const GttlBitPacker<sizeof_query_unit,3>& query_packer, 
     const GttlBitPacker<sizeof_target_unit,3>& target_packer,
-    const GttlBitPacker<sizeof_match_unit,4>& match_packer) const {
+    const GttlBitPacker<sizeof_match_unit,4>& match_packer, const size_t query_max_len) const {
     size_t target_idx = 0, query_idx = 0;
     while(target_idx < target_vec.size() and query_idx < query_vec.size()){
       const auto target_code = target_vec[target_idx].template decode_at<0>(target_packer);
@@ -67,10 +67,11 @@ class MMseqs2 {
           for(size_t target_tmp_idx = target_idx; target_tmp_idx < target_end; target_tmp_idx++){
             const auto target_seqnum = target_vec[target_tmp_idx].template decode_at<1>(target_packer);
             const auto target_seqpos = target_vec[target_tmp_idx].template decode_at<2>(target_packer);
-            
+            const int64_t diagonal_num = static_cast<int64_t>(target_seqpos)-static_cast<int64_t>(query_seqpos)+query_max_len;
+            assert(diagonal_num >= 0);
             match_vec.emplace_back(match_packer,std::array<uint64_t,4>{static_cast<uint64_t>(target_seqnum),
                                                                       static_cast<uint64_t>(query_seqnum),
-                                                                      static_cast<uint64_t>(target_seqpos),
+                                                                      static_cast<uint64_t>(diagonal_num),
                                                                       static_cast<uint64_t>(query_seqpos)});
           }
         }
@@ -85,7 +86,7 @@ class MMseqs2 {
   void query_all_vs_all(GttlMultiseq* query, GttlMultiseq* target,const double sensitivity,
                         GTTL_UNUSED const bool with_simd,const bool short_header,const bool show, 
                         const bool mmseqs, const bool ctxsens,const bool correct,const double correct_ratio,
-                        const size_t num_threads) const {
+                        const size_t num_threads, const size_t diagonal_num_bits) const {
     const size_t target_seq_len_bits = target->sequences_length_bits_get();
     const size_t target_seq_num_bits = target->sequences_number_bits_get();
     const size_t query_seq_len_bits = query->sequences_length_bits_get();
@@ -111,7 +112,7 @@ class MMseqs2 {
     const GttlBitPacker<sizeof_match_unit,4> match_packer{{
                                         {static_cast<int>(target_seq_num_bits),
                                         static_cast<int>(query_seq_num_bits),
-                                        static_cast<int>(target_seq_len_bits),
+                                        static_cast<int>(diagonal_num_bits),
                                         static_cast<int>(query_seq_len_bits)}}};
 #ifdef TIME    
     RunTimeClass rt{};
@@ -140,9 +141,9 @@ class MMseqs2 {
     }*/
     env_constructor.template sort<sizeof_query_unit>(query_hash_data,hashbits);
     rt.show("Query sorting finished");
-    find_hits<sizeof_query_unit,sizeof_target_unit,sizeof_match_unit>(query_hash_data,target_hash_data,matches,query_packer,target_packer,match_packer);
+    find_hits<sizeof_query_unit,sizeof_target_unit,sizeof_match_unit>(query_hash_data,target_hash_data,matches,query_packer,target_packer,match_packer,query->sequences_maximum_length_get());
     rt.show("Merging query - target completed");
-    hit_sort<sizeof_match_unit>(matches,target_seq_num_bits+query_seq_num_bits);
+    hit_sort<sizeof_match_unit>(matches,target_seq_num_bits+query_seq_num_bits+diagonal_num_bits+query_seq_len_bits);
     rt.show("Match data sorted");
     std::cout << "Matches found: " << matches.size() << std::endl;
 #else
@@ -169,7 +170,7 @@ class MMseqs2 {
     
     std::cout << "Matches found: " << matches.size() << std::endl;
 #endif
-    if(show){
+    /*if(show){
       if(!short_header){
         std::cout << "#target_seq_num" << '\t' << "query_seq_num" << '\t' << 
         "target_seq_pos" << '\t' << "query_seq_pos" << '\t' << std::endl;
@@ -201,7 +202,106 @@ class MMseqs2 {
           << (int) hit.template decode_at<3>(match_packer) <<  std::endl;
         }
       }
+    }*/
+
+    if(matches.size() == 0){
+      return;
     }
+    
+    const size_t diag_bits = target_seq_num_bits+query_seq_num_bits+diagonal_num_bits+2*query_seq_len_bits;
+    const size_t sizeof_diag_unit = sizeof_unit_get(diag_bits);
+
+    constexpr_for<min_unit_size,max_unit_size+1,1>([&] (auto constexpr_diag_size){
+      if(constexpr_diag_size == sizeof_diag_unit){
+        bool reset = false;
+        size_t curr_target_seqnum = matches[0].template decode_at<0>(match_packer);
+        size_t curr_query_seqnum = matches[0].template decode_at<1>(match_packer);
+        size_t curr_diag = matches[0].template decode_at<2>(match_packer);
+        size_t start_on_query = matches[0].template decode_at<3>(match_packer);
+        size_t end_on_query = start_on_query;
+        size_t count = 0;
+
+        const GttlBitPacker<constexpr_diag_size,5> diag_packer{{
+                                            {static_cast<int>(target_seq_num_bits),
+                                            static_cast<int>(query_seq_num_bits),
+                                            static_cast<int>(diagonal_num_bits),
+                                            static_cast<int>(query_seq_len_bits),
+                                            static_cast<int>(query_seq_len_bits)}}};
+        std::vector<BytesUnit<constexpr_diag_size,5>> diag_vec;
+        for(size_t i = 1; i < matches.size(); i++){
+          const auto hit = matches[i];
+          const auto target_seqnum = hit.template decode_at<0>(match_packer);
+          const auto query_seqnum = hit.template decode_at<1>(match_packer);
+          const auto diag = hit.template decode_at<2>(match_packer);
+          if(reset){
+            curr_target_seqnum = target_seqnum;
+            curr_query_seqnum = query_seqnum;
+            curr_diag = diag;
+            start_on_query = hit.template decode_at<3>(match_packer);
+            end_on_query = start_on_query;
+            count = 0;
+            reset = false;
+          } else {
+            if(curr_target_seqnum == target_seqnum and curr_query_seqnum == 
+              query_seqnum and curr_diag == diag){
+              count += 1;
+              end_on_query = hit.template decode_at<3>(match_packer);
+            } else {
+              if(count != 0){
+                diag_vec.emplace_back(diag_packer,std::array<uint64_t,5>{
+                  static_cast<uint64_t>(curr_target_seqnum),
+                  static_cast<uint64_t>(curr_query_seqnum),
+                  static_cast<uint64_t>(curr_diag),
+                  static_cast<uint64_t>(start_on_query),
+                  static_cast<uint64_t>(end_on_query)
+                });
+              }
+              reset = true;
+            }
+          }
+        }
+        if(show){
+          std::cout << "Number of diagonal MMHit: " << diag_vec.size() << std::endl;
+          if(!short_header){
+            std::cout << "#target_seq_num" << '\t' << "query_seq_num" << '\t' << 
+              "diag_num" << '\t' << "start_on_query" << '\t' << "end_on_query" 
+              << '\t' << std::endl;
+            for(size_t i = 0; i < diag_vec.size(); i++){
+              const auto mmhit = diag_vec[i];
+              std::cout << (int) mmhit.template decode_at<0>(diag_packer) << '\t' 
+              << (int) mmhit.template decode_at<1>(diag_packer) << '\t' << 
+              static_cast<int64_t>(mmhit.template decode_at<2>(diag_packer) - 
+              query->sequences_maximum_length_get()) << '\t' 
+              << (int) mmhit.template decode_at<3>(diag_packer) << '\t' 
+              << (int) mmhit.template decode_at<4>(diag_packer)<<  std::endl;
+            } 
+          } else {
+            std::cout << "#target_header" << '\t' << "query_header" << '\t' << 
+            "diag_num" << '\t' << "start_on_query" << '\t' << "end_on_query" 
+              << '\t' << std::endl;
+            for(size_t i = 0; i < diag_vec.size(); i++){
+              const auto mmhit = diag_vec[i];
+              const auto target_seq_num = mmhit.template decode_at<0>(diag_packer);
+              size_t target_sh_offset, target_sh_len;
+              std::tie(target_sh_offset,target_sh_len) = target->short_header_get(target_seq_num);
+              const std::string_view target_seq_header = target->header_get(target_seq_num);
+
+              const auto query_seq_num = mmhit.template decode_at<1>(diag_packer);
+              size_t query_sh_offset, query_sh_len;
+              std::tie(query_sh_offset,query_sh_len) = query->short_header_get(query_seq_num);
+              const std::string_view query_seq_header = query->header_get(query_seq_num);
+
+              std::cout << target_seq_header.substr(target_sh_offset,target_sh_len) << '\t' 
+              << query_seq_header.substr(query_sh_offset,query_sh_len) << '\t' << 
+              static_cast<int64_t>(mmhit.template decode_at<2>(diag_packer) - 
+              query->sequences_maximum_length_get()) << '\t' 
+              << (int) mmhit.template decode_at<3>(diag_packer) << '\t' 
+              << (int) mmhit.template decode_at<4>(diag_packer)<<  std::endl;
+            }
+          }
+        }
+      }
+    });
   }
 
   uint8_t sizeof_unit_get(const size_t total_bits) const {
@@ -234,13 +334,14 @@ class MMseqs2 {
     const size_t target_seq_num_bits = target->sequences_number_bits_get();
     const size_t query_seq_len_bits = query->sequences_length_bits_get();
     const size_t query_seq_num_bits = query->sequences_number_bits_get();
+    const size_t diagonal_num_bits = gttl_required_bits<size_t>(target->sequences_maximum_length_get() + query->sequences_maximum_length_get());
     const size_t hashbits = multiseq_hash.hashbits_get();
 
     const auto sizeof_target_unit = sizeof_unit_get(hashbits+target_seq_num_bits+target_seq_len_bits);
     const auto sizeof_query_unit = sizeof_unit_get(hashbits+query_seq_num_bits+query_seq_len_bits);
-    const auto sizeof_match_unit = sizeof_unit_get(query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits);
+    const auto sizeof_match_unit = sizeof_unit_get(query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+diagonal_num_bits);
 
-    //std::cout << (int) sizeof_target_unit << '\t' << (int) sizeof_query_unit << '\t' << (int) sizeof_match_unit << std::endl;
+    std::cout << (int) sizeof_target_unit << '\t' << (int) sizeof_query_unit << '\t' << (int) sizeof_match_unit << std::endl;
     /*std::cout << (int) hashbits+target_seq_num_bits+target_seq_len_bits << '\t' 
     << (int) hashbits+query_seq_num_bits+query_seq_len_bits << '\t' 
     << (int) query_seq_num_bits+query_seq_len_bits+target_seq_num_bits+target_seq_len_bits << std::endl;*/
@@ -264,7 +365,7 @@ class MMseqs2 {
           constexpr_target_size == sizeof_target_unit and
           constexpr_match_size == sizeof_match_unit){
             query_all_vs_all<constexpr_query_size,constexpr_target_size,
-            constexpr_match_size>(query,target,sensitivity,with_simd,short_header,show,mmseqs,ctxsens,correct,correct_ratio,num_threads);
+            constexpr_match_size>(query,target,sensitivity,with_simd,short_header,show,mmseqs,ctxsens,correct,correct_ratio,num_threads,diagonal_num_bits);
           }
         });
       });
